@@ -14,11 +14,13 @@ Terakhir diperbarui: 28 Oktober 2026
 - Prototipe browser di `index.html`, `style.css`, dan `script.js`. Prototipe ini menyimpan odometer sekarang, kilometer ganti oli terakhir, dan interval di `localStorage`; menghitung jarak tersisa atau keterlambatan; serta mencatat ganti oli.
 - Scaffold Flutter di `rawat_motor/`, termasuk folder platform `android/` dan `ios/` serta kode Dart di `lib/`.
 - Layar Flutter awal menerima odometer sekarang, odometer ganti oli terakhir, dan interval pengingat. Layar menghitung target servis dan status jadwal, memvalidasi angka, serta memperbarui odometer servis terakhir saat tombol catat ganti oli ditekan.
+- Odometer, jadwal oli berbasis kilometer dan bulan (status Aman/Segera/Jatuh Tempo), dan riwayat servis oli tersimpan lokal. Data lama tetap dapat dibaca; log dan riwayat awal kosong sampai ada pencatatan baru.
 - Tes widget memeriksa hitungan jadwal, pencatatan ganti oli, dan validasi odometer.
 
 ## Batasan saat ini
 
-- Data profil motor/pengingat oli disimpan lokal di perangkat menggunakan `shared_preferences`; belum ada sinkronisasi akun atau cadangan cloud.
+- Profil, akun demo, dan data perawatan disimpan lokal menggunakan `shared_preferences`; belum ada sinkronisasi akun/cloud.
+- Data perawatan lama dimigrasikan saat dibaca ke bentuk baru yang juga mendukung log odometer dan riwayat servis.
 - Flutter SDK stable 3.47.8 terpasang di `%LOCALAPPDATA%\Programs\flutter`, dan folder `bin` sudah ditambahkan ke `PATH` pengguna. Buka ulang terminal atau VS Code agar sesi baru membaca `PATH` tersebut.
 - `flutter doctor` mendeteksi Flutter dan Chrome, tetapi Android SDK belum terpasang/ditemukan. Karena itu, aplikasi belum dibangun atau dijalankan di Android.
 - Android memerlukan Android Studio dan Android SDK. Folder `ios/` sudah dibuat, tetapi build iOS memerlukan macOS dan Xcode.
@@ -29,13 +31,13 @@ Terakhir diperbarui: 28 Oktober 2026
 ## Pemeriksaan terakhir
 
 - `flutter doctor`: Flutter 3.47.8 terdeteksi; Android SDK belum tersedia; iOS build tidak dapat dilakukan dari Windows.
-- Pemeriksaan terbaru setelah penambahan penyimpanan lokal: `flutter analyze --no-pub` bersih dan `flutter test --no-pub` lulus (3 tes).
+- Pemeriksaan terakhir fondasi maintenance: `flutter test --no-pub` lulus (7 tes). `flutter analyze --no-pub` masih memiliki satu info lint pada serialisasi nullable; sedang dirapikan.
 - Belum ada build APK atau build iOS.
 
 ## Langkah berikutnya
 
 1. Pasang Android Studio dan Android SDK, lalu ikuti petunjuk lisensi yang dilaporkan `flutter doctor`.
 2. Pasang/konfigurasi Android SDK agar aplikasi dapat diuji di emulator atau perangkat Android.
-3. Tambahkan riwayat servis dan pengingat lain setelah alur dasar dipahami dan teruji.
+3. Validasi alur log odometer, jadwal berdasarkan km/waktu, dan riwayat servis di emulator/perangkat.
 4. Ganti penyimpanan key-value dengan basis data lokal bila model data/riwayat servis bertambah kompleks.
 5. Siapkan build iOS di komputer macOS dengan Xcode.

@@ -54,6 +54,41 @@ void main() {
     expect(result.isDue, isFalse);
   });
 
+  test('jadwal jatuh tempo jika batas waktu tercapai lebih dulu', () {
+    final result = const OilScheduleCalculator().calculate(
+      MotorData(
+        currentOdometer: 10000,
+        lastOilOdometer: 9500,
+        oilInterval: 2000,
+        lastOilChangeDate: DateTime(2026, 1, 1),
+        oilIntervalMonths: 3,
+      ),
+      today: DateTime(2026, 4, 1),
+    );
+
+    expect(result.status, OilScheduleStatus.due);
+    expect(result.daysRemaining, 0);
+  });
+
+  test('status segera saat jarak servis berada dalam ambang', () {
+    final result = const OilScheduleCalculator().calculate(
+      const MotorData(currentOdometer: 11500, lastOilOdometer: 10000, oilInterval: 2000),
+    );
+    expect(result.status, OilScheduleStatus.soon);
+  });
+
+  test('data motor lama tetap terbaca dan field baru bermigrasi sebagai kosong', () {
+    final restored = MotorData.fromJson({
+      'currentOdometer': 12500,
+      'lastOilOdometer': 10000,
+      'oilInterval': 2000,
+    });
+    expect(restored.currentOdometer, 12500);
+    expect(restored.oilIntervalMonths, isNull);
+    expect(restored.odometerLogs, isEmpty);
+    expect(restored.serviceHistory, isEmpty);
+  });
+
   testWidgets('menghitung jadwal dan mencatat ganti oli', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));

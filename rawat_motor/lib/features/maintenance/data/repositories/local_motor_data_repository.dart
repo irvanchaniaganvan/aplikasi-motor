@@ -13,12 +13,21 @@ class LocalMotorDataRepository implements MotorDataRepository {
 
   @override
   Future<MotorData?> load() async {
-    final value = await _preferences.getString(_storageKey);
-    if (value == null) return null;
+    var value = await _preferences.getString(_storageKey);
+    if (value == null) {
+      // Migrasi: versi lama pernah menyimpan data pada key tanpa suffix versi.
+      final legacy = await _preferences.getString('rawat_motor.motor_data');
+      if (legacy == null) return null;
+      value = legacy;
+    }
     try {
       final decoded = jsonDecode(value);
       if (decoded is! Map<String, dynamic>) return null;
-      return MotorData.fromJson(decoded);
+      final data = MotorData.fromJson(decoded);
+      if (!await _preferences.containsKey(_storageKey)) {
+        await _preferences.setString(_storageKey, jsonEncode(data.toJson()));
+      }
+      return data;
     } on FormatException {
       return null;
     } on TypeError {

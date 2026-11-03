@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../domain/entities/motor_data.dart';
+import '../../domain/entities/odometer_entry.dart';
+import '../../domain/entities/service_record.dart';
 import '../../domain/use_cases/load_motor_data.dart';
 import '../../domain/use_cases/save_motor_data.dart';
 import '../../domain/services/oil_schedule_calculator.dart';
@@ -34,6 +36,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
   final _currentController = TextEditingController();
   final _lastOilController = TextEditingController();
   final _intervalController = TextEditingController(text: '2000');
+  final _monthsController = TextEditingController(text: '3');
   MotorData? _motorData;
   bool _isLoading = true;
   bool _isSaving = false;
@@ -55,6 +58,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
           _currentController.text = data.currentOdometer.toString();
           _lastOilController.text = data.lastOilOdometer.toString();
           _intervalController.text = data.oilInterval.toString();
+          _monthsController.text = (data.oilIntervalMonths ?? 3).toString();
         }
       });
     } catch (_) {
@@ -69,6 +73,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
     _currentController.dispose();
     _lastOilController.dispose();
     _intervalController.dispose();
+    _monthsController.dispose();
     super.dispose();
   }
 
@@ -79,7 +84,9 @@ class _OilReminderPageState extends State<OilReminderPage> {
         currentOdometer: int.parse(_currentController.text),
         lastOilOdometer: int.parse(_lastOilController.text),
         oilInterval: int.parse(_intervalController.text),
+        oilIntervalMonths: int.parse(_monthsController.text),
         lastOilChangeDate: previousDate,
+        odometerLogs: _appendOdometerLog(_motorData?.odometerLogs ?? const [], int.parse(_currentController.text), 'manual'),
       );
     setState(() => _isSaving = true);
     try {
@@ -99,9 +106,12 @@ class _OilReminderPageState extends State<OilReminderPage> {
   Future<void> _recordOilChange() async {
     final data = _motorData;
     if (data == null) return;
+    final service = ServiceRecord(date: DateTime.now(), odometer: data.currentOdometer, item: 'Oli mesin');
     final updated = data.copyWith(
       lastOilOdometer: data.currentOdometer,
-      lastOilChangeDate: DateTime.now(),
+      lastOilChangeDate: service.date,
+      odometerLogs: _appendOdometerLog(data.odometerLogs, data.currentOdometer, 'servis'),
+      serviceHistory: [...data.serviceHistory, service],
     );
     try {
       await widget.saveMotorData(updated);
@@ -115,6 +125,11 @@ class _OilReminderPageState extends State<OilReminderPage> {
       _lastOilController.text = data.currentOdometer.toString();
     });
     _showMessage('Ganti oli dicatat pada ${formatKm(data.currentOdometer)}.');
+  }
+
+  List<OdometerEntry> _appendOdometerLog(List<OdometerEntry> logs, int km, String source) {
+    if (logs.isNotEmpty && km <= logs.last.kilometers) return logs;
+    return [...logs, OdometerEntry(kilometers: km, date: DateTime.now(), source: source)];
   }
 
   void _showMessage(String message) {
@@ -205,6 +220,19 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 return null;
               },
             ),
+            const SizedBox(height: 16),
+            _OdometerField(
+              controller: _monthsController,
+              label: 'Pengingat setiap berapa bulan',
+              hint: '3',
+              textInputAction: TextInputAction.done,
+              validator: (value) {
+                final error = requiredNumber(value, 'Isi interval bulan.');
+                if (error != null) return error;
+                if (int.parse(value!.trim()) <= 0) return 'Interval bulan harus lebih dari 0.';
+                return null;
+              },
+            ),
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _isSaving ? null : _saveMotorData,
@@ -270,7 +298,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(due ? Icons.priority_high_rounded : Icons.check_rounded, color: due ? danger : green, size: 16),
               const SizedBox(width: 6),
-              Text(due ? 'Perlu diperhatikan' : 'Jadwal terpantau', style: TextStyle(color: due ? danger : green, fontSize: 12, fontWeight: FontWeight.w700)),
+              Text(due ? 'Jatuh Tempo' : schedule?.status == OilScheduleStatus.soon ? 'Segera' : 'Aman', style: TextStyle(color: due ? danger : green, fontSize: 12, fontWeight: FontWeight.w700)),
             ]),
           ),
           const SizedBox(height: 14),
@@ -287,6 +315,18 @@ class _OilReminderPageState extends State<OilReminderPage> {
           _SummaryRow(label: 'Tanggal servis', value: data?.lastOilChangeDate == null ? 'Belum dicatat' : _formatDate(data!.lastOilChangeDate!)),
           const SizedBox(height: 12),
           _SummaryRow(label: 'Target berikutnya', value: schedule == null ? '—' : formatKm(schedule.nextOdometer)),
+          if (schedule?.nextDate != null) ...[
+            const SizedBox(height: 12),
+            _SummaryRow(label: 'Target berdasarkan waktu', value: _formatDate(schedule!.nextDate!)),
+            const SizedBox(height: 12),
+            _SummaryRow(label: 'Sisa waktu', value: schedule.daysRemaining! <= 0 ? 'Jatuh tempo' : '${schedule.daysRemaining} hari'),
+          ],
+          if (data != null && (data.odometerLogs.isNotEmpty || data.serviceHistory.isNotEmpty)) ...[
+            const SizedBox(height: 12),
+            _SummaryRow(label: 'Log odometer', value: '${data.odometerLogs.length} catatan'),
+            const SizedBox(height: 8),
+            _SummaryRow(label: 'Riwayat servis', value: '${data.serviceHistory.length} servis'),
+          ],
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: data == null ? null : _recordOilChange,
@@ -341,7 +381,9 @@ class _OilReminderPageState extends State<OilReminderPage> {
     return isScooter ? 'Contoh oli matic 10W-40' : 'Contoh oli mesin 10W-40';
   }
 
-  String _formatDate(DateTime date) => '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  String _formatDate(DateTime date) =>
+      '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
 }
 
 class _PageHeader extends StatelessWidget {
@@ -436,7 +478,10 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [Text(label, style: const TextStyle(color: muted, fontSize: 13)), const SizedBox(width: 12), Flexible(child: Text(value, textAlign: TextAlign.end, style: const TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w700)))],
+        children: [
+          Expanded(child: Text(label, style: const TextStyle(color: muted, fontSize: 13))),
+          const SizedBox(width: 8),
+          Flexible(child: Text(value, textAlign: TextAlign.end, style: const TextStyle(color: ink, fontSize: 13, fontWeight: FontWeight.w700))),
+        ],
       );
 }
