@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f2eb" />
+    <title>Rawat Motor</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="page-header">
+        <a class="brand" href="index.html" aria-label="Rawat Motor, beranda">
+          <span class="brand-mark" aria-hidden="true">R</span>
+          <span>Rawat Motor</span>
+        </a>
+        <p class="eyebrow">TEMAN PERAWATAN MOTOR</p>
+        <h1>Rawat motor, <span>tanpa lupa.</span></h1>
+        <p class="intro">Pantau kilometer dan siapkan jadwal ganti oli berikutnya dengan lebih tenang.</p>
+      </header>
+
+      <section class="setup-card" aria-labelledby="setup-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">DATA MOTOR</p>
+            <h2 id="setup-title">Atur pengingat oli</h2>
+          </div>
+          <span class="step-badge">LANGKAH 1</span>
+        </div>
+
+        <form id="motor-form" class="motor-form">
+          <label class="field">
+            <span>Kilometer saat ini</span>
+            <span class="input-wrap">
+              <input id="current-odometer" name="currentOdometer" type="number" min="0" step="1" inputmode="numeric" placeholder="Contoh: 12500" required />
+              <span>km</span>
+            </span>
+          </label>
+
+          <label class="field">
+            <span>Ganti oli terakhir di kilometer</span>
+            <span class="input-wrap">
+              <input id="last-oil-odometer" name="lastOilOdometer" type="number" min="0" step="1" inputmode="numeric" placeholder="Contoh: 10000" required />
+              <span>km</span>
+            </span>
+          </label>
+
+          <label class="field">
+            <span>Pengingat setiap</span>
+            <span class="input-wrap">
+              <input id="oil-interval" name="oilInterval" type="number" min="1" step="1" inputmode="numeric" value="2000" required />
+              <span>km</span>
+            </span>
+          </label>
+
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+          <button class="primary-button" type="submit">Simpan data motor</button>
+        </form>
+        <p class="privacy-note">Data tersimpan di browser pada perangkat ini.</p>
+      </section>
+
+      <section class="status-card" aria-labelledby="status-title">
+        <div class="status-topline">
+          <div>
+            <p class="eyebrow">PENGINGAT BERIKUTNYA</p>
+            <h2 id="status-title">Ganti oli</h2>
+          </div>
+          <span class="oil-icon" aria-hidden="true">✳</span>
+        </div>
+
+        <div class="reminder" id="reminder" aria-live="polite">
+          <p class="reminder-value" id="reminder-value">—</p>
+          <p class="reminder-caption" id="reminder-caption">Isi data motor untuk melihat jadwal oli.</p>
+        </div>
+
+        <div class="status-details">
+          <div>
+            <span>Odometer sekarang</span>
+            <strong id="summary-current">—</strong>
+          </div>
+          <div>
+            <span>Target berikutnya</span>
+            <strong id="summary-next">—</strong>
+          </div>
+        </div>
+
+        <button class="secondary-button" id="record-oil-change" type="button" disabled>
+          Catat sudah ganti oli
+        </button>
+        <p class="action-hint" id="action-hint">Tombol aktif setelah data motor disimpan.</p>
+      </section>
+
+      <footer class="page-footer">
+        <p>Pengingat ini membantu mencatat jadwal. Ikuti juga rekomendasi buku manual motormu.</p>
+      </footer>
+    </main>
+  </body>
+</html>

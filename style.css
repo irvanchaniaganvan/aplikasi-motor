@@ -1,0 +1,368 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap");
+
+:root {
+  color-scheme: light;
+  font-family: "DM Sans", sans-serif;
+  color: #202922;
+  background: #f5f2eb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --green: #285c48;
+  --green-dark: #1e4939;
+  --muted: #68736b;
+  --line: #e5e8e2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  padding: 38px 20px 28px;
+  background:
+    radial-gradient(ellipse at 13% 5%, rgba(216, 229, 211, 0.72), transparent 34%),
+    #f5f2eb;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  width: min(100%, 760px);
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 28px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 35px;
+  color: #25372c;
+  font-family: "Manrope", sans-serif;
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--green);
+  color: white;
+  font-size: 0.9rem;
+}
+
+.eyebrow {
+  margin: 0 0 9px;
+  color: var(--green);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1,
+h2 {
+  font-family: "Manrope", sans-serif;
+}
+
+h1 {
+  max-width: 650px;
+  margin-bottom: 11px;
+  font-size: clamp(2rem, 6vw, 3.35rem);
+  line-height: 1.08;
+  letter-spacing: -0.06em;
+}
+
+h1 span {
+  color: var(--green);
+}
+
+.intro {
+  max-width: 540px;
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.7;
+}
+
+.setup-card,
+.status-card {
+  border: 1px solid rgba(32, 41, 34, 0.06);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 16px 50px rgba(47, 54, 47, 0.07);
+}
+
+.setup-card {
+  padding: clamp(20px, 5vw, 30px);
+}
+
+.section-heading,
+.status-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.section-heading {
+  margin-bottom: 22px;
+}
+
+h2 {
+  margin-bottom: 0;
+  font-size: 1.15rem;
+  letter-spacing: -0.035em;
+}
+
+.step-badge {
+  padding: 7px 10px;
+  border-radius: 99px;
+  background: #edf4ee;
+  color: var(--green);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.motor-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px 14px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  color: #4d5850;
+  font-size: 0.83rem;
+  font-weight: 600;
+}
+
+.field:nth-of-type(3) {
+  grid-column: 1 / -1;
+}
+
+.input-wrap {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  border: 1px solid #d9dfd8;
+  border-radius: 10px;
+  background: #fff;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.input-wrap:focus-within {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(40, 92, 72, 0.12);
+}
+
+.input-wrap input {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  padding: 0 12px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #202922;
+}
+
+.input-wrap > span {
+  padding: 0 13px 0 5px;
+  color: #879089;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 10px;
+  font-weight: 700;
+  transition: background 160ms ease, transform 160ms ease, opacity 160ms ease;
+}
+
+.primary-button {
+  grid-column: 1 / -1;
+  background: var(--green);
+  color: #fff;
+}
+
+.primary-button:hover {
+  background: var(--green-dark);
+}
+
+.primary-button:active,
+.secondary-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.form-error {
+  grid-column: 1 / -1;
+  margin: -4px 0 0;
+  color: #a44336;
+  font-size: 0.84rem;
+}
+
+.privacy-note {
+  margin: 13px 0 0;
+  color: #7a837c;
+  font-size: 0.76rem;
+}
+
+.status-card {
+  margin-top: 16px;
+  padding: clamp(20px, 5vw, 30px);
+  background: #213c30;
+  color: #fff;
+}
+
+.status-card .eyebrow {
+  color: #b8d3be;
+}
+
+.status-card h2 {
+  font-size: 1.2rem;
+}
+
+.oil-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d0e3c6;
+  font-size: 1.2rem;
+}
+
+.reminder {
+  margin: 25px 0 20px;
+}
+
+.reminder-value {
+  margin-bottom: 4px;
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(2rem, 8vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.065em;
+  line-height: 1.1;
+}
+
+.reminder-caption {
+  margin-bottom: 0;
+  color: #c1d0c5;
+  font-size: 0.88rem;
+}
+
+.status-card.is-due .reminder-value {
+  color: #ffcf9e;
+}
+
+.status-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.status-details div {
+  display: grid;
+  gap: 5px;
+}
+
+.status-details span {
+  color: #b8c9bc;
+  font-size: 0.73rem;
+}
+
+.status-details strong {
+  font-size: 0.96rem;
+}
+
+.secondary-button {
+  width: 100%;
+  margin-top: 18px;
+  background: #dbe8d6;
+  color: #244334;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: #edf5e9;
+}
+
+.secondary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.action-hint {
+  margin: 9px 0 0;
+  color: #b8c9bc;
+  font-size: 0.74rem;
+  text-align: center;
+}
+
+.page-footer {
+  padding: 20px 8px 0;
+  color: #737c75;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.page-footer p {
+  margin-bottom: 0;
+}
+
+@media (max-width: 560px) {
+  body {
+    padding: 25px 15px 22px;
+  }
+
+  .brand {
+    margin-bottom: 28px;
+  }
+
+  .motor-form {
+    grid-template-columns: 1fr;
+  }
+
+  .field:nth-of-type(3),
+  .primary-button {
+    grid-column: auto;
+  }
+
+  .status-details {
+    gap: 8px;
+  }
+}
