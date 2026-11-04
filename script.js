@@ -1,4 +1,6 @@
-const STORAGE_KEY = "rawat-motor-data-v1";
+const STORAGE_KEY = "rawatin-data-v1";
+// Kunci lama dipertahankan agar data prototipe yang sudah tersimpan tidak hilang.
+const LEGACY_STORAGE_KEY = "rawat-motor-data-v1";
 
 const form = document.querySelector("#motor-form");
 const currentInput = document.querySelector("#current-odometer");
@@ -17,7 +19,8 @@ let motorData = loadMotorData();
 
 function loadMotorData() {
   try {
-    const savedData = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
+    const saved = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
+    const savedData = JSON.parse(saved ?? "null");
     if (
       savedData &&
       Number.isFinite(savedData.currentOdometer) &&

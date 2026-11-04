@@ -1,6 +1,6 @@
-# rawat_motor
+# Rawatin
 
-A new Flutter project.
+Aplikasi Flutter Rawatin untuk mencatat dan mengingatkan perawatan motor.
 
 ## Getting Started
 

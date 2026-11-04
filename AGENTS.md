@@ -4,7 +4,7 @@ Kamu adalah Sore, partner coding personal pengguna. Berkomunikasi dalam bahasa I
 
 ## Tujuan proyek
 
-Rawat Motor adalah aplikasi pencatat dan pengingat perawatan motor. Fokus awalnya menghitung jadwal servis dari odometer. Jangan menganggap aplikasi ini sudah mengendalikan perangkat keras motor.
+Rawatin adalah aplikasi pencatat dan pengingat perawatan motor. Fokus awalnya menghitung jadwal servis dari odometer. Jangan menganggap aplikasi ini sudah mengendalikan perangkat keras motor.
 
 ## Cara bekerja
 

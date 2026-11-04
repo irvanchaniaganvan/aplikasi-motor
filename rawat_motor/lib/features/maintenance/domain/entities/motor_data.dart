@@ -1,5 +1,6 @@
 import 'odometer_entry.dart';
 import 'service_record.dart';
+import 'maintenance_component.dart';
 
 class MotorData {
   const MotorData({
@@ -10,6 +11,7 @@ class MotorData {
     this.oilIntervalMonths,
     this.odometerLogs = const [],
     this.serviceHistory = const [],
+    this.componentStates = const [],
   });
 
   final int currentOdometer;
@@ -19,6 +21,7 @@ class MotorData {
   final int? oilIntervalMonths;
   final List<OdometerEntry> odometerLogs;
   final List<ServiceRecord> serviceHistory;
+  final List<ComponentMaintenanceState> componentStates;
 
   Map<String, Object> toJson() => {
         'currentOdometer': currentOdometer,
@@ -29,6 +32,7 @@ class MotorData {
         'oilIntervalMonths': ?oilIntervalMonths,
         'odometerLogs': odometerLogs.map((entry) => entry.toJson()).toList(),
         'serviceHistory': serviceHistory.map((entry) => entry.toJson()).toList(),
+        'componentStates': componentStates.map((entry) => entry.toJson()).toList(),
       };
 
   factory MotorData.fromJson(Map<String, dynamic> json) {
@@ -39,6 +43,7 @@ class MotorData {
     final intervalMonths = json['oilIntervalMonths'];
     final rawLogs = json['odometerLogs'];
     final rawServices = json['serviceHistory'];
+    final rawComponents = json['componentStates'];
     if (current is! int || last is! int || interval is! int ||
         current < last || last < 0 || interval <= 0 ||
         (intervalMonths != null && (intervalMonths is! int || intervalMonths <= 0))) {
@@ -57,10 +62,13 @@ class MotorData {
       serviceHistory: rawServices == null
           ? const []
           : (rawServices as List).map((entry) => ServiceRecord.fromJson(Map<String, dynamic>.from(entry as Map))).toList(),
+      componentStates: rawComponents == null
+          ? const []
+          : (rawComponents as List).map((entry) => ComponentMaintenanceState.fromJson(Map<String, dynamic>.from(entry as Map))).toList(),
     );
   }
 
-  MotorData copyWith({int? currentOdometer, int? lastOilOdometer, int? oilInterval, DateTime? lastOilChangeDate, int? oilIntervalMonths, List<OdometerEntry>? odometerLogs, List<ServiceRecord>? serviceHistory}) {
+  MotorData copyWith({int? currentOdometer, int? lastOilOdometer, int? oilInterval, DateTime? lastOilChangeDate, int? oilIntervalMonths, List<OdometerEntry>? odometerLogs, List<ServiceRecord>? serviceHistory, List<ComponentMaintenanceState>? componentStates}) {
     return MotorData(
       currentOdometer: currentOdometer ?? this.currentOdometer,
       lastOilOdometer: lastOilOdometer ?? this.lastOilOdometer,
@@ -69,6 +77,7 @@ class MotorData {
       oilIntervalMonths: oilIntervalMonths ?? this.oilIntervalMonths,
       odometerLogs: odometerLogs ?? this.odometerLogs,
       serviceHistory: serviceHistory ?? this.serviceHistory,
+      componentStates: componentStates ?? this.componentStates,
     );
   }
 }

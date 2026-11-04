@@ -8,17 +8,20 @@ import '../../domain/repositories/motor_data_repository.dart';
 class LocalMotorDataRepository implements MotorDataRepository {
   LocalMotorDataRepository(this._preferences);
 
-  static const _storageKey = 'rawat_motor.motor_data.v1';
+  static const _storageKey = 'rawatin.motor_data.v1';
+  // Kunci lama dibaca sekali agar data pengguna yang sudah ada tetap terbawa.
+  static const _legacyKeys = ['rawat_motor.motor_data.v1', 'rawat_motor.motor_data'];
   final SharedPreferencesAsync _preferences;
 
   @override
   Future<MotorData?> load() async {
     var value = await _preferences.getString(_storageKey);
     if (value == null) {
-      // Migrasi: versi lama pernah menyimpan data pada key tanpa suffix versi.
-      final legacy = await _preferences.getString('rawat_motor.motor_data');
-      if (legacy == null) return null;
-      value = legacy;
+      for (final key in _legacyKeys) {
+        value = await _preferences.getString(key);
+        if (value != null) break;
+      }
+      if (value == null) return null;
     }
     try {
       final decoded = jsonDecode(value);

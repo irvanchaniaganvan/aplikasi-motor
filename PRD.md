@@ -1,5 +1,5 @@
 PRD: Aplikasi Perawatan Motor Berbasis AI
-Nama kerja: MotoCare AI (placeholder) · Versi 0.1 (draft) · 3 November 2026 · Penulis: Irvan Chaniagan
+Nama kerja: Rawatin · Versi 0.1 (draft) · 3 November 2026 · Penulis: Irvan Chaniagan
 1. Ringkasan
 Aplikasi ini membantu pemilik motor merawat kendaraannya secara teratur. Aplikasi memantau jarak tempuh, mengingatkan penggantian oli dan komponen lain berdasarkan kilometer (dan waktu), menyimpan riwayat servis, serta memberi rekomendasi servis berikutnya. AI dipakai untuk tiga hal: mengurangi usaha input data, menjelaskan rekomendasi dengan bahasa awam, dan menjawab pertanyaan seputar perawatan.
 Nilai utama dalam satu kalimat: pengguna tidak perlu lagi mengingat kapan terakhir ganti oli; aplikasi yang mengingat, menghitung, dan menjelaskan.

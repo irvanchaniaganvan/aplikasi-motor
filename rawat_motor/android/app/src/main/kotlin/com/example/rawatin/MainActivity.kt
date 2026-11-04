@@ -1,4 +1,4 @@
-package com.example.rawat_motor
+package com.example.rawatin
 
 import io.flutter.embedding.android.FlutterActivity
 
