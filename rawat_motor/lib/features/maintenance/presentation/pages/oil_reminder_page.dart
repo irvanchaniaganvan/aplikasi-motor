@@ -108,8 +108,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
     super.dispose();
   }
 
-  Future<void> _saveMotorData() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<bool> _saveMotorData() async {
+    if (!_formKey.currentState!.validate()) return false;
     final previousDate = _motorData?.lastOilChangeDate;
     final lastOil = int.parse(_lastOilController.text);
     final interval = int.parse(_intervalController.text);
@@ -142,16 +142,17 @@ class _OilReminderPageState extends State<OilReminderPage> {
     setState(() => _isSaving = true);
     try {
       await widget.saveMotorData(data);
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() => _motorData = data);
     } catch (_) {
       _showMessage('Data gagal disimpan. Periksa ruang penyimpanan perangkat.');
-      return;
+      return false;
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
     FocusScope.of(context).unfocus();
     _showMessage('Data motor siap dipakai untuk menghitung jadwal.');
+    return true;
   }
 
   Future<void> _recordOilChange() async {
@@ -273,32 +274,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
               ],
             ),
           ),
-          bottomNavigationBar: _selectedSection == 2
-              ? Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SafeArea(
-                      top: false,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                        child: FilledButton.icon(
-                          onPressed: _motorData == null
-                              ? null
-                              : _updateOdometer,
-                          icon: const Icon(Icons.speed_rounded),
-                          label: const Text('Perbarui odometer'),
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(48),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (!wide) _buildMobileNavigation(),
-                  ],
-                )
-              : wide
-              ? null
-              : _buildMobileNavigation(),
+          bottomNavigationBar: wide ? null : _buildMobileNavigation(),
         );
       },
     );
@@ -358,6 +334,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     children: [
                       _buildDashboardMaintenanceSummary(),
                       const SizedBox(height: 16),
+                      _buildDashboardPrimaryAction(),
+                      const SizedBox(height: 16),
                       _buildOilRecommendation(),
                     ],
                   );
@@ -365,12 +343,18 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(flex: 11, child: _buildDashboardMaintenanceSummary()),
-                    const SizedBox(width: 18),
                     Expanded(
-                      flex: 9,
-                      child: _buildOilRecommendation(),
+                      flex: 11,
+                      child: Column(
+                        children: [
+                          _buildDashboardMaintenanceSummary(),
+                          const SizedBox(height: 12),
+                          _buildDashboardPrimaryAction(),
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 18),
+                    Expanded(flex: 9, child: _buildOilRecommendation()),
                   ],
                 );
               },
@@ -989,15 +973,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 ],
               ),
             ),
-            const _StatusBadge(
-              label: 'Belum dicatat',
-              icon: Icons.info_outline_rounded,
-              color: muted,
-              background: surfaceSoft,
-            ),
-            const SizedBox(width: 4),
             IconButton(
-              tooltip: 'Catat servis',
+              tooltip: 'Catat',
               onPressed: () => _recordComponentService(component, state),
               icon: const Icon(Icons.add_task_rounded, color: green),
             ),
@@ -1492,7 +1469,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
         _currentController.text = _motorData!.currentOdometer.toString();
         _lastOilController.text = _motorData!.lastOilOdometer.toString();
         _intervalController.text = _motorData!.oilInterval.toString();
-        _monthsController.text = (_motorData!.oilIntervalMonths ?? 3).toString();
+        _monthsController.text = (_motorData!.oilIntervalMonths ?? 3)
+            .toString();
       });
     } else {
       _currentController.text = originalCurrent;
@@ -1578,8 +1556,10 @@ class _OilReminderPageState extends State<OilReminderPage> {
               onPressed: _isSaving
                   ? null
                   : () async {
-                      await _saveMotorData();
-                      if (mounted && !_isSaving) Navigator.of(context).maybePop();
+                      final saved = await _saveMotorData();
+                      if (saved && mounted) {
+                        Navigator.of(context).maybePop();
+                      }
                     },
               style: FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
@@ -1656,6 +1636,257 @@ class _OilReminderPageState extends State<OilReminderPage> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardMaintenanceSummary() {
+    final data = _motorData;
+    final active = filterMaintenanceComponents(
+      components: _components,
+      motorType: widget.profile?.motorType,
+      cooling: widget.profile?.cooling,
+      frontBrake: widget.profile?.frontBrake,
+    ).toList();
+    final ranked =
+        active.map((component) {
+          final schedule = data == null
+              ? null
+              : _componentSchedule(component, data);
+          return (component: component, schedule: schedule);
+        }).toList()..sort((a, b) {
+          int rank(ComponentSchedule? schedule) => switch (schedule?.status) {
+            ComponentScheduleStatus.due => 0,
+            ComponentScheduleStatus.soon => 1,
+            ComponentScheduleStatus.safe => 2,
+            null => 3,
+          };
+          final statusOrder = rank(a.schedule).compareTo(rank(b.schedule));
+          if (statusOrder != 0) return statusOrder;
+          return (a.schedule?.remainingKm ?? 0).compareTo(
+            b.schedule?.remainingKm ?? 0,
+          );
+        });
+    final urgent = ranked
+        .where(
+          (item) =>
+              item.schedule?.status == ComponentScheduleStatus.due ||
+              item.schedule?.status == ComponentScheduleStatus.soon,
+        )
+        .toList();
+    final primary = ranked.isEmpty ? null : ranked.first;
+
+    if (primary == null) return _buildStatusCard();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildDashboardComponentCard(primary.component, data),
+        if (urgent.isNotEmpty &&
+            urgent.any(
+              (item) => item.component.name != primary.component.name,
+            )) ...[
+          const SizedBox(height: 14),
+          _CardShell(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Perlu perhatian',
+                  style: TextStyle(
+                    color: ink,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (final item
+                    in urgent
+                        .where(
+                          (item) =>
+                              item.component.name != primary.component.name,
+                        )
+                        .take(4))
+                  _DashboardAttentionRow(
+                    name: item.component.name,
+                    label: item.schedule!.status == ComponentScheduleStatus.due
+                        ? 'Jatuh tempo'
+                        : 'Segera',
+                    color: item.schedule!.status == ComponentScheduleStatus.due
+                        ? danger
+                        : warning,
+                    icon: _componentIcon(item.component),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDashboardPrimaryAction() {
+    final data = _motorData;
+    if (data == null) {
+      return OutlinedButton.icon(
+        onPressed: _showOilReminderSettings,
+        icon: const Icon(Icons.tune_rounded, size: 18),
+        label: const Text('Ubah interval'),
+      );
+    }
+    final active =
+        filterMaintenanceComponents(
+          components: _components,
+          motorType: widget.profile?.motorType,
+          cooling: widget.profile?.cooling,
+          frontBrake: widget.profile?.frontBrake,
+        ).toList()..sort(
+          (a, b) =>
+              _componentUrgency(a, data).compareTo(_componentUrgency(b, data)),
+        );
+    final primary = active.isEmpty ? null : active.first;
+    if (primary?.name == 'Oli mesin') {
+      return OutlinedButton.icon(
+        onPressed: _showOilReminderSettings,
+        icon: const Icon(Icons.tune_rounded, size: 18),
+        label: const Text('Ubah interval'),
+      );
+    }
+    return OutlinedButton.icon(
+      onPressed: primary == null
+          ? null
+          : () => _showComponentActions(
+              primary,
+              _findComponentState(data, primary.name),
+            ),
+      icon: const Icon(Icons.open_in_new_rounded, size: 18),
+      label: const Text('Detail komponen utama'),
+    );
+  }
+
+  Widget _buildDashboardComponentCard(
+    MaintenanceComponent component,
+    MotorData? data,
+  ) {
+    final state = _findComponentState(data, component.name);
+    final schedule = data == null ? null : _componentSchedule(component, data);
+    final interval =
+        state?.intervalKmOverride ??
+        (component.name == 'Oli mesin' && data != null
+            ? data.oilInterval
+            : component.intervalKm);
+    final intervalMonths =
+        state?.intervalMonthsOverride ??
+        (component.name == 'Oli mesin' && data != null
+            ? data.oilIntervalMonths
+            : component.intervalMonths);
+    final lastServiced =
+        state?.lastServicedKm ??
+        (component.name == 'Oli mesin' &&
+                data != null &&
+                data.lastOilOdometer > 0
+            ? data.lastOilOdometer
+            : null);
+    final isDue = schedule?.status == ComponentScheduleStatus.due;
+    final isSoon = schedule?.status == ComponentScheduleStatus.soon;
+    final color = isDue
+        ? danger
+        : isSoon
+        ? warning
+        : green;
+    final background = isDue
+        ? dangerSoft
+        : isSoon
+        ? warningSoft
+        : safeSoft;
+    final label = schedule == null
+        ? 'Belum ada catatan'
+        : isDue
+        ? (component.isInspection ? 'Waktunya cek' : 'Jatuh tempo')
+        : isSoon
+        ? 'Segera'
+        : 'Aman';
+    final remaining = schedule?.remainingKm;
+    final progress = schedule == null || lastServiced == null || interval <= 0
+        ? null
+        : ((data!.currentOdometer - lastServiced) / interval)
+              .clamp(0.0, 1.0)
+              .toDouble();
+
+    return _CardShell(
+      color: isDue
+          ? const Color(0xFFFFF8F5)
+          : isSoon
+          ? const Color(0xFFFFFCF4)
+          : Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(_componentIcon(component), color: color, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  component.name,
+                  style: const TextStyle(
+                    color: ink,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              _StatusBadge(
+                label: label,
+                icon: isDue
+                    ? Icons.priority_high_rounded
+                    : isSoon
+                    ? Icons.schedule_rounded
+                    : schedule == null
+                    ? Icons.info_outline_rounded
+                    : Icons.check_rounded,
+                color: color,
+                background: background,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            schedule == null
+                ? 'Catat servis untuk mulai menghitung jadwal.'
+                : remaining! <= 0
+                ? 'Terlambat ${formatKm(remaining.abs())}'
+                : '${formatKm(remaining)} lagi menuju jadwal berikutnya',
+            style: TextStyle(
+              color: isDue ? danger : ink,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            'Interval ${formatKm(interval)}${intervalMonths == null ? '' : ' · $intervalMonths bulan'}',
+            style: const TextStyle(color: muted, fontSize: 12),
+          ),
+          if (progress != null) ...[
+            const SizedBox(height: 14),
+            _SlimProgressIndicator(
+              value: progress,
+              color: color,
+              label: '${(progress * 100).round()}% interval terpakai',
+            ),
+          ],
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: () => component.name == 'Oli mesin'
+                ? _showOilReminderSettings()
+                : _showComponentActions(component, state),
+            icon: const Icon(Icons.tune_rounded, size: 18),
+            label: Text(
+              component.name == 'Oli mesin' ? 'Ubah interval' : 'Lihat detail',
             ),
           ),
         ],
@@ -2516,6 +2747,49 @@ class _SourceChip extends StatelessWidget {
         fontSize: 9,
         fontWeight: FontWeight.w600,
       ),
+    ),
+  );
+}
+
+class _DashboardAttentionRow extends StatelessWidget {
+  const _DashboardAttentionRow({
+    required this.name,
+    required this.label,
+    required this.color,
+    required this.icon,
+  });
+
+  final String name;
+  final String label;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 7),
+    child: Row(
+      children: [
+        Icon(icon, color: color, size: 17),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            name,
+            style: const TextStyle(
+              color: ink,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        _StatusBadge(
+          label: label,
+          icon: label == 'Segera'
+              ? Icons.schedule_rounded
+              : Icons.priority_high_rounded,
+          color: color,
+          background: label == 'Segera' ? warningSoft : dangerSoft,
+        ),
+      ],
     ),
   );
 }

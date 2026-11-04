@@ -59,6 +59,7 @@ flutter:
   uses-material-design: true
   assets:
     - data/motor/data/default_interval.json
+    - data/model_motor.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -25,9 +25,11 @@ Terakhir diperbarui: 4 November 2026
 - Ringkasan dirapikan dengan identitas motor di bagian atas, kartu status oli sebagai fokus utama, serta tata letak adaptif yang menempatkan pengaturan dan rekomendasi berdampingan di layar lebar.
 - UI Rawatin diseragamkan dengan tema tipografi, warna status, tombol, input, badge, kartu, dan navigasi yang konsisten. Ringkasan dan kartu komponen kini menampilkan progress jadwal berdasarkan data servis aktual; halaman riwayat dan profil motor juga dirapikan dengan perhatian pada tampilan layar sempit.
 - Layar Riwayat servis dan Log odometer menampilkan judul tunggal, daftar ringkas berkelompok per bulan, ringkasan dan empty state, tanggal singkat, serta selisih kilometer berdasarkan catatan sebelumnya. Log odometer menyediakan tombol pembaruan yang mencatat lewat penyimpanan yang sama.
+- Form Atur pengingat oli dipindahkan dari Ringkasan ke bottom sheet melalui tombol Ubah interval; satuan interval bulan ditampilkan dengan benar. Ringkasan menampilkan komponen aktif paling mendesak dan daftar ringkas komponen yang perlu perhatian. Nilai interval oli tersimpan lokal tetap didahulukan daripada katalog default; default Oli mesin adalah 3000 km.
 - Logo Rawatin baru (motor dan tanda centang dalam palet hijau) dipakai konsisten pada halaman akun, profil, dan navigasi. Ikon launcher Android dan seluruh ukuran ikon aplikasi iOS diperbarui dari desain yang sama.
 - Akun lokal dipisahkan dari sesi. Keluar hanya mengakhiri sesi; email, kata sandi, profil, dan data perawatan tetap tersimpan. Halaman login memiliki mode **Masuk** dan **Buat akun** yang berbeda, serta memvalidasi akun yang sudah terdaftar.
-- Tes memeriksa hitungan jadwal oli, jadwal komponen, penyaringan komponen, pemuatan asset JSON, pencatatan ganti oli, validasi odometer, form profil, dan perbedaan mode login.
+- Form profil mendukung katalog model motor dari `rawat_motor/data/model_motor.json`, dengan pencarian merek/model (termasuk generasi dan alias) dan jalur manual **Lainnya**. Model katalog mengisi jenis serta pendingin secara otomatis; pengguna dapat mengoreksi keduanya. Nilai akhir tetap disimpan pada field profil lama dan dipakai filter komponen. Katalog mencakup model Yamaha dan 22 model Honda; tiap model mencatat sumber, dan catatan opsional dapat menandai data yang disimpulkan.
+- Tes memeriksa hitungan jadwal oli, jadwal komponen, penyaringan komponen, pemuatan asset JSON, pemilihan model motor (autofill, koreksi manual, dan Lainnya), pencatatan ganti oli, validasi odometer, form profil, dan perbedaan mode login.
 
 ## Batasan saat ini
 
@@ -47,7 +49,7 @@ Terakhir diperbarui: 4 November 2026
 ## Pemeriksaan terakhir
 
 - `flutter doctor`: Flutter 3.47.8 terdeteksi; Android SDK belum tersedia; iOS build tidak dapat dilakukan dari Windows.
-- Pemeriksaan terakhir setelah penyempurnaan UI: `flutter analyze` bersih dan `flutter test` lulus (15 tes).
+- Pemeriksaan terakhir setelah penambahan katalog model: `flutter analyze` bersih dan `flutter test` lulus (19 tes).
 - Build Windows debug berhasil: `build/windows/x64/runner/Debug/rawatin.exe`.
 - Belum ada build APK atau build iOS.
 

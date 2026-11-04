@@ -1,0 +1,170 @@
+{
+  "brands": [
+    {
+      "name": "Yamaha",
+      "models": [
+        {
+          "name": "Fazzio",
+          "jenis": "matic",
+          "pendingin": "udara",
+          "sumber": "media otomotif; cek situs resmi pabrikan"
+        },
+        {
+          "name": "Gear 125",
+          "alias": ["Mio Gear"],
+          "jenis": "matic",
+          "pendingin": "udara",
+          "sumber": "media otomotif; cek situs resmi pabrikan"
+        }
+      ]
+    },
+    {
+      "name": "Honda",
+      "models": [
+        {
+          "name": "BeAT",
+          "jenis": "matic",
+          "pendingin": "udara",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "Genio",
+          "jenis": "matic",
+          "pendingin": "udara",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "Scoopy",
+          "jenis": "matic",
+          "pendingin": "udara",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "Vario 125",
+          "generasi": "Techno / FI 2012-2015",
+          "alias": ["KZR", "Vario Techno 125"],
+          "jenis": "matic",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "Vario 160",
+          "jenis": "matic",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "Vario Evo 160",
+          "jenis": "matic",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "Stylo 160",
+          "jenis": "matic",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "PCX 160",
+          "jenis": "matic",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "ADV 160",
+          "jenis": "matic",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "Forza (250)",
+          "jenis": "matic",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "Revo (Revo Fit)",
+          "jenis": "bebek",
+          "pendingin": "udara",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "Supra X 125 FI",
+          "jenis": "bebek",
+          "pendingin": "udara",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "CB150 Verza",
+          "jenis": "sport",
+          "pendingin": "udara",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "Sonic 150R",
+          "jenis": "sport",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "CB150R Streetfire",
+          "jenis": "sport",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "CB150X",
+          "jenis": "sport",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda",
+          "catatan": "Pendingin disimpulkan"
+        },
+        {
+          "name": "CBR150R",
+          "jenis": "sport",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda",
+          "catatan": "Pendingin disimpulkan"
+        },
+        {
+          "name": "CRF150L",
+          "jenis": "sport",
+          "pendingin": "udara",
+          "sumber": "media otomotif; cek situs resmi Honda",
+          "catatan": "Pendingin disimpulkan"
+        },
+        {
+          "name": "CBR250RR",
+          "jenis": "sport",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "CRF250L",
+          "jenis": "sport",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "CRF250 Rally",
+          "jenis": "sport",
+          "pendingin": "cair",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "ST125 Dax",
+          "jenis": "sport",
+          "pendingin": "udara",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        },
+        {
+          "name": "Monkey",
+          "jenis": "sport",
+          "pendingin": "udara",
+          "sumber": "media otomotif; cek situs resmi Honda"
+        }
+      ]
+    }
+  ]
+}

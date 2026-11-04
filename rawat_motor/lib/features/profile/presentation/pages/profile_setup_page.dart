@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'dart:convert';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/rawatin_logo.dart';
 import '../../domain/entities/driver_motor_profile.dart';
+import '../../domain/entities/motor_model_catalog.dart';
 
 class ProfileSetupPage extends StatefulWidget {
   const ProfileSetupPage({
     required this.onSave,
     this.initialProfile,
+    this.catalog,
     super.key,
   });
   final Future<void> Function(DriverMotorProfile profile) onSave;
   final DriverMotorProfile? initialProfile;
+  final MotorModelCatalog? catalog;
 
   @override
   State<ProfileSetupPage> createState() => _ProfileSetupPageState();
@@ -27,11 +32,18 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   String? _motorType;
   String? _cooling;
   String? _frontBrake;
+  MotorModelCatalog _catalog = const MotorModelCatalog(brands: []);
+  MotorBrand? _selectedBrand;
+  MotorModel? _selectedModel;
+  bool _manualMotor = true;
+  bool _typeEdited = false;
+  bool _coolingEdited = false;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
+    _loadCatalog();
     final profile = widget.initialProfile;
     if (profile != null) {
       _name.text = profile.driverName;
@@ -41,6 +53,21 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       _motorType = profile.motorType;
       _cooling = profile.cooling;
       _frontBrake = profile.frontBrake;
+      _manualMotor = true;
+    }
+  }
+
+  Future<void> _loadCatalog() async {
+    try {
+      final catalog =
+          widget.catalog ??
+          MotorModelCatalog.fromJson(
+            jsonDecode(await rootBundle.loadString('data/model_motor.json'))
+                as Map<String, dynamic>,
+          );
+      if (mounted) setState(() => _catalog = catalog);
+    } catch (_) {
+      // Form manual tetap dapat digunakan jika asset katalog belum terbaca.
     }
   }
 
@@ -181,19 +208,84 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                           icon: Icons.person_outline_rounded,
                         ),
                         const SizedBox(height: 14),
-                        _field(
-                          _brand,
-                          'Merek motor',
-                          'Contoh: Yamaha',
-                          icon: Icons.two_wheeler_outlined,
-                        ),
-                        const SizedBox(height: 14),
-                        _field(
-                          _model,
-                          'Model motor',
-                          'Contoh: Gear 125',
-                          icon: Icons.directions_bike_outlined,
-                        ),
+                        if (_catalog.brands.isNotEmpty) ...[
+                          _searchDropdown(
+                            label: 'Merek motor',
+                            hint: 'Cari atau pilih merek',
+                            value: _selectedBrand?.name,
+                            options: [
+                              ..._catalog.brands.map((brand) => brand.name),
+                              'Lainnya',
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedBrand = _catalog.brands
+                                    .where((b) => b.name == value)
+                                    .firstOrNull;
+                                _selectedModel = null;
+                                _model.clear();
+                                _manualMotor = value == 'Lainnya';
+                                _brand.text = _manualMotor ? '' : value ?? '';
+                              });
+                            },
+                          ),
+                          if (_selectedBrand != null) ...[
+                            const SizedBox(height: 14),
+                            _searchDropdown(
+                              label: 'Model motor',
+                              hint: 'Cari atau pilih model',
+                              value: _selectedModel?.name,
+                              options: [
+                                ..._selectedBrand!.models.map(
+                                  (model) => model.searchLabel,
+                                ),
+                                'Lainnya',
+                              ],
+                              onChanged: (value) {
+                                if (value == 'Lainnya') {
+                                  setState(() {
+                                    _manualMotor = true;
+                                    _selectedModel = null;
+                                    _brand.text = _selectedBrand!.name;
+                                    _model.clear();
+                                  });
+                                  return;
+                                }
+                                final model = _selectedBrand!.models
+                                    .where((m) => m.searchLabel == value)
+                                    .firstOrNull;
+                                setState(() {
+                                  _selectedModel = model;
+                                  _manualMotor = model == null;
+                                  if (model != null) {
+                                    _model.text = model.name;
+                                    _motorType = model.motorType;
+                                    _cooling = model.cooling;
+                                    _typeEdited = false;
+                                    _coolingEdited = false;
+                                  }
+                                });
+                              },
+                            ),
+                          ],
+                        ],
+                        if (_manualMotor) ...[
+                          if (_catalog.brands.isNotEmpty)
+                            const SizedBox(height: 14),
+                          _field(
+                            _brand,
+                            'Merek motor',
+                            'Contoh: Yamaha',
+                            icon: Icons.two_wheeler_outlined,
+                          ),
+                          const SizedBox(height: 14),
+                          _field(
+                            _model,
+                            'Model motor',
+                            'Contoh: Gear 125',
+                            icon: Icons.directions_bike_outlined,
+                          ),
+                        ],
                         const SizedBox(height: 14),
                         _field(
                           _year,
@@ -203,28 +295,56 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                           icon: Icons.calendar_month_outlined,
                         ),
                         const SizedBox(height: 14),
-                        _dropdown(
-                          value: _motorType,
-                          label: 'Jenis motor',
-                          hint: 'Pilih jenis motor',
-                          icon: Icons.category_outlined,
-                          items: const {
-                            'matic': 'Matic',
-                            'bebek': 'Bebek',
-                            'sport': 'Sport',
-                          },
-                          onChanged: (value) =>
-                              setState(() => _motorType = value),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _dropdown(
+                                value: _motorType,
+                                label: 'Jenis motor',
+                                hint: 'Pilih jenis motor',
+                                icon: Icons.category_outlined,
+                                items: const {
+                                  'matic': 'Matic',
+                                  'bebek': 'Bebek',
+                                  'sport': 'Sport',
+                                },
+                                onChanged: (value) => setState(() {
+                                  _motorType = value;
+                                  if (_selectedModel != null) {
+                                    _typeEdited = true;
+                                  }
+                                }),
+                              ),
+                            ),
+                            if (_selectedModel != null) ...[
+                              const SizedBox(width: 8),
+                              _autoChip(_typeEdited),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 14),
-                        _dropdown(
-                          value: _cooling,
-                          label: 'Sistem pendingin',
-                          hint: 'Pilih pendingin',
-                          icon: Icons.ac_unit_rounded,
-                          items: const {'udara': 'Udara', 'cair': 'Cair'},
-                          onChanged: (value) =>
-                              setState(() => _cooling = value),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _dropdown(
+                                value: _cooling,
+                                label: 'Sistem pendingin',
+                                hint: 'Pilih pendingin',
+                                icon: Icons.ac_unit_rounded,
+                                items: const {'udara': 'Udara', 'cair': 'Cair'},
+                                onChanged: (value) => setState(() {
+                                  _cooling = value;
+                                  if (_selectedModel != null) {
+                                    _coolingEdited = true;
+                                  }
+                                }),
+                              ),
+                            ),
+                            if (_selectedModel != null) ...[
+                              const SizedBox(width: 8),
+                              _autoChip(_coolingEdited),
+                            ],
+                          ],
                         ),
                         const SizedBox(height: 14),
                         _dropdown(
@@ -341,6 +461,111 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     validator: (selected) =>
         selected == null ? 'Bagian ini perlu diisi.' : null,
   );
+
+  Widget _searchDropdown({
+    required String label,
+    required String hint,
+    required String? value,
+    required List<String> options,
+    required ValueChanged<String?> onChanged,
+  }) => FormField<String>(
+    initialValue: value,
+    validator: (selected) =>
+        selected == null ? 'Bagian ini perlu diisi.' : null,
+    builder: (field) => InkWell(
+      onTap: () async {
+        final selected = await showDialog<String>(
+          context: context,
+          builder: (context) =>
+              _SearchOptionDialog(title: label, options: options),
+        );
+        if (selected != null) {
+          field.didChange(selected);
+          onChanged(selected);
+        }
+      },
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: const Icon(Icons.search_rounded, color: muted, size: 20),
+          suffixIcon: const Icon(Icons.arrow_drop_down_rounded),
+          errorText: field.errorText,
+        ),
+        child: Text(
+          value ?? hint,
+          style: TextStyle(color: value == null ? muted : ink),
+        ),
+      ),
+    ),
+  );
+
+  Widget _autoChip(bool edited) => Chip(
+    label: Text(edited ? 'Manual' : 'Otomatis'),
+    avatar: Icon(
+      edited ? Icons.edit_rounded : Icons.auto_awesome_rounded,
+      size: 15,
+    ),
+    visualDensity: VisualDensity.compact,
+    padding: EdgeInsets.zero,
+  );
+}
+
+class _SearchOptionDialog extends StatefulWidget {
+  const _SearchOptionDialog({required this.title, required this.options});
+  final String title;
+  final List<String> options;
+
+  @override
+  State<_SearchOptionDialog> createState() => _SearchOptionDialogState();
+}
+
+class _SearchOptionDialogState extends State<_SearchOptionDialog> {
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.options
+        .where((item) => item.toLowerCase().contains(_query.toLowerCase()))
+        .toList();
+    return AlertDialog(
+      title: Text('Cari ${widget.title.toLowerCase()}'),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'Ketik untuk mencari',
+                prefixIcon: Icon(Icons.search_rounded),
+              ),
+              onChanged: (value) => setState(() => _query = value),
+            ),
+            const SizedBox(height: 8),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final option in filtered)
+                    ListTile(
+                      title: Text(option),
+                      onTap: () => Navigator.pop(context, option),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+      ],
+    );
+  }
 }
 
 class _StepLabel extends StatelessWidget {
