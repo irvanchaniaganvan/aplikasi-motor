@@ -1,16 +1,16 @@
 {
   "sumber": "Perkiraan umum; cocokkan dengan buku servis motor masing-masing",
   "komponen": [
-    { "nama": "Oli mesin", "aksi": "ganti", "intervalKm": 3000, "intervalBulan": 3, "untuk": ["semua"] },
-    { "nama": "Oli gardan", "aksi": "ganti", "intervalKm": 6000, "untuk": ["matic"] },
-    { "nama": "Filter udara", "aksi": "ganti", "intervalKm": 8000, "untuk": ["semua"], "catatan": "lebih sering di jalan berdebu" },
-    { "nama": "Busi", "aksi": "ganti", "intervalKm": 8000, "untuk": ["semua"] },
-    { "nama": "V-belt", "aksi": "ganti", "intervalKm": 20000, "untuk": ["matic"], "catatan": "ganti lebih awal kalau retak" },
-    { "nama": "Roller", "aksi": "ganti", "intervalKm": 25000, "untuk": ["matic"], "catatan": "ganti kalau sudah peang/aus" },
-    { "nama": "Rantai & gear set", "aksi": "ganti", "intervalKm": 25000, "untuk": ["bebek", "sport"], "catatan": "ganti kalau berisik dan longgar" },
-    { "nama": "Kampas rem", "aksi": "cek", "intervalKm": 4000, "untuk": ["semua"], "catatan": "ganti sesuai kondisi, lihat buku servis" },
-    { "nama": "Ban", "aksi": "cek", "intervalKm": 4000, "intervalBulan": 36, "untuk": ["semua"], "catatan": "ganti kalau TWI sejajar atau umur 2-3 tahun" },
-    { "nama": "Minyak rem", "aksi": "ganti", "intervalKm": 24000, "intervalBulan": 24, "untuk": ["semua"], "syarat": "rem_cakram", "catatan": "hanya rem cakram" },
-    { "nama": "Air radiator/coolant", "aksi": "ganti", "intervalKm": 12000, "intervalBulan": 12, "untuk": ["semua"], "syarat": "pendingin_cair" }
+    { "id": "oli-mesin", "nama": "Oli mesin", "aksi": "ganti", "intervalKm": 3000, "intervalBulan": 3, "untuk": ["semua"], "verifikasi": "TODO_VERIFY" },
+    { "id": "oli-gardan", "nama": "Oli gardan", "aksi": "ganti", "intervalKm": 6000, "untuk": ["semua"], "verifikasi": "TODO_VERIFY" },
+    { "id": "filter-udara", "nama": "Filter udara", "aksi": "ganti", "intervalKm": 8000, "untuk": ["semua"], "catatan": "Perkiraan umum; sesuaikan kondisi jalan.", "verifikasi": "TODO_VERIFY" },
+    { "id": "busi", "nama": "Busi", "aksi": "ganti", "intervalKm": 8000, "untuk": ["semua"], "verifikasi": "TODO_VERIFY" },
+    { "id": "kampas-rem", "nama": "Kampas rem", "aksi": "ganti", "intervalKm": 4000, "untuk": ["semua"], "catatan": "Periksa keausan; perkiraan interval umum.", "verifikasi": "TODO_VERIFY" },
+    { "id": "v-belt", "nama": "V-belt", "aksi": "ganti", "intervalKm": 20000, "untuk": ["semua"], "catatan": "Ganti lebih awal bila retak.", "verifikasi": "TODO_VERIFY" },
+    { "id": "roller", "nama": "Roller", "aksi": "ganti", "intervalKm": 25000, "untuk": ["semua"], "catatan": "Periksa keausan.", "verifikasi": "TODO_VERIFY" },
+    { "id": "rantai-gear-set", "nama": "Rantai/gear set", "aksi": "ganti", "intervalKm": 25000, "untuk": ["semua"], "catatan": "Periksa kelonggaran dan keausan.", "verifikasi": "TODO_VERIFY" },
+    { "id": "coolant", "nama": "Coolant", "aksi": "ganti", "intervalKm": 12000, "intervalBulan": 12, "untuk": ["semua"], "syarat": "pendingin_cair", "verifikasi": "TODO_VERIFY" },
+    { "id": "ban", "nama": "Ban", "aksi": "ganti", "intervalKm": 4000, "intervalBulan": 36, "untuk": ["semua"], "catatan": "Perkiraan pemeriksaan umum; prioritaskan kondisi dan TWI.", "verifikasi": "TODO_VERIFY" },
+    { "id": "minyak-rem", "nama": "Minyak rem", "aksi": "ganti", "intervalKm": 24000, "intervalBulan": 24, "untuk": ["semua"], "syarat": "rem_cakram", "catatan": "hanya rem cakram", "verifikasi": "TODO_VERIFY" }
   ]
 }

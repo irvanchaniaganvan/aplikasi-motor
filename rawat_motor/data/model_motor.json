@@ -3,6 +3,8 @@
     {
       "name": "Yamaha",
       "models": [
+        {"name":"Mio M3 125","jenis":"matic","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"Fino 125","jenis":"matic","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan"},
         {
           "name": "Fazzio",
           "jenis": "matic",
@@ -15,7 +17,37 @@
           "jenis": "matic",
           "pendingin": "udara",
           "sumber": "media otomotif; cek situs resmi pabrikan"
-        }
+        },
+        {"name":"Gear Ultima","jenis":"matic","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"FreeGo 125","jenis":"matic","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"Grand Filano","jenis":"matic","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan","catatan":"Terdapat konflik informasi pendingin; nilai udara mengikuti daftar yang diberikan."},
+        {"name":"Lexi LX 155","jenis":"matic","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"Aerox 155","alias":["Aerox Alpha"],"jenis":"matic","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"NMAX 155","jenis":"matic","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"XMAX 250","jenis":"matic","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"Jupiter Z1","jenis":"bebek","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"MX King 150","jenis":"bebek","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"XSR 155","jenis":"sport","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"R15","jenis":"sport","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan","catatan":"Pendingin disimpulkan"},
+        {"name":"MT-15","jenis":"sport","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"R25","jenis":"sport","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"MT-25","jenis":"sport","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"WR155R","jenis":"sport","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"}
+      ]
+    },
+    {
+      "name": "Suzuki",
+      "models": [
+        {"name":"Nex II","jenis":"matic","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"Nex Crossover","jenis":"matic","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan","catatan":"Mesin sama dengan Nex II"},
+        {"name":"Address FI","jenis":"matic","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"Avenis 125","jenis":"matic","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"Burgman Street 125EX","jenis":"matic","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"Satria F150","jenis":"bebek","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"GSX-R150","jenis":"sport","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"GSX-S150","jenis":"sport","pendingin":"cair","sumber":"media otomotif; cek situs resmi pabrikan"},
+        {"name":"Gixxer SF 250","jenis":"sport","pendingin":"oli","sumber":"media otomotif; cek situs resmi pabrikan","catatan":"Sistem Suzuki Oil Cooling System (SOCS)"},
+        {"name":"V-Strom 250 SX","jenis":"sport","pendingin":"oli","sumber":"media otomotif; cek situs resmi pabrikan","catatan":"Sistem Suzuki Oil Cooling System (SOCS)"}
       ]
     },
     {

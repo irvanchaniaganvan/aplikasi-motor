@@ -87,6 +87,8 @@ class MotorModel {
     if (name is! String ||
         motorType is! String ||
         cooling is! String ||
+        !const {'matic', 'bebek', 'sport'}.contains(motorType) ||
+        (!const {'udara', 'oli', 'cair', 'TODO_VERIFY'}.contains(cooling)) ||
         source is! String ||
         (generation != null && generation is! String) ||
         (notes != null && notes is! String) ||

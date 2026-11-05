@@ -7,6 +7,8 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/rawatin_logo.dart';
 import '../../domain/entities/driver_motor_profile.dart';
 import '../../domain/entities/motor_model_catalog.dart';
+import '../../../maintenance/domain/entities/maintenance_motor_catalog.dart';
+import '../../../maintenance/data/repositories/default_interval_repository.dart';
 
 class ProfileSetupPage extends StatefulWidget {
   const ProfileSetupPage({
@@ -32,9 +34,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   String? _motorType;
   String? _cooling;
   String? _frontBrake;
+  late String _profileId;
   MotorModelCatalog _catalog = const MotorModelCatalog(brands: []);
   MotorBrand? _selectedBrand;
   MotorModel? _selectedModel;
+  List<MaintenanceMotor> _maintenanceMotors = const [];
+  MaintenanceMotor? _selectedMaintenanceMotor;
   bool _manualMotor = true;
   bool _typeEdited = false;
   bool _coolingEdited = false;
@@ -44,7 +49,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   void initState() {
     super.initState();
     _loadCatalog();
+    _loadMaintenanceMotors();
     final profile = widget.initialProfile;
+    _profileId = profile?.id.isNotEmpty == true
+        ? profile!.id
+        : DateTime.now().microsecondsSinceEpoch.toString();
     if (profile != null) {
       _name.text = profile.driverName;
       _brand.text = profile.brand;
@@ -71,6 +80,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     }
   }
 
+  Future<void> _loadMaintenanceMotors() async {
+    try {
+      final catalog = await const DefaultIntervalRepository().loadMotors();
+      if (mounted) setState(() => _maintenanceMotors = catalog.motors);
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
     _name.dispose();
@@ -86,6 +102,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     try {
       await widget.onSave(
         DriverMotorProfile(
+          id: _profileId,
           driverName: _name.text.trim(),
           brand: _brand.text.trim(),
           model: _model.text.trim(),
@@ -93,6 +110,8 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           motorType: _motorType,
           cooling: _cooling,
           frontBrake: _frontBrake,
+          maintenanceMotorId: _selectedMaintenanceMotor?.id,
+          transmission: _selectedMaintenanceMotor?.transmission,
         ),
       );
     } catch (_) {
@@ -103,6 +122,20 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         );
       }
     }
+  }
+
+  MaintenanceMotor? _findMaintenanceMotor(String modelName) {
+    final normalized = modelName.toLowerCase();
+    for (final motor in _maintenanceMotors) {
+      if (normalized == motor.name.toLowerCase() ||
+          (motor.id == 'yamaha-mio-gear-2024' && normalized.contains('gear')) ||
+          (motor.id == 'honda-beat-k0j' && normalized.contains('beat')) ||
+          (motor.id == 'honda-vario-125-kzr' &&
+              normalized.contains('vario 125'))) {
+        return motor;
+      }
+    }
+    return null;
   }
 
   @override
@@ -257,10 +290,16 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                 setState(() {
                                   _selectedModel = model;
                                   _manualMotor = model == null;
+                                  _selectedMaintenanceMotor =
+                                      _findMaintenanceMotor(model?.name ?? '');
                                   if (model != null) {
                                     _model.text = model.name;
                                     _motorType = model.motorType;
                                     _cooling = model.cooling;
+                                    if (_selectedMaintenanceMotor != null) {
+                                      _cooling =
+                                          _selectedMaintenanceMotor!.cooling;
+                                    }
                                     _typeEdited = false;
                                     _coolingEdited = false;
                                   }
@@ -331,7 +370,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                 label: 'Sistem pendingin',
                                 hint: 'Pilih pendingin',
                                 icon: Icons.ac_unit_rounded,
-                                items: const {'udara': 'Udara', 'cair': 'Cair'},
+                                items: const {
+                                  'udara': 'Udara',
+                                  'oli': 'Oli',
+                                  'cair': 'Cair',
+                                  'TODO_VERIFY': 'Perlu diverifikasi',
+                                },
                                 onChanged: (value) => setState(() {
                                   _cooling = value;
                                   if (_selectedModel != null) {

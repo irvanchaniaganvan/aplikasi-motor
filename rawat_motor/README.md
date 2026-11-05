@@ -1,17 +1,26 @@
-# Rawatin
+# Rawatin — aplikasi Flutter
 
-Aplikasi Flutter Rawatin untuk mencatat dan mengingatkan perawatan motor.
+Folder ini adalah proyek Flutter utama Rawatin. Kode aplikasi ditulis dengan Dart dan target yang dipilih adalah Android serta iOS. Proyek juga dapat dijalankan sebagai aplikasi Windows untuk pengembangan dan pengujian.
 
-## Getting Started
+## Menjalankan di Windows
 
-This project is a starting point for a Flutter application.
+Dari folder ini, jalankan:
 
-A few resources to get you started if this is your first Flutter project:
+```powershell
+flutter pub get
+flutter run -d windows
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+Untuk menganalisis kode dan menjalankan tes:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```powershell
+flutter analyze
+flutter test
+```
+
+Android membutuhkan Android Studio/Android SDK yang terpasang dan dikonfigurasi. Build iOS membutuhkan macOS dan Xcode.
+
+## Catatan implementasi
+
+- Data akun demo, profil kendaraan, odometer, pengingat, dan riwayat disimpan lokal menggunakan `shared_preferences`; belum ada sinkronisasi cloud.
+- PRD dan status implementasi proyek berada di `../PRD.md` dan `../PROJECT_STATUS.md`. Untuk melanjutkan setelah sesi terputus, baca juga `../AGENTS.md` dan cek `git status` sebelum mengubah berkas.

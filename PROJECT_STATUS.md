@@ -1,6 +1,6 @@
 # Status proyek Rawatin
 
-Terakhir diperbarui: 4 November 2026
+Terakhir diperbarui: 5 November 2026
 
 ## Tujuan dan keputusan
 
@@ -28,16 +28,23 @@ Terakhir diperbarui: 4 November 2026
 - Form Atur pengingat oli dipindahkan dari Ringkasan ke bottom sheet melalui tombol Ubah interval; satuan interval bulan ditampilkan dengan benar. Ringkasan menampilkan komponen aktif paling mendesak dan daftar ringkas komponen yang perlu perhatian. Nilai interval oli tersimpan lokal tetap didahulukan daripada katalog default; default Oli mesin adalah 3000 km.
 - Logo Rawatin baru (motor dan tanda centang dalam palet hijau) dipakai konsisten pada halaman akun, profil, dan navigasi. Ikon launcher Android dan seluruh ukuran ikon aplikasi iOS diperbarui dari desain yang sama.
 - Akun lokal dipisahkan dari sesi. Keluar hanya mengakhiri sesi; email, kata sandi, profil, dan data perawatan tetap tersimpan. Halaman login memiliki mode **Masuk** dan **Buat akun** yang berbeda, serta memvalidasi akun yang sudah terdaftar.
-- Form profil mendukung katalog model motor dari `rawat_motor/data/model_motor.json`, dengan pencarian merek/model (termasuk generasi dan alias) dan jalur manual **Lainnya**. Model katalog mengisi jenis serta pendingin secara otomatis; pengguna dapat mengoreksi keduanya. Nilai akhir tetap disimpan pada field profil lama dan dipakai filter komponen. Katalog mencakup model Yamaha dan 22 model Honda; tiap model mencatat sumber, dan catatan opsional dapat menandai data yang disimpulkan.
-- Tes memeriksa hitungan jadwal oli, jadwal komponen, penyaringan komponen, pemuatan asset JSON, pemilihan model motor (autofill, koreksi manual, dan Lainnya), pencatatan ganti oli, validasi odometer, form profil, dan perbedaan mode login.
+- Form profil mendukung katalog model motor dari `rawat_motor/data/model_motor.json`, dengan pencarian merek/model (termasuk generasi dan alias) dan jalur manual **Lainnya**. Jenis motor adalah `matic`, `bebek`, atau `sport`; pendingin adalah `udara`, `oli`, atau `cair`. Model katalog mengisi jenis serta pendingin secara otomatis; pengguna dapat mengoreksi keduanya. Nilai akhir tetap disimpan pada field profil lama dan dipakai filter komponen. Komponen coolant hanya berlaku untuk pendingin `cair`.
+- Perubahan lokal sebelumnya menambahkan dukungan menyimpan beberapa kendaraan di satu akun lokal (data terpisah per ID dan migrasi profil tunggal). Alur multi-motor tidak termasuk lingkup pekerjaan multi-part saat ini.
+- Katalog model motor mencakup model Yamaha dan 22 model Honda; tiap model mencatat sumber, dan catatan opsional dapat menandai data yang disimpulkan. Verifikasi sumber dan interval servis sebelum menganggap katalog sebagai spesifikasi resmi pabrikan.
+- Jadwal multi-part ditambahkan lewat katalog `rawat_motor/data/motor/data/default_interval.json` dengan ID part, interval perkiraan bertanda `TODO_VERIFY`, dan katalog model awal di `maintenance_motor_catalog.json`. Model awal: Fazzio, Mio Gear 2024, Beat K0J, dan Vario 125 KZR; fakta transmisi/pendingin sengaja bernilai `TODO_VERIFY` sampai dicek dari sumber resmi.
+- Mesin jadwal komponen murni Dart sekarang menghitung batas km dan/atau bulan, status awal `Perlu dicek`, dan sisa hari; urutan urgensi adalah Jatuh Tempo, Segera, Perlu dicek, Aman. Filter data menerapkan syarat CVT/manual/coolant tanpa menganggap nilai TODO sebagai fakta.
+- Kartu part memiliki form **Catat ganti** dengan km, tanggal, biaya opsional, dan catatan opsional. Servis hanya memperbarui state part yang dipilih, menambah riwayat, serta menambah log odometer hanya jika km lebih tinggi daripada odometer terkini; km lebih rendah memerlukan konfirmasi.
+- Data oli lama (km servis terakhir, interval, tanggal, riwayat) tetap dipertahankan dan dimigrasikan ke state part `oli-mesin`; skema lama tanpa ID tetap dapat dibaca.
+- Saat sesi terputus atau konteks percakapan hilang, gunakan file ini sebagai ringkasan pemulihan. Baca juga `AGENTS.md`, lalu periksa status Git dan file terkait sebelum melanjutkan. Jangan menimpa perubahan lokal yang belum dikomit.
+- Pada pembaruan dokumentasi 5 November 2026, working tree memiliki perubahan lokal belum dikomit di dokumentasi dan beberapa berkas Flutter/data/tes. Jangan menganggap perubahan tersebut telah masuk commit; mulai dengan `git status --short` dan `git diff` untuk melihat kondisi terbaru.
+- Tes memeriksa jadwal oli dan multi-part (km/bulan, status awal, filter part, migrasi oli, reset part terpilih, serta log odometer), pemuatan katalog, pemilihan model, penyimpanan lokal, dan alur utama profil/akun.
 
 ## Batasan saat ini
 
 - Profil, akun demo, kata sandi demo, dan data perawatan disimpan lokal menggunakan `shared_preferences`; belum ada sinkronisasi akun/cloud. Kata sandi disimpan sebagai demo lokal, bukan autentikasi produksi.
-- Hanya satu akun lokal yang didukung saat ini. Jika akun sudah ada, mode Buat akun akan meminta pengguna memakai mode Masuk.
-- Akun bersifat lokal per instalasi dan tidak mendukung banyak akun. Petunjuk pada halaman pembuatan akun menjelaskan batasan ini agar pengguna yang sudah mendaftar tahu untuk memilih Masuk.
+- Hanya satu akun lokal yang didukung per instalasi. Jika akun sudah ada, mode Buat akun akan meminta pengguna memakai mode Masuk; beberapa kendaraan tetap dapat disimpan di akun lokal tersebut.
 - Data perawatan lama dimigrasikan saat dibaca ke bentuk baru yang juga mendukung log odometer dan riwayat servis.
-- Status komponen masih berbasis kilometer. Interval bulan disimpan, ditampilkan, dan bisa diubah, tetapi belum memengaruhi status sampai tanggal servis per komponen dipakai.
+- Nilai model awal dan interval servis masih bertanda `TODO_VERIFY`; perbarui hanya setelah memeriksa spesifikasi/buku manual resmi. Katalog lama model lain tetap memakai filter profil yang telah ada.
 - Profil lama yang belum punya jenis/pendingin/rem depan akan menampilkan semua komponen sampai pengguna memperbarui profil.
 - Flutter SDK stable 3.47.8 terpasang di `%LOCALAPPDATA%\Programs\flutter`, dan folder `bin` sudah ditambahkan ke `PATH` pengguna. Buka ulang terminal atau VS Code agar sesi baru membaca `PATH` tersebut.
 - `flutter doctor` mendeteksi Flutter dan Chrome, tetapi Android SDK belum terpasang/ditemukan. Karena itu, aplikasi belum dibangun atau dijalankan di Android.
@@ -48,8 +55,9 @@ Terakhir diperbarui: 4 November 2026
 
 ## Pemeriksaan terakhir
 
+- Setelah implementasi multi-part: `flutter analyze` bersih dan `flutter test` lulus (30 tes).
+- Build Windows debug pernah berhasil pada sesi sebelumnya; belum dijalankan ulang setelah implementasi multi-part.
 - `flutter doctor`: Flutter 3.47.8 terdeteksi; Android SDK belum tersedia; iOS build tidak dapat dilakukan dari Windows.
-- Pemeriksaan terakhir setelah penambahan katalog model: `flutter analyze` bersih dan `flutter test` lulus (19 tes).
 - Build Windows debug berhasil: `build/windows/x64/runner/Debug/rawatin.exe`.
 - Belum ada build APK atau build iOS.
 
@@ -60,3 +68,11 @@ Terakhir diperbarui: 4 November 2026
 3. Validasi alur log odometer, jadwal komponen, penyaringan profil, dan riwayat servis di emulator/perangkat.
 4. Ganti penyimpanan key-value dengan basis data lokal bila model data/riwayat servis bertambah kompleks.
 5. Siapkan build iOS di komputer macOS dengan Xcode.
+
+## Catatan pemulihan sesi
+
+1. Baca `AGENTS.md` dan bagian ini sebelum mengerjakan tugas baru.
+2. Cek `git status --short` dan diff terlebih dahulu; perubahan yang sudah ada adalah pekerjaan pengguna dan harus dipertahankan.
+3. Verifikasi kondisi kode sebelum mengandalkan angka/hasil pemeriksaan lama pada dokumen ini.
+4. Jangan menganggap item PRD sudah diimplementasikan hanya karena tercantum sebagai kebutuhan.
+5. Jika pengguna meminta dokumentasi saja, ubah file `.md` yang relevan dan jangan menyentuh aplikasi.

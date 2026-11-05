@@ -1,5 +1,6 @@
 class MaintenanceComponent {
   const MaintenanceComponent({
+    this.id,
     required this.name,
     required this.action,
     required this.intervalKm,
@@ -7,8 +8,10 @@ class MaintenanceComponent {
     this.appliesTo = const ['semua'],
     this.requirement,
     this.note,
+    this.todoVerify = false,
   });
 
+  final String? id;
   final String name;
 
   /// Aksi yang disarankan: [ganti] atau [cek].
@@ -20,10 +23,12 @@ class MaintenanceComponent {
   /// Syarat tambahan, misalnya [pendingin_cair] atau [rem_cakram].
   final String? requirement;
   final String? note;
+  final bool todoVerify;
 
   bool get isInspection => action == 'cek';
 
   factory MaintenanceComponent.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
     final name = json['nama'];
     final action = json['aksi'];
     final intervalKm = json['intervalKm'];
@@ -35,15 +40,18 @@ class MaintenanceComponent {
     final appliesTo = rawAppliesTo == null
         ? const ['semua']
         : rawAppliesTo is List && rawAppliesTo.every((value) => value is String)
-            ? rawAppliesTo.cast<String>()
-            : null;
+        ? rawAppliesTo.cast<String>()
+        : null;
 
-    if (name is! String ||
+    final todoVerify = json['verifikasi'] == 'TODO_VERIFY';
+    if ((id != null && id is! String) ||
+        name is! String ||
         name.trim().isEmpty ||
         (action != 'ganti' && action != 'cek') ||
         intervalKm is! int ||
         intervalKm <= 0 ||
-        (intervalMonths != null && (intervalMonths is! int || intervalMonths <= 0)) ||
+        (intervalMonths != null &&
+            (intervalMonths is! int || intervalMonths <= 0)) ||
         appliesTo == null ||
         (requirement != null && requirement is! String) ||
         (note != null && note is! String)) {
@@ -51,6 +59,7 @@ class MaintenanceComponent {
     }
 
     return MaintenanceComponent(
+      id: id as String?,
       name: name,
       action: action,
       intervalKm: intervalKm,
@@ -58,6 +67,7 @@ class MaintenanceComponent {
       appliesTo: appliesTo,
       requirement: requirement as String?,
       note: note as String?,
+      todoVerify: todoVerify,
     );
   }
 }
@@ -65,6 +75,7 @@ class MaintenanceComponent {
 class ComponentMaintenanceState {
   const ComponentMaintenanceState({
     required this.componentName,
+    this.componentId,
     this.lastServicedKm,
     this.intervalKmOverride,
     this.intervalMonthsOverride,
@@ -72,6 +83,7 @@ class ComponentMaintenanceState {
   });
 
   final String componentName;
+  final String? componentId;
 
   /// Kosong berarti komponen belum pernah dicatat.
   final int? lastServicedKm;
@@ -80,23 +92,27 @@ class ComponentMaintenanceState {
   final DateTime? lastServicedAt;
 
   Map<String, Object?> toJson() => {
-        'componentName': componentName,
-        'lastServicedKm': lastServicedKm,
-        'intervalKmOverride': intervalKmOverride,
-        'intervalMonthsOverride': intervalMonthsOverride,
-        'lastServicedAt': lastServicedAt?.toIso8601String(),
-      };
+    'componentName': componentName,
+    'componentId': componentId,
+    'lastServicedKm': lastServicedKm,
+    'intervalKmOverride': intervalKmOverride,
+    'intervalMonthsOverride': intervalMonthsOverride,
+    'lastServicedAt': lastServicedAt?.toIso8601String(),
+  };
 
   factory ComponentMaintenanceState.fromJson(Map<String, dynamic> json) {
     final name = json['componentName'];
+    final componentId = json['componentId'];
     final lastKm = json['lastServicedKm'];
     final kmOverride = json['intervalKmOverride'];
     final monthOverride = json['intervalMonthsOverride'];
     final date = json['lastServicedAt'];
     if (name is! String ||
+        (componentId != null && componentId is! String) ||
         (lastKm != null && (lastKm is! int || lastKm < 0)) ||
         (kmOverride != null && (kmOverride is! int || kmOverride <= 0)) ||
-        (monthOverride != null && (monthOverride is! int || monthOverride <= 0)) ||
+        (monthOverride != null &&
+            (monthOverride is! int || monthOverride <= 0)) ||
         (date != null && date is! String)) {
       throw const FormatException('Status perawatan komponen tidak valid.');
     }
@@ -106,9 +122,12 @@ class ComponentMaintenanceState {
     }
     return ComponentMaintenanceState(
       componentName: name,
+      componentId: componentId as String?,
       lastServicedKm: lastKm == null ? null : lastKm as int,
       intervalKmOverride: kmOverride == null ? null : kmOverride as int,
-      intervalMonthsOverride: monthOverride == null ? null : monthOverride as int,
+      intervalMonthsOverride: monthOverride == null
+          ? null
+          : monthOverride as int,
       lastServicedAt: parsedDate,
     );
   }

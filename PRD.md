@@ -1,5 +1,7 @@
-PRD: Aplikasi Perawatan Motor Berbasis AI
-Nama kerja: Rawatin · Versi 0.1 (draft) · 3 November 2026 · Penulis: Irvan Chaniagan
+PRD: Aplikasi Perawatan Motor Berbasis AI  
+Nama kerja: Rawatin · Versi 0.1 (draft kebutuhan produk) · 3 November 2026 · Penulis: Irvan Chaniagan
+
+> **Status dokumen:** Ini adalah rancangan kebutuhan dan arah produk, bukan daftar fitur yang sudah selesai. Implementasi saat ini menggunakan Flutter/Dart, menyimpan data secara lokal, dan katalog awal memiliki jadwal multi-part. Kendaraan yang digunakan aplikasi tetap satu pada satu waktu; beberapa kendaraan per akun hanya pernah ditambahkan di perubahan lokal sebelumnya dan tidak termasuk lingkup kerja saat ini. AI, sinkronisasi cloud, dan notifikasi harus dianggap belum tersedia kecuali sudah dicatat sebagai selesai di `PROJECT_STATUS.md`. Untuk status proyek terkini dan batasan teknis, lihat `PROJECT_STATUS.md`.
 1. Ringkasan
 Aplikasi ini membantu pemilik motor merawat kendaraannya secara teratur. Aplikasi memantau jarak tempuh, mengingatkan penggantian oli dan komponen lain berdasarkan kilometer (dan waktu), menyimpan riwayat servis, serta memberi rekomendasi servis berikutnya. AI dipakai untuk tiga hal: mengurangi usaha input data, menjelaskan rekomendasi dengan bahasa awam, dan menjawab pertanyaan seputar perawatan.
 Nilai utama dalam satu kalimat: pengguna tidak perlu lagi mengingat kapan terakhir ganti oli; aplikasi yang mengingat, menghitung, dan menjelaskan.
@@ -39,9 +41,9 @@ P0 (MVP)
 • Riwayat servis
 • Rekomendasi servis berikutnya (berbasis aturan)
 • AI: input bahasa natural, baca foto odometer dan nota, penjelasan rekomendasi
-P1
+P1 (beberapa butir di bawah sudah dikerjakan lebih awal; lihat `PROJECT_STATUS.md`)
 • Asisten tanya jawab perawatan
-• Beberapa motor dalam satu akun
+• Beberapa motor dalam satu akun — sudah tersedia untuk satu akun lokal; belum berarti banyak akun atau sinkronisasi cloud.
 • Rekap biaya perawatan per bulan dan per tahun
 • Penyesuaian interval berdasarkan kondisi pemakaian (macet, jarak pendek, debu)
 P2
@@ -133,7 +135,7 @@ Evaluasi
 • Waktu input servis: median 30 detik atau kurang.
 • Kepuasan pada rekomendasi: tombol berguna/tidak berguna dengan rasio positif di atas 70 persen.
 Semua angka di atas adalah hipotesis awal dan perlu disesuaikan setelah ada data pengguna nyata.
-14. Usulan Tech Stack (Perlu Diputuskan)
+14. Usulan Tech Stack (Keputusan aktual: Flutter/Dart untuk Android dan iOS; usulan di bawah adalah catatan rancangan awal)
 • Opsi A: React Native (Expo) + Supabase + LLM API. Lintas platform, notifikasi lokal lebih andal, cocok jika pengingat adalah inti produk.
 • Opsi B: PWA (misalnya Next.js) + Supabase + LLM API. Pengembangan lebih cepat bila keahlian utama di web, tetapi notifikasi dan kerja di latar belakang lebih terbatas, terutama di iOS.
 • Rekomendasi: Opsi A karena inti nilai produk adalah pengingat yang andal. Backend tipis (serverless function) berfungsi sebagai perantara ke LLM. Pilihan akhir sebaiknya mempertimbangkan keahlian pengembang yang ada.

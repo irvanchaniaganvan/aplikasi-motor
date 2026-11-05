@@ -7,11 +7,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rawatin/features/maintenance/domain/entities/maintenance_component.dart';
 import 'package:rawatin/features/maintenance/domain/entities/maintenance_catalog.dart';
 import 'package:rawatin/features/maintenance/domain/entities/motor_data.dart';
+import 'package:rawatin/features/maintenance/domain/entities/maintenance_motor_catalog.dart';
 import 'package:rawatin/features/maintenance/domain/services/component_schedule_calculator.dart';
 import 'package:rawatin/features/maintenance/domain/services/component_filter.dart';
 import 'package:rawatin/features/maintenance/domain/repositories/motor_data_repository.dart';
 import 'package:rawatin/features/maintenance/data/repositories/default_interval_repository.dart';
 import 'package:rawatin/features/maintenance/domain/services/oil_schedule_calculator.dart';
+import 'package:rawatin/features/maintenance/domain/services/record_component_service.dart';
 import 'package:rawatin/features/maintenance/domain/use_cases/load_motor_data.dart';
 import 'package:rawatin/features/maintenance/domain/use_cases/save_motor_data.dart';
 import 'package:rawatin/features/maintenance/presentation/pages/oil_reminder_page.dart';
@@ -19,6 +21,11 @@ import 'package:rawatin/features/profile/domain/entities/driver_motor_profile.da
 import 'package:rawatin/features/profile/domain/entities/motor_model_catalog.dart';
 import 'package:rawatin/features/profile/presentation/pages/local_account_page.dart';
 import 'package:rawatin/features/profile/presentation/pages/profile_setup_page.dart';
+import 'package:rawatin/features/profile/data/repositories/local_profile_repository.dart';
+import 'package:rawatin/features/maintenance/data/repositories/local_motor_data_repository.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 Future<void> _selectDropdown(
   WidgetTester tester,
@@ -54,6 +61,72 @@ class _MemoryMotorDataRepository implements MotorDataRepository {
 }
 
 void main() {
+  test('profil lama dimigrasikan ke koleksi kendaraan', () async {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.withData({
+          'profile.driver_name': 'Irvan',
+          'profile.motor_brand': 'Honda',
+          'profile.motor_model': 'BeAT',
+          'profile.motor_year': 2024,
+          'profile.motor_type': 'matic',
+        });
+    final repository = LocalProfileRepository(SharedPreferencesAsync());
+    final vehicles = await repository.loadAll();
+    expect(vehicles, hasLength(1));
+    expect(vehicles.single.id, isNotEmpty);
+    expect(vehicles.single.model, 'BeAT');
+    expect(await repository.loadSelectedProfileId(), vehicles.single.id);
+
+    await repository.saveVehicle(
+      const DriverMotorProfile(
+        id: 'vehicle-2',
+        driverName: 'Irvan',
+        brand: 'Yamaha',
+        model: 'Gear 125',
+        year: 2025,
+        motorType: 'matic',
+        cooling: 'udara',
+      ),
+    );
+    final savedVehicles = await repository.loadAll();
+    expect(savedVehicles, hasLength(2));
+    expect(
+      savedVehicles.map((vehicle) => vehicle.model),
+      containsAll(['BeAT', 'Gear 125']),
+    );
+    expect(await repository.loadSelectedProfileId(), 'vehicle-2');
+  });
+
+  test('data servis tersimpan terpisah untuk setiap kendaraan', () async {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    final first = LocalMotorDataRepository(
+      SharedPreferencesAsync(),
+      vehicleId: 'one',
+    );
+    final second = LocalMotorDataRepository(
+      SharedPreferencesAsync(),
+      vehicleId: 'two',
+    );
+    await first.save(
+      const MotorData(
+        currentOdometer: 1000,
+        lastOilOdometer: 500,
+        oilInterval: 3000,
+      ),
+    );
+    expect((await second.load()), isNull);
+    await second.save(
+      const MotorData(
+        currentOdometer: 9000,
+        lastOilOdometer: 8500,
+        oilInterval: 4000,
+      ),
+    );
+    expect((await first.load())?.currentOdometer, 1000);
+    expect((await second.load())?.currentOdometer, 9000);
+  });
+
   test('jadwal komponen dihitung dari kilometer servis terakhir', () {
     final schedule = const ComponentScheduleCalculator().calculate(
       currentOdometer: 3500,
@@ -70,7 +143,171 @@ void main() {
       currentOdometer: 5000,
       intervalKm: 3000,
     );
-    expect(schedule, isNull);
+    expect(schedule?.status, ComponentScheduleStatus.needsCheck);
+  });
+
+  test(
+    'jadwal part memakai tanggal dan kilometer yang lebih dulu jatuh tempo',
+    () {
+      final schedule = const ComponentScheduleCalculator().calculate(
+        currentOdometer: 2000,
+        intervalKm: 5000,
+        lastServicedKm: 1000,
+        intervalMonths: 1,
+        lastServicedAt: DateTime(2026, 1, 1),
+        today: DateTime(2026, 2, 1),
+      );
+      expect(schedule?.status, ComponentScheduleStatus.due);
+      expect(schedule?.daysRemaining, 0);
+    },
+  );
+
+  test(
+    'migrasi menjaga jadwal oli lama dan memetakannya sebagai oli mesin',
+    () {
+      final data = MotorData.fromJson({
+        'currentOdometer': 12000,
+        'lastOilOdometer': 10000,
+        'oilInterval': 3000,
+        'oilIntervalMonths': 3,
+        'lastOilChangeDate': '2026-01-10T00:00:00.000',
+      });
+      expect(data.lastOilOdometer, 10000);
+      expect(data.oilInterval, 3000);
+      expect(data.componentStates.single.componentId, 'oli-mesin');
+      expect(data.componentStates.single.lastServicedKm, 10000);
+    },
+  );
+
+  test(
+    'servis part hanya reset part terpilih dan log odometer meningkat saja',
+    () {
+      const data = MotorData(
+        currentOdometer: 5000,
+        lastOilOdometer: 3000,
+        oilInterval: 3000,
+        componentStates: [
+          ComponentMaintenanceState(
+            componentId: 'oli-mesin',
+            componentName: 'Oli mesin',
+            lastServicedKm: 3000,
+          ),
+          ComponentMaintenanceState(
+            componentId: 'busi',
+            componentName: 'Busi',
+            lastServicedKm: 1000,
+          ),
+        ],
+      );
+      const part = MaintenanceComponent(
+        id: 'busi',
+        name: 'Busi',
+        action: 'ganti',
+        intervalKm: 8000,
+      );
+      final result = const RecordComponentService().record(
+        data: data,
+        component: part,
+        odometer: 4500,
+        date: DateTime(2026, 3, 1),
+      );
+      expect(
+        result.componentStates
+            .firstWhere((state) => state.componentId == 'oli-mesin')
+            .lastServicedKm,
+        3000,
+      );
+      expect(
+        result.componentStates
+            .firstWhere((state) => state.componentId == 'busi')
+            .lastServicedKm,
+        4500,
+      );
+      expect(result.odometerLogs, isEmpty);
+      expect(result.serviceHistory.single.item, 'Busi');
+    },
+  );
+
+  test('filter model menentukan part dari transmisi dan pendingin', () {
+    final decoded = MaintenanceMotorCatalog.fromJson(
+      jsonDecode(
+        File('data/motor/data/maintenance_motor_catalog.json')
+            .readAsStringSync(),
+      ) as Map<String, dynamic>,
+    );
+    final parts = [
+      const MaintenanceComponent(
+        id: 'v-belt',
+        name: 'V-belt',
+        action: 'ganti',
+        intervalKm: 1,
+      ),
+      const MaintenanceComponent(
+        id: 'roller',
+        name: 'Roller',
+        action: 'ganti',
+        intervalKm: 1,
+      ),
+      const MaintenanceComponent(
+        id: 'rantai-gear-set',
+        name: 'Rantai/gear set',
+        action: 'ganti',
+        intervalKm: 1,
+      ),
+      const MaintenanceComponent(
+        id: 'coolant',
+        name: 'Coolant',
+        action: 'ganti',
+        intervalKm: 1,
+      ),
+    ];
+    final maticCool = MaintenanceMotor(
+      id: 'x',
+      name: 'x',
+      transmission: 'cvt_matic',
+      cooling: 'cair',
+      parts: parts.map((part) => part.id!).toList(),
+    );
+    final maticAir = MaintenanceMotor(
+      id: 'x',
+      name: 'x',
+      transmission: 'cvt_matic',
+      cooling: 'udara',
+      parts: parts.map((part) => part.id!).toList(),
+    );
+    final manualCool = MaintenanceMotor(
+      id: 'x',
+      name: 'x',
+      transmission: 'manual',
+      cooling: 'cair',
+      parts: parts.map((part) => part.id!).toList(),
+    );
+    expect(
+      filterPartsForMotor(
+        parts: parts,
+        motor: maticCool,
+      ).map((part) => part.id),
+      containsAll(['v-belt', 'roller', 'coolant']),
+    );
+    expect(
+      filterPartsForMotor(
+        parts: parts,
+        motor: maticCool,
+      ).map((part) => part.id),
+      isNot(contains('rantai-gear-set')),
+    );
+    expect(
+      filterPartsForMotor(parts: parts, motor: maticAir).map((part) => part.id),
+      isNot(contains('coolant')),
+    );
+    expect(
+      filterPartsForMotor(
+        parts: parts,
+        motor: manualCool,
+      ).map((part) => part.id),
+      containsAll(['rantai-gear-set', 'coolant']),
+    );
+    expect(decoded.motors, hasLength(4));
   });
 
   test('override interval memakai nilai pengguna', () {
@@ -157,6 +394,44 @@ void main() {
     expect(
       bebek.map((component) => component.name),
       isNot(contains('Coolant')),
+    );
+  });
+
+  test('pendingin oli tidak memunculkan komponen coolant', () {
+    const coolantOnly = [
+      MaintenanceComponent(
+        name: 'Coolant',
+        action: 'ganti',
+        intervalKm: 12000,
+        requirement: 'pendingin_cair',
+      ),
+    ];
+    expect(
+      filterMaintenanceComponents(
+        components: coolantOnly,
+        motorType: 'sport',
+        cooling: 'oli',
+        frontBrake: null,
+      ),
+      isEmpty,
+    );
+    expect(
+      filterMaintenanceComponents(
+        components: coolantOnly,
+        motorType: 'sport',
+        cooling: 'cair',
+        frontBrake: null,
+      ),
+      hasLength(1),
+    );
+    expect(
+      filterMaintenanceComponents(
+        components: coolantOnly,
+        motorType: 'sport',
+        cooling: null,
+        frontBrake: null,
+      ),
+      isEmpty,
     );
   });
 
@@ -268,6 +543,16 @@ void main() {
       honda.models.singleWhere((model) => model.name == 'CB150X').notes,
       'Pendingin disimpulkan',
     );
+  });
+
+  test('katalog Suzuki menerima pendingin oli', () {
+    final model = MotorModel.fromJson({
+      'name': 'Gixxer SF 250',
+      'jenis': 'sport',
+      'pendingin': 'oli',
+      'sumber': 'media otomotif; cek situs resmi pabrikan',
+    });
+    expect(model.cooling, 'oli');
   });
 
   test('alias dan generasi model masuk dalam pencarian', () {
@@ -567,7 +852,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('Perkiraan umum, ikuti buku servis motormu.'),
+        find.textContaining('Interval adalah perkiraan umum'),
         findsOneWidget,
       );
       expect(find.text('Oli gardan'), findsOneWidget);

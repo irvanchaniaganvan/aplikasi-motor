@@ -39,6 +39,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  shared_preferences_platform_interface: ^2.4.2
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -59,6 +60,7 @@ flutter:
   uses-material-design: true
   assets:
     - data/motor/data/default_interval.json
+    - data/motor/data/maintenance_motor_catalog.json
     - data/model_motor.json
 
   # To add assets to your application, add an assets section, like this:

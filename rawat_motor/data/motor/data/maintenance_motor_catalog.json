@@ -1,0 +1,9 @@
+{
+  "sumber": "Data awal untuk verifikasi pengguna; fakta model ditandai TODO_VERIFY dan bukan spesifikasi resmi.",
+  "motors": [
+    {"id":"yamaha-fazzio","nama":"Fazzio","transmisi":"TODO_VERIFY","pendingin":"TODO_VERIFY","parts":["oli-mesin","oli-gardan","filter-udara","busi","kampas-rem","v-belt","roller","rantai-gear-set","coolant","ban"]},
+    {"id":"yamaha-mio-gear-2024","nama":"Mio Gear 2024","transmisi":"TODO_VERIFY","pendingin":"TODO_VERIFY","parts":["oli-mesin","oli-gardan","filter-udara","busi","kampas-rem","v-belt","roller","rantai-gear-set","coolant","ban"]},
+    {"id":"honda-beat-k0j","nama":"Beat (K0J)","transmisi":"TODO_VERIFY","pendingin":"TODO_VERIFY","parts":["oli-mesin","oli-gardan","filter-udara","busi","kampas-rem","v-belt","roller","rantai-gear-set","coolant","ban"]},
+    {"id":"honda-vario-125-kzr","nama":"Vario 125 (KZR)","transmisi":"TODO_VERIFY","pendingin":"TODO_VERIFY","parts":["oli-mesin","oli-gardan","filter-udara","busi","kampas-rem","v-belt","roller","rantai-gear-set","coolant","ban"]}
+  ]
+}

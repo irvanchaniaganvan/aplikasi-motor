@@ -21,25 +21,39 @@ class RawatinApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profileRepository = LocalProfileRepository(SharedPreferencesAsync());
-    final motorDataRepository = LocalMotorDataRepository(SharedPreferencesAsync());
+    final motorDataRepository = LocalMotorDataRepository(
+      SharedPreferencesAsync(),
+    );
     return MaterialApp(
       title: 'Rawatin',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       home: FutureBuilder<List<Object?>>(
         future: Future.wait<Object?>([
-          profileRepository.load(),
+          profileRepository.loadAll(),
           profileRepository.loadAccountEmail(),
           profileRepository.isSignedIn(),
+          profileRepository.loadSelectedProfileId(),
         ]),
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Scaffold(body: Center(child: CircularProgressIndicator()));
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
           }
           if (snapshot.hasError) {
-            return const Scaffold(body: Center(child: Text('Data akun gagal dimuat.')));
+            return const Scaffold(
+              body: Center(child: Text('Data akun gagal dimuat.')),
+            );
           }
-          final profile = snapshot.data![0] as DriverMotorProfile?;
+          final profiles = snapshot.data![0] as List<DriverMotorProfile>;
+          final selectedId = snapshot.data!.length > 3
+              ? snapshot.data![3] as String?
+              : null;
+          final profile = profiles.isEmpty
+              ? null
+              : profiles.where((item) => item.id == selectedId).firstOrNull ??
+                    profiles.first;
           final email = snapshot.data![1] as String?;
           final signedIn = snapshot.data![2] as bool;
 
@@ -63,6 +77,7 @@ class RawatinApp extends StatelessWidget {
             profileRepository: profileRepository,
             motorDataRepository: motorDataRepository,
             profile: profile,
+            vehicles: profiles,
           );
         },
       ),
@@ -89,13 +104,15 @@ Widget _buildAccountPage({
         }
         await profileRepository.saveAccountCredentials(email, password);
         if (!context.mounted) return null;
-        Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (_) => _buildProfileSetupPage(
-            context: context,
-            profileRepository: profileRepository,
-            motorDataRepository: motorDataRepository,
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => _buildProfileSetupPage(
+              context: context,
+              profileRepository: profileRepository,
+              motorDataRepository: motorDataRepository,
+            ),
           ),
-        ));
+        );
         return null;
       }
 
@@ -115,22 +132,29 @@ Widget _buildAccountPage({
         await profileRepository.saveAccountPassword(password);
       }
       await profileRepository.setSignedIn(true);
-      final profile = await profileRepository.load();
+      final profiles = await profileRepository.loadAll();
+      final selectedId = await profileRepository.loadSelectedProfileId();
+      final profile =
+          profiles.where((item) => item.id == selectedId).firstOrNull ??
+          profiles.firstOrNull;
       if (!context.mounted) return null;
-      Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (_) => profile == null
-            ? _buildProfileSetupPage(
-                context: context,
-                profileRepository: profileRepository,
-                motorDataRepository: motorDataRepository,
-              )
-            : _buildDashboard(
-                context: context,
-                profileRepository: profileRepository,
-                motorDataRepository: motorDataRepository,
-                profile: profile,
-              ),
-      ));
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => profile == null
+              ? _buildProfileSetupPage(
+                  context: context,
+                  profileRepository: profileRepository,
+                  motorDataRepository: motorDataRepository,
+                )
+              : _buildDashboard(
+                  context: context,
+                  profileRepository: profileRepository,
+                  motorDataRepository: motorDataRepository,
+                  profile: profile,
+                  vehicles: profiles,
+                ),
+        ),
+      );
       return null;
     },
   );
@@ -143,16 +167,19 @@ Widget _buildProfileSetupPage({
 }) {
   return ProfileSetupPage(
     onSave: (profile) async {
-      await profileRepository.save(profile);
+      await profileRepository.saveVehicle(profile);
       if (!context.mounted) return;
-      Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (_) => _buildDashboard(
-          context: context,
-          profileRepository: profileRepository,
-          motorDataRepository: motorDataRepository,
-          profile: profile,
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => _buildDashboard(
+            context: context,
+            profileRepository: profileRepository,
+            motorDataRepository: motorDataRepository,
+            profile: profile,
+            vehicles: [profile],
+          ),
         ),
-      ));
+      );
     },
   );
 }
@@ -162,21 +189,122 @@ Widget _buildDashboard({
   required LocalProfileRepository profileRepository,
   required LocalMotorDataRepository motorDataRepository,
   required DriverMotorProfile profile,
+  List<DriverMotorProfile> vehicles = const [],
 }) {
   return OilReminderPage(
-    loadMotorData: LoadMotorData(motorDataRepository),
-    saveMotorData: SaveMotorData(motorDataRepository),
+    loadMotorData: LoadMotorData(
+      LocalMotorDataRepository(SharedPreferencesAsync(), vehicleId: profile.id),
+    ),
+    saveMotorData: SaveMotorData(
+      LocalMotorDataRepository(SharedPreferencesAsync(), vehicleId: profile.id),
+    ),
     profile: profile,
-    onEditProfile: () {
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => ProfileSetupPage(
-          initialProfile: profile,
-          onSave: (updated) async {
-            await profileRepository.save(updated);
-            if (context.mounted) Navigator.of(context).pop();
-          },
+    vehicles: vehicles.isEmpty ? [profile] : vehicles,
+    vehicleCount: vehicles.isEmpty ? 1 : vehicles.length,
+    onSelectVehicle: (selected) async {
+      await profileRepository.setSelectedProfileId(selected.id);
+      if (!context.mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => _buildDashboard(
+            context: context,
+            profileRepository: profileRepository,
+            motorDataRepository: motorDataRepository,
+            profile: selected,
+            vehicles: vehicles,
+          ),
         ),
-      ));
+      );
+    },
+    onAddVehicle: () {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ProfileSetupPage(
+            onSave: (newProfile) async {
+              await profileRepository.saveVehicle(newProfile);
+              final updated = [...vehicles, newProfile];
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (_) => _buildDashboard(
+                      context: context,
+                      profileRepository: profileRepository,
+                      motorDataRepository: motorDataRepository,
+                      profile: newProfile,
+                      vehicles: updated,
+                    ),
+                  ),
+                  (route) => route.isFirst,
+                );
+              }
+            },
+          ),
+        ),
+      );
+    },
+    onManageVehicles: () async {
+      final toDelete = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => SimpleDialog(
+          title: const Text('Kelola kendaraan'),
+          children: [
+            for (final vehicle in vehicles)
+              ListTile(
+                title: Text('${vehicle.brand} ${vehicle.model}'),
+                trailing: IconButton(
+                  tooltip: 'Hapus kendaraan',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () => Navigator.pop(dialogContext, vehicle.id),
+                ),
+              ),
+          ],
+        ),
+      );
+      if (toDelete == null || vehicles.length <= 1) return;
+      await profileRepository.deleteVehicle(toDelete);
+      final remaining = vehicles
+          .where((vehicle) => vehicle.id != toDelete)
+          .toList();
+      final selected = profile.id == toDelete ? remaining.first : profile;
+      if (!context.mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => _buildDashboard(
+            context: context,
+            profileRepository: profileRepository,
+            motorDataRepository: motorDataRepository,
+            profile: selected,
+            vehicles: remaining,
+          ),
+        ),
+      );
+    },
+    onEditProfile: () {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ProfileSetupPage(
+            initialProfile: profile,
+            onSave: (updated) async {
+              await profileRepository.saveVehicle(updated);
+              final updatedVehicles = vehicles
+                  .map((item) => item.id == updated.id ? updated : item)
+                  .toList();
+              if (!context.mounted) return;
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (_) => _buildDashboard(
+                    context: context,
+                    profileRepository: profileRepository,
+                    motorDataRepository: motorDataRepository,
+                    profile: updated,
+                    vehicles: updatedVehicles,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
     },
     onSignOut: () => _signOut(
       context: context,
@@ -195,10 +323,18 @@ Future<void> _signOut({
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: const Text('Keluar dari akun?'),
-      content: const Text('Kamu bisa masuk lagi dengan akun yang sama. Profil dan data perawatan tetap tersimpan di perangkat ini.'),
+      content: const Text(
+        'Kamu bisa masuk lagi dengan akun yang sama. Profil dan data perawatan tetap tersimpan di perangkat ini.',
+      ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Batal')),
-        FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Keluar')),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text('Keluar'),
+        ),
       ],
     ),
   );
