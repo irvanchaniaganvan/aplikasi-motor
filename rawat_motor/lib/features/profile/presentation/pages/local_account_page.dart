@@ -77,151 +77,237 @@ class _LocalAccountPageState extends State<LocalAccountPage> {
   @override
   Widget build(BuildContext context) {
     final isCreating = _mode == LocalAccountMode.create;
+    final colors = RawatinColors.of(context);
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpacing.xxl),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
+              constraints: const BoxConstraints(maxWidth: 460),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const RawatinLogo(size: 56),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Rawatin',
-                      style: TextStyle(
-                        color: green,
-                        fontSize: 13,
-                        letterSpacing: 1,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    Row(
+                      children: [
+                        const RawatinLogo(size: 48),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'RAWATIN',
+                                style: AppType.eyebrow.copyWith(
+                                  color: colors.primaryDark,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Perawatan motor, tanpa ribet.',
+                                style: TextStyle(
+                                  color: colors.muted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xxl),
                     Text(
                       isCreating
                           ? 'Buat akun baru.'
                           : 'Selamat datang kembali.',
-                      style: const TextStyle(
-                        color: ink,
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
+                      style: AppType.km.copyWith(
+                        color: colors.ink,
+                        fontSize: 34,
+                        height: 1.02,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     Text(
                       isCreating
                           ? 'Akun demo lokal untuk menyimpan profil dan jadwal perawatan motormu.'
                           : 'Masuk dengan akun yang sudah terdaftar di perangkat ini.',
-                      style: const TextStyle(color: muted, height: 1.45),
+                      style: TextStyle(
+                        color: colors.muted,
+                        height: 1.45,
+                        fontSize: 13.5,
+                      ),
                     ),
                     if (isCreating) ...[
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Satu akun lokal didukung per perangkat. Jika pernah mendaftar di sini, pilih Masuk.',
-                        style: TextStyle(
-                          color: muted,
-                          fontSize: 12,
-                          height: 1.4,
-                        ),
+                      const SizedBox(height: AppSpacing.sm),
+                      _Note(
+                        icon: AppIcons.infoOutline,
+                        text: 'Satu akun lokal didukung per perangkat. Jika pernah mendaftar di sini, pilih Masuk.',
                       ),
                     ],
-                    const SizedBox(height: 24),
-                    SegmentedButton<LocalAccountMode>(
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(
-                          value: LocalAccountMode.signIn,
-                          label: Text('Masuk'),
-                        ),
-                        ButtonSegment(
-                          value: LocalAccountMode.create,
-                          label: Text('Buat akun'),
-                        ),
-                      ],
-                      selected: {_mode},
-                      onSelectionChanged: (selection) {
-                        setState(() {
-                          _mode = selection.first;
-                          _error = null;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    TextFormField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.mail_outline_rounded),
+                    const SizedBox(height: AppSpacing.xl),
+                    Container(
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(AppRadii.xl),
+                        border: Border.all(color: colors.line),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colors.shadow,
+                            blurRadius: 24,
+                            offset: const Offset(0, 10),
+                          ),
+                        ],
                       ),
-                      validator: (value) =>
-                          value == null || !value.contains('@')
-                          ? 'Masukkan email yang valid.'
-                          : null,
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _password,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: 'Kata sandi',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded),
-                        helperText: isCreating ? 'Minimal 4 karakter.' : null,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Container(
+                            height: 5,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [colors.primary, colors.accent],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(AppSpacing.xxl),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SegmentedButton<LocalAccountMode>(
+                                  showSelectedIcon: false,
+                                  segments: const [
+                                    ButtonSegment(
+                                      value: LocalAccountMode.signIn,
+                                      label: Text('Masuk'),
+                                    ),
+                                    ButtonSegment(
+                                      value: LocalAccountMode.create,
+                                      label: Text('Buat akun'),
+                                    ),
+                                  ],
+                                  selected: {_mode},
+                                  onSelectionChanged: (selection) {
+                                    setState(() {
+                                      _mode = selection.first;
+                                      _error = null;
+                                    });
+                                  },
+                                ),
+                                const SizedBox(height: AppSpacing.xl),
+                                TextFormField(
+                                  controller: _email,
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: InputDecoration(
+                                    labelText: 'Email',
+                                    prefixIcon: Icon(
+                                      AppIcons.mail,
+                                      color: colors.muted,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  validator: (value) =>
+                                      value == null || !value.contains('@')
+                                      ? 'Masukkan email yang valid.'
+                                      : null,
+                                ),
+                                const SizedBox(height: AppSpacing.md),
+                                TextFormField(
+                                  controller: _password,
+                                  obscureText: true,
+                                  decoration: InputDecoration(
+                                    labelText: 'Kata sandi',
+                                    prefixIcon: Icon(
+                                      AppIcons.lock,
+                                      color: colors.muted,
+                                      size: 20,
+                                    ),
+                                    helperText: isCreating
+                                        ? 'Minimal 4 karakter.'
+                                        : null,
+                                  ),
+                                  validator: (value) =>
+                                      value == null || value.trim().length < 4
+                                      ? 'Gunakan minimal 4 karakter untuk demo.'
+                                      : null,
+                                ),
+                                if (_error != null) ...[
+                                  const SizedBox(height: AppSpacing.md),
+                                  Container(
+                                    padding: const EdgeInsets.all(
+                                      AppSpacing.md,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colors.dueSoft,
+                                      borderRadius: BorderRadius.circular(
+                                        AppRadii.md,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(
+                                          AppIcons.warning,
+                                          color: colors.due,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: AppSpacing.sm),
+                                        Expanded(
+                                          child: Text(
+                                            _error!,
+                                            style: TextStyle(
+                                              color: colors.due,
+                                              fontSize: 12,
+                                              height: 1.4,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: AppSpacing.xl),
+                                FilledButton(
+                                  onPressed: _busy ? null : _submit,
+                                  style: FilledButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(52),
+                                  ),
+                                  child: Text(
+                                    _busy
+                                        ? 'Memproses…'
+                                        : isCreating
+                                        ? 'Buat akun'
+                                        : 'Masuk',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      validator: (value) =>
-                          value == null || value.trim().length < 4
-                          ? 'Gunakan minimal 4 karakter untuk demo.'
-                          : null,
                     ),
-                    if (_error != null) ...[
-                      const SizedBox(height: 14),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5E4DF),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _error!,
-                          style: const TextStyle(
-                            color: danger,
-                            fontSize: 12,
-                            height: 1.4,
+                    const SizedBox(height: AppSpacing.lg),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(AppIcons.lock, color: colors.muted, size: 14),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Mode demo: akun dan data hanya tersimpan di perangkat ini. Ini belum merupakan autentikasi sungguhan.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: colors.muted,
+                              fontSize: 11.5,
+                              height: 1.45,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    FilledButton(
-                      onPressed: _busy ? null : _submit,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: green,
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      child: Text(
-                        _busy
-                            ? 'Memproses…'
-                            : isCreating
-                            ? 'Buat akun'
-                            : 'Masuk',
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    const Text(
-                      'Mode demo: akun dan data hanya tersimpan di perangkat ini. Ini belum merupakan autentikasi sungguhan.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: muted,
-                        fontSize: 12,
-                        height: 1.45,
-                      ),
+                      ],
                     ),
                   ],
                 ),
@@ -229,6 +315,42 @@ class _LocalAccountPageState extends State<LocalAccountPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _Note extends StatelessWidget {
+  const _Note({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: colors.surfaceSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: colors.line),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: colors.check, size: 16),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: colors.muted, fontSize: 12, height: 1.4),
+            ),
+          ),
+        ],
       ),
     );
   }

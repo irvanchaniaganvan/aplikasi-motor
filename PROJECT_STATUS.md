@@ -35,6 +35,8 @@ Terakhir diperbarui: 5 November 2026
 - Mesin jadwal komponen murni Dart sekarang menghitung batas km dan/atau bulan, status awal `Perlu dicek`, dan sisa hari; urutan urgensi adalah Jatuh Tempo, Segera, Perlu dicek, Aman. Filter data menerapkan syarat CVT/manual/coolant tanpa menganggap nilai TODO sebagai fakta.
 - Kartu part memiliki form **Catat ganti** dengan km, tanggal, biaya opsional, dan catatan opsional. Servis hanya memperbarui state part yang dipilih, menambah riwayat, serta menambah log odometer hanya jika km lebih tinggi daripada odometer terkini; km lebih rendah memerlukan konfirmasi.
 - Data oli lama (km servis terakhir, interval, tanggal, riwayat) tetap dipertahankan dan dimigrasikan ke state part `oli-mesin`; skema lama tanpa ID tetap dapat dibaca.
+- Alur UI dirapikan: navigasi mobile kini memakai label **Servis**, **Kilometer**, dan **Jadwal**; Ringkasan menampilkan semua kartu part berurut urgensi dengan tombol pencatatan langsung. Pengguna yang belum mengatur odometer mendapat ajakan langkah pertama yang jelas, dan info interval umum diringkas di bawah jadwal.
+- Tampilan dirapikan menjadi modern motorsport yang proper dan clean: menghapus motif bendera catur (checkered strip) dan stiker garis miring diagonal yang mencolok di header, kartu, dan dialog; mengubah palet kanvas ke slate-white bersih (`#F8FAFC`) dengan kartu putih bergaris tipis modern; menyelaraskan teks antarmuka dengan font Barlow yang rapi dan mudah dibaca; serta mengubah latar odometer hero menjadi instrumen cluster digital modern dengan ambient telemetry glow dan lengkung takometer presisi.
 - Saat sesi terputus atau konteks percakapan hilang, gunakan file ini sebagai ringkasan pemulihan. Baca juga `AGENTS.md`, lalu periksa status Git dan file terkait sebelum melanjutkan. Jangan menimpa perubahan lokal yang belum dikomit.
 - Pada pembaruan dokumentasi 5 November 2026, working tree memiliki perubahan lokal belum dikomit di dokumentasi dan beberapa berkas Flutter/data/tes. Jangan menganggap perubahan tersebut telah masuk commit; mulai dengan `git status --short` dan `git diff` untuk melihat kondisi terbaru.
 - Tes memeriksa jadwal oli dan multi-part (km/bulan, status awal, filter part, migrasi oli, reset part terpilih, serta log odometer), pemuatan katalog, pemilihan model, penyimpanan lokal, dan alur utama profil/akun.
@@ -55,8 +57,8 @@ Terakhir diperbarui: 5 November 2026
 
 ## Pemeriksaan terakhir
 
-- Setelah implementasi multi-part: `flutter analyze` bersih dan `flutter test` lulus (30 tes).
-- Build Windows debug pernah berhasil pada sesi sebelumnya; belum dijalankan ulang setelah implementasi multi-part.
+- Pemeriksaan terakhir setelah implementasi jadwal multi-part dan penyederhanaan UI: `flutter analyze` bersih dan `flutter test` lulus (32 tes).
+- Build Windows debug berhasil setelah memperbaiki typo variabel ID profil terpilih di `rawat_motor/lib/main.dart`.
 - `flutter doctor`: Flutter 3.47.8 terdeteksi; Android SDK belum tersedia; iOS build tidak dapat dilakukan dari Windows.
 - Build Windows debug berhasil: `build/windows/x64/runner/Debug/rawatin.exe`.
 - Belum ada build APK atau build iOS.

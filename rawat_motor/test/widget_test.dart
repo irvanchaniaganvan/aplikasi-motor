@@ -848,7 +848,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Komponen'));
+      await tester.tap(find.text('Semua'));
       await tester.pumpAndSettle();
 
       expect(
@@ -860,7 +860,8 @@ void main() {
       expect(find.text('Air radiator/coolant'), findsOneWidget);
       expect(find.text('Minyak rem'), findsOneWidget);
       expect(find.text('Rantai & gear set'), findsNothing);
-      expect(find.text('Waktunya cek kondisi'), findsOneWidget);
+      expect(find.text('Pemeriksaan'), findsOneWidget);
+      expect(find.textContaining('Perlu dicek'), findsWidgets);
     },
   );
 
@@ -925,6 +926,64 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     final repository = _MemoryMotorDataRepository();
+    const catalog = MaintenanceCatalog(
+      source: 'uji',
+      components: [
+        MaintenanceComponent(
+          name: 'Oli mesin',
+          action: 'ganti',
+          intervalKm: 3000,
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OilReminderPage(
+          loadMotorData: LoadMotorData(repository),
+          saveMotorData: SaveMotorData(repository),
+          catalog: catalog,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Update KM'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, '11500');
+    await tester.tap(find.text('Simpan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Pengaturan motor').last);
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(1), '10000');
+    await tester.enterText(fields.at(2), '2000');
+    await tester.ensureVisible(find.text('Simpan data motor'));
+    await tester.tap(find.text('Simpan data motor'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('500 km lagi'), findsOneWidget);
+    expect(find.text('Segera'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Catat ganti').first);
+    await tester.tap(find.text('Catat ganti').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Simpan'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Oli mesin berhasil dicatat.'), findsOneWidget);
+    expect(find.textContaining('2.000 km lagi'), findsOneWidget);
+    expect(repository.data?.serviceHistory, hasLength(1));
+  });
+
+  testWidgets('Beranda menampilkan status dengan teks dan ikon', (
+    tester,
+  ) async {
+    final repository = _MemoryMotorDataRepository()
+      ..data = const MotorData(
+        currentOdometer: 11500,
+        lastOilOdometer: 10000,
+        oilInterval: 2000,
+      );
     await tester.pumpWidget(
       MaterialApp(
         home: OilReminderPage(
@@ -934,27 +993,36 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(find.text('Update KM'), findsOneWidget);
+    expect(find.text('Semua aman'), findsOneWidget);
+    expect(find.byIcon(Icons.info_outline_rounded), findsWidgets);
+  });
 
-    await tester.ensureVisible(find.text('Ubah interval'));
-    await tester.tap(find.text('Ubah interval'));
+  testWidgets('Update KM membuka bottom sheet dengan nilai terakhir', (
+    tester,
+  ) async {
+    final repository = _MemoryMotorDataRepository()
+      ..data = const MotorData(
+        currentOdometer: 11500,
+        lastOilOdometer: 10000,
+        oilInterval: 2000,
+      );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OilReminderPage(
+          loadMotorData: LoadMotorData(repository),
+          saveMotorData: SaveMotorData(repository),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
-    final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), '11500');
-    await tester.enterText(fields.at(1), '10000');
-    await tester.enterText(fields.at(2), '2000');
-    await tester.ensureVisible(find.text('Simpan data motor'));
-    await tester.tap(find.text('Simpan data motor'));
+    await tester.tap(find.text('Update KM'));
     await tester.pumpAndSettle();
-
-    expect(find.text('500 km lagi'), findsOneWidget);
-    expect(find.text('12.000 km'), findsOneWidget);
-
-    await tester.ensureVisible(find.text('Catat ganti oli'));
-    await tester.tap(find.text('Catat ganti oli'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('2.000 km lagi'), findsOneWidget);
-    expect(find.text('13.500 km'), findsOneWidget);
+    expect(find.text('Update KM'), findsNWidgets(2));
+    expect(
+      tester.widget<TextField>(find.byType(TextField).last).controller?.text,
+      '11500',
+    );
   });
 
   testWidgets('menolak kilometer servis yang melebihi odometer saat ini', (
@@ -974,12 +1042,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Ubah interval'));
-    await tester.tap(find.text('Ubah interval'));
+    await tester.tap(find.byTooltip('Pengaturan motor').last);
     await tester.pumpAndSettle();
-    final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), '10000');
-    await tester.enterText(fields.at(1), '12000');
+    await tester.enterText(find.byType(TextFormField).at(0), '10000');
+    await tester.enterText(find.byType(TextFormField).at(1), '12000');
     await tester.ensureVisible(find.text('Simpan data motor'));
     await tester.tap(find.text('Simpan data motor'));
     await tester.pumpAndSettle();

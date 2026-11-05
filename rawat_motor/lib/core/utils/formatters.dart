@@ -1,12 +1,16 @@
-String formatKm(int value) {
-  final digits = value.toString();
+String formatNumber(int value) {
+  final negative = value < 0;
+  final digits = value.abs().toString();
   final groups = <String>[];
   for (var end = digits.length; end > 0; end -= 3) {
     final start = end - 3 < 0 ? 0 : end - 3;
     groups.insert(0, digits.substring(start, end));
   }
-  return '${groups.join('.')} km';
+  final joined = groups.join('.');
+  return negative ? '-$joined' : joined;
 }
+
+String formatKm(int value) => '${formatNumber(value)} km';
 
 String? requiredNumber(String? value, String message) {
   final number = int.tryParse(value?.trim() ?? '');

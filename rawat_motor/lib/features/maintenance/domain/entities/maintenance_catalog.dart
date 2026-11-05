@@ -15,9 +15,11 @@ class MaintenanceCatalog {
     return MaintenanceCatalog(
       source: source,
       components: rawComponents
-          .map((entry) => MaintenanceComponent.fromJson(
-                Map<String, dynamic>.from(entry as Map),
-              ))
+          .map(
+            (entry) => MaintenanceComponent.fromJson(
+              Map<String, dynamic>.from(entry as Map),
+            ),
+          )
           .toList(growable: false),
     );
   }

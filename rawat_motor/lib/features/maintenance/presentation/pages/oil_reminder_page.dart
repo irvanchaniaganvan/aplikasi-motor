@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -268,6 +270,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     selected: _selectedSection,
                     onSelect: _selectSection,
                     profile: widget.profile,
+                    onOpenSettings: _showOilReminderSettings,
                   ),
                 Expanded(
                   child: Column(
@@ -282,11 +285,13 @@ class _OilReminderPageState extends State<OilReminderPage> {
                         onAddVehicle: widget.onAddVehicle,
                         onManageVehicles: widget.onManageVehicles,
                         vehicles: widget.vehicles,
+                        onOpenSettings: _showOilReminderSettings,
                       ),
                       Expanded(
                         child: switch (_selectedSection) {
                           0 => _buildDashboard(),
-                          1 || 2 => _buildHistoryPage(),
+                          1 => _buildHistoryPage(),
+                          2 => _buildHistoryPage(),
                           _ => _buildPartsPage(),
                         },
                       ),
@@ -305,40 +310,218 @@ class _OilReminderPageState extends State<OilReminderPage> {
   void _selectSection(int index) => setState(() => _selectedSection = index);
 
   Widget _buildMobileNavigation() => NavigationBar(
-    selectedIndex: _selectedSection,
-    onDestinationSelected: _selectSection,
+    selectedIndex: _selectedSection == 0 ? 0 : 1,
+    onDestinationSelected: (index) => _selectSection(index),
     destinations: const [
       NavigationDestination(
-        icon: Icon(Icons.grid_view_outlined),
-        selectedIcon: Icon(Icons.grid_view_rounded),
-        label: 'Ringkasan',
+        icon: Icon(AppIcons.home),
+        selectedIcon: Icon(AppIcons.home),
+        label: 'Beranda',
       ),
       NavigationDestination(
-        icon: Icon(Icons.build_outlined),
-        selectedIcon: Icon(Icons.build_rounded),
+        icon: Icon(AppIcons.history),
+        selectedIcon: Icon(AppIcons.history),
         label: 'Riwayat',
-      ),
-      NavigationDestination(
-        icon: Icon(Icons.speed_outlined),
-        selectedIcon: Icon(Icons.speed_rounded),
-        label: 'Odometer',
-      ),
-      NavigationDestination(
-        icon: Icon(Icons.handyman_outlined),
-        selectedIcon: Icon(Icons.handyman_rounded),
-        label: 'Komponen',
       ),
     ],
   );
 
   String get _sectionTitle => switch (_selectedSection) {
-    0 => 'Ringkasan',
-    1 || 2 => '',
-    _ => 'Komponen & perawatan',
+    0 => 'Beranda',
+    1 || 2 => 'Riwayat',
+    _ => 'Semua jadwal',
   };
 
+  Widget _buildOdometerHero() {
+    final colors = RawatinColors.of(context);
+    final km = _motorData?.currentOdometer;
+    final schedules = _motorData == null
+        ? <ComponentSchedule>[]
+        : _visibleParts()
+              .map((part) => _componentSchedule(part, _motorData!))
+              .whereType<ComponentSchedule>()
+              .toList();
+    int count(ComponentScheduleStatus status) =>
+        schedules.where((item) => item.status == status).length;
+    final due = count(ComponentScheduleStatus.due);
+    final soon = count(ComponentScheduleStatus.soon);
+    final safe = count(ComponentScheduleStatus.safe);
+    final needsCheck = count(ComponentScheduleStatus.needsCheck);
+    final attention = due + soon + needsCheck;
+    final allSafe = km != null && attention == 0;
+    final statusText = km == null
+        ? 'Mulai dengan mencatat kilometer motor'
+        : allSafe
+        ? 'Semua jadwal terkendali'
+        : '$attention hal perlu perhatian';
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: colors.ink,
+        borderRadius: BorderRadius.circular(AppRadii.xl),
+        border: Border.all(
+          color: colors.white.withValues(alpha: 0.08),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: 0.1),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _HeroBackdropPainter(
+                stripe: colors.primary,
+                accent: colors.accent,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'ODOMETER SEKARANG',
+                        style: AppType.eyebrow.copyWith(
+                          color: colors.white.withValues(alpha: 0.75),
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      AppIcons.speed,
+                      size: 19,
+                      color: colors.white.withValues(alpha: 0.5),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                if (km == null)
+                  Text(
+                    'Belum dicatat',
+                    style: AppType.km.copyWith(
+                      fontSize: 40,
+                      color: colors.white,
+                    ),
+                  )
+                else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Flexible(
+                        child: _CountUpOdometer(
+                          value: km,
+                          style: AppType.km.copyWith(
+                            fontSize: 60,
+                            color: colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'km',
+                        style: AppType.metric.copyWith(
+                          color: colors.white.withValues(alpha: 0.65),
+                          fontSize: 20,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 14),
+                if (km != null) ...[
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      _HeroStat(
+                        label: 'Waktunya',
+                        value: due,
+                        color: colors.due,
+                        soft: colors.dueSoft,
+                        icon: AppIcons.due,
+                      ),
+                      _HeroStat(
+                        label: 'Segera',
+                        value: soon,
+                        color: colors.soon,
+                        soft: colors.soonSoft,
+                        icon: AppIcons.soon,
+                      ),
+                      _HeroStat(
+                        label: 'Aman',
+                        value: safe,
+                        color: colors.safe,
+                        soft: colors.safeSoft,
+                        icon: AppIcons.check,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                Row(
+                  children: [
+                    Icon(
+                      allSafe ? AppIcons.checkCircle : AppIcons.info,
+                      color: allSafe ? colors.safeSoft : colors.accent,
+                      size: 19,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        statusText,
+                        style: TextStyle(
+                          color: colors.white.withValues(alpha: 0.9),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: _updateOdometer,
+                  icon: const Icon(AppIcons.speed),
+                  label: const Text('Update KM'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                ),
+                if (allSafe) ...[
+                  const SizedBox(height: 12),
+                  const _FinishBanner(
+                    title: 'Semua aman',
+                    subtitle:
+                        'Gas terus! Cek lagi setelah kilometer bertambah.',
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDashboard() => SingleChildScrollView(
-    padding: const EdgeInsets.fromLTRB(20, 24, 20, 36),
+    padding: const EdgeInsets.fromLTRB(
+      AppSpacing.lg,
+      AppSpacing.xxl,
+      AppSpacing.lg,
+      AppSpacing.xxxl,
+    ),
     child: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 1120),
@@ -346,42 +529,30 @@ class _OilReminderPageState extends State<OilReminderPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _PageHeader(profile: widget.profile),
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSpacing.lg),
             _buildProfileCard(),
-            const SizedBox(height: 18),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                if (constraints.maxWidth < 820) {
-                  return Column(
-                    children: [
-                      _buildDashboardMaintenanceSummary(),
-                      const SizedBox(height: 16),
-                      _buildDashboardPrimaryAction(),
-                      const SizedBox(height: 16),
-                      _buildOilRecommendation(),
-                    ],
-                  );
-                }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 11,
-                      child: Column(
-                        children: [
-                          _buildDashboardMaintenanceSummary(),
-                          const SizedBox(height: 12),
-                          _buildDashboardPrimaryAction(),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 18),
-                    Expanded(flex: 9, child: _buildOilRecommendation()),
-                  ],
-                );
-              },
+            const SizedBox(height: AppSpacing.lg),
+            _buildOdometerHero(),
+            const SizedBox(height: AppSpacing.xxl),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Expanded(
+                  child: _SectionHeading(
+                    eyebrow: 'JADWAL MOTOR',
+                    title: 'Jadwal motormu',
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _selectSection(3),
+                  icon: const Icon(AppIcons.arrowForward, size: 16),
+                  label: const Text('Semua'),
+                ),
+              ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSpacing.md),
+            _buildDashboardMaintenanceSummary(),
+            const SizedBox(height: AppSpacing.xl),
             const _SafetyNote(),
           ],
         ),
@@ -390,169 +561,88 @@ class _OilReminderPageState extends State<OilReminderPage> {
   );
 
   Widget _buildHistoryPage() {
-    final isService = _selectedSection == 1;
-    final title = isService ? 'Riwayat servis' : 'Log odometer';
     final data = _motorData;
-    final records = [...?data?.serviceHistory]
-      ..sort((a, b) => b.date.compareTo(a.date));
-    final entries = [...?data?.odometerLogs]
-      ..sort((a, b) => b.date.compareTo(a.date));
-    final dates = isService
-        ? records.map((record) => record.date).toList()
-        : entries.map((entry) => entry.date).toList();
-    final groups = <Widget>[];
-    final seenMonths = <String>{};
-
-    for (final date in dates) {
-      final key = _monthKey(date);
-      if (!seenMonths.add(key)) continue;
-      groups.add(
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 14, 4, 6),
-          child: Text(
-            _monthLabel(date),
-            style: const TextStyle(
-              color: green,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
+    final entries = <({DateTime date, Widget tile})>[];
+    for (final record in data?.serviceHistory ?? const <ServiceRecord>[]) {
+      entries.add((
+        date: record.date,
+        tile: _historyTile(
+          icon: AppIcons.wrench,
+          title: record.item,
+          subtitle: 'Servis - ${_formatDate(record.date)}',
+          trailing: formatKm(record.odometer),
+          chip: record.workshop.isEmpty ? null : record.workshop,
+        ),
+      ));
+    }
+    for (final entry in data?.odometerLogs ?? const <OdometerEntry>[]) {
+      entries.add((
+        date: entry.date,
+        tile: _historyTile(
+          icon: AppIcons.speed,
+          title: 'Kilometer diperbarui',
+          subtitle: _formatDate(entry.date),
+          trailing: formatKm(entry.kilometers),
+          chip: _sourceLabel(entry.source),
+        ),
+      ));
+    }
+    entries.sort((a, b) => b.date.compareTo(a.date));
+    final grouped = <Widget>[];
+    String? currentMonth;
+    for (final entry in entries) {
+      final month = _monthKey(entry.date);
+      if (month != currentMonth) {
+        currentMonth = month;
+        grouped.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 14, 4, 6),
+            child: Text(
+              _monthLabel(entry.date).toUpperCase(),
+              style: AppType.eyebrow.copyWith(
+                color: RawatinColors.of(context).primaryDark,
+                fontSize: 10,
+              ),
             ),
           ),
-        ),
-      );
-      if (isService) {
-        final monthly = records
-            .where((record) => _monthKey(record.date) == key)
-            .toList();
-        for (var i = 0; i < monthly.length; i++) {
-          final record = monthly[i];
-          ServiceRecord? previous;
-          for (final candidate in records.skip(records.indexOf(record) + 1)) {
-            if (candidate.item.toLowerCase() == record.item.toLowerCase()) {
-              previous = candidate;
-              break;
-            }
-          }
-          groups.add(
-            _historyTile(
-              icon: Icons.build_circle_outlined,
-              title: record.item,
-              subtitle: _formatDate(record.date),
-              trailing: formatKm(record.odometer),
-              detail: previous == null
-                  ? 'Servis pertama untuk komponen ini'
-                  : 'Servis · +${formatKm(record.odometer - previous.odometer)} sejak servis sebelumnya',
-              chip: record.workshop.isEmpty ? null : record.workshop,
-            ),
-          );
-          if (i < monthly.length - 1) groups.add(const Divider(height: 1));
-        }
-      } else {
-        final monthly = entries
-            .where((entry) => _monthKey(entry.date) == key)
-            .toList();
-        for (var i = 0; i < monthly.length; i++) {
-          final entry = monthly[i];
-          final globalIndex = entries.indexOf(entry);
-          final previous = globalIndex + 1 < entries.length
-              ? entries[globalIndex + 1]
-              : null;
-          groups.add(
-            _historyTile(
-              icon: Icons.speed_rounded,
-              title: formatKm(entry.kilometers),
-              subtitle: _formatDate(entry.date),
-              detail: previous == null
-                  ? 'Entri odometer pertama'
-                  : '+${formatKm(entry.kilometers - previous.kilometers)} sejak entri sebelumnya',
-              chip: _sourceLabel(entry.source),
-            ),
-          );
-          if (i < monthly.length - 1) groups.add(const Divider(height: 1));
-        }
+        );
       }
+      grouped.add(entry.tile);
+      grouped.add(const Divider(height: 1));
     }
-
-    final count = isService ? records.length : entries.length;
-    final latestKm = isService
-        ? (records.isEmpty ? null : records.first.odometer)
-        : (entries.isEmpty ? data?.currentOdometer : entries.first.kilometers);
-
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 36),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.xxl,
+        AppSpacing.lg,
+        AppSpacing.xxxl,
+      ),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 920),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: ink,
-                  fontSize: 28,
-                  height: 1.15,
-                  fontWeight: FontWeight.w800,
-                ),
+              const _ScreenIntro(
+                eyebrow: 'CATATAN PERAWATAN',
+                title: 'Riwayat',
+                description: 'Catatan servis dan perubahan kilometer motormu, rapi dalam satu garis waktu.',
               ),
-              const SizedBox(height: 16),
-              _historySummary(
-                isService: isService,
-                count: count,
-                latestKm: latestKm,
-              ),
-              if (!isService) ...[
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: data == null ? null : _updateOdometer,
-                  icon: const Icon(Icons.speed_rounded),
-                  label: const Text('Perbarui odometer'),
-                ),
-              ],
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpacing.lg),
               _CardShell(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.xs,
                 ),
-                child: groups.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 28),
-                        child: Column(
-                          children: [
-                            const Icon(
-                              Icons.inbox_outlined,
-                              color: muted,
-                              size: 30,
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              isService
-                                  ? 'Riwayat servis masih kosong'
-                                  : 'Log odometer masih kosong',
-                              style: const TextStyle(
-                                color: ink,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 5),
-                            Text(
-                              isService
-                                  ? 'Catat servis komponen agar kilometer dan tanggalnya muncul di sini.'
-                                  : 'Perbarui odometer untuk mulai melihat perubahan kilometer.',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: muted,
-                                fontSize: 12,
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
-                        ),
+                child: grouped.isEmpty
+                    ? const _EmptyState(
+                        icon: AppIcons.history,
+                        title: 'Belum ada riwayat',
+                        message: 'Catat servis atau perbarui KM dari Beranda untuk melihatnya di sini.',
                       )
                     : Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: groups,
+                        children: grouped,
                       ),
               ),
             ],
@@ -561,53 +651,6 @@ class _OilReminderPageState extends State<OilReminderPage> {
       ),
     );
   }
-
-  Widget _historySummary({
-    required bool isService,
-    required int count,
-    int? latestKm,
-  }) => Container(
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: line),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: sage,
-            borderRadius: BorderRadius.circular(13),
-          ),
-          child: Icon(
-            isService ? Icons.build_circle_outlined : Icons.speed_rounded,
-            color: green,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '$count ${isService ? 'catatan servis' : 'entri odometer'}',
-                style: const TextStyle(color: ink, fontWeight: FontWeight.w700),
-              ),
-              Text(
-                latestKm == null
-                    ? 'Belum ada data tersimpan'
-                    : 'Catatan terbaru · ${formatKm(latestKm)}',
-                style: const TextStyle(color: muted, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
 
   String _monthKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}';
@@ -637,72 +680,107 @@ class _OilReminderPageState extends State<OilReminderPage> {
 
   Future<void> _updateOdometer() async {
     final data = _motorData;
-    if (data == null) return;
-    final controller = TextEditingController(
-      text: data.currentOdometer.toString(),
-    );
+    final controller = _currentController
+      ..text = (data?.currentOdometer ?? 0).toString();
     String? error;
-    final updatedKm = await showDialog<int>(
+    final updatedKm = await showModalBottomSheet<int>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Perbarui odometer'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(
-                  labelText: 'Kilometer saat ini',
-                  suffixText: 'km',
-                ),
-              ),
-              if (error != null) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    error!,
-                    style: const TextStyle(color: danger, fontSize: 12),
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              8,
+              20,
+              20 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const _SheetHeading(
+                    eyebrow: 'ODOMETER',
+                    title: 'Update KM',
+                    icon: AppIcons.speed,
                   ),
-                ),
-              ],
-            ],
+                  const SizedBox(height: AppSpacing.lg),
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(
+                      labelText: 'Kilometer sekarang',
+                      suffixText: 'km',
+                    ),
+                  ),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        error!,
+                        style: TextStyle(
+                          color: RawatinColors.of(context).due,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 14),
+                  FilledButton(
+                    onPressed: () {
+                      final km = int.tryParse(controller.text.trim());
+                      if (km == null ||
+                          km < 0 ||
+                          (data != null && km < data.currentOdometer)) {
+                        setSheetState(
+                          () => error =
+                              data != null &&
+                                  km != null &&
+                                  km < data.currentOdometer
+                              ? 'KM tidak boleh lebih rendah dari catatan terakhir.'
+                              : 'Masukkan angka kilometer yang valid.',
+                        );
+                        return;
+                      }
+                      Navigator.pop(sheetContext, km);
+                    },
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                    ),
+                    child: const Text('Simpan'),
+                  ),
+                ],
+              ),
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final km = int.tryParse(controller.text.trim());
-                if (km == null || km < data.currentOdometer) {
-                  setDialogState(
-                    () => error = 'Kilometer baru tidak boleh lebih rendah dari odometer saat ini.',
-                  );
-                  return;
-                }
-                Navigator.pop(dialogContext, km);
-              },
-              child: const Text('Simpan'),
-            ),
-          ],
         ),
       ),
     );
-    controller.dispose();
-    if (updatedKm == null || updatedKm == data.currentOdometer) return;
-    final updated = data.copyWith(
-      currentOdometer: updatedKm,
-      odometerLogs: _appendOdometerLog(data.odometerLogs, updatedKm, 'manual'),
-    );
+    if (updatedKm == null ||
+        (data != null && updatedKm == data.currentOdometer)) {
+      return;
+    }
+    final updated = data == null
+        ? MotorData(
+            currentOdometer: updatedKm,
+            lastOilOdometer: 0,
+            oilInterval: 3000,
+            odometerLogs: _appendOdometerLog(const [], updatedKm, 'manual'),
+          )
+        : data.copyWith(
+            currentOdometer: updatedKm,
+            odometerLogs: _appendOdometerLog(
+              data.odometerLogs,
+              updatedKm,
+              'manual',
+            ),
+          );
     await _saveComponentData(updated);
     if (mounted && _motorData == updated) {
       _currentController.text = updatedKm.toString();
-      _showMessage('Odometer diperbarui ke ${formatKm(updatedKm)}.');
+      _showMessage('KM berhasil diperbarui ke ${formatKm(updatedKm)}.');
     }
   }
 
@@ -713,77 +791,76 @@ class _OilReminderPageState extends State<OilReminderPage> {
     String? trailing,
     String? detail,
     String? chip,
-  }) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Row(
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: sage,
-            borderRadius: BorderRadius.circular(11),
+  }) {
+    final colors = RawatinColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: colors.primarySoft,
+              borderRadius: BorderRadius.circular(AppRadii.md),
+            ),
+            child: Icon(icon, color: colors.primaryDark, size: 19),
           ),
-          child: Icon(icon, color: green, size: 18),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: ink,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: colors.ink,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                  if (chip != null) ...[
-                    const SizedBox(width: 6),
-                    _SourceChip(label: chip),
+                    if (chip != null) ...[
+                      const SizedBox(width: 6),
+                      _SourceChip(label: chip),
+                    ],
                   ],
-                ],
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: const TextStyle(color: muted, fontSize: 11),
-              ),
-              if (detail != null) ...[
+                ),
                 const SizedBox(height: 2),
                 Text(
-                  detail,
-                  style: const TextStyle(
-                    color: green,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  subtitle,
+                  style: TextStyle(color: colors.muted, fontSize: 11.5),
                 ),
+                if (detail != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    detail,
+                    style: TextStyle(
+                      color: colors.primaryDark,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ],
-            ],
-          ),
-        ),
-        if (trailing != null) ...[
-          const SizedBox(width: 8),
-          Text(
-            trailing,
-            style: const TextStyle(
-              color: ink,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              trailing,
+              style: AppType.metric.copyWith(color: colors.ink, fontSize: 14),
+            ),
+          ],
         ],
-      ],
-    ),
-  );
+      ),
+    );
+  }
 
   Widget _buildPartsPage() {
     final data = _motorData;
@@ -793,91 +870,93 @@ class _OilReminderPageState extends State<OilReminderPage> {
             _componentUrgency(a, data).compareTo(_componentUrgency(b, data)),
       );
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 36),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.xxl,
+        AppSpacing.lg,
+        AppSpacing.xxxl,
+      ),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1120),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'KOMPONEN & PERAWATAN',
-                style: TextStyle(
-                  color: green,
-                  fontSize: 10,
-                  letterSpacing: 1.2,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Jadwal perawatan',
-                style: TextStyle(
-                  color: ink,
-                  fontSize: 28,
-                  height: 1.15,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Interval adalah perkiraan umum, bukan spesifikasi resmi. Ikuti buku manual atau saran bengkel.',
-                style: TextStyle(color: muted, height: 1.5, fontSize: 13),
+              const _ScreenIntro(
+                eyebrow: 'KOMPONEN & PERAWATAN',
+                title: 'Jadwal perawatan',
+                description: 'Interval adalah perkiraan umum, bukan spesifikasi resmi. Ikuti buku manual atau saran bengkel.',
               ),
               if (widget.profile != null) ...[
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpacing.lg),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.sm,
                   children: [
                     _InfoChip(
-                      icon: Icons.two_wheeler_rounded,
+                      icon: AppIcons.vehicle,
                       label:
                           '${widget.profile!.brand} ${widget.profile!.model}',
                     ),
                     if (_motorTypeLabel != null)
                       _InfoChip(
-                        icon: Icons.category_outlined,
+                        icon: AppIcons.category,
                         label: _motorTypeLabel!,
                       ),
                     if (_coolingLabel != null)
-                      _InfoChip(
-                        icon: Icons.ac_unit_rounded,
-                        label: _coolingLabel!,
-                      ),
+                      _InfoChip(icon: AppIcons.cooling, label: _coolingLabel!),
                     if (_frontBrakeLabel != null)
-                      _InfoChip(
-                        icon: Icons.disc_full_rounded,
-                        label: _frontBrakeLabel!,
-                      ),
+                      _InfoChip(icon: AppIcons.brake, label: _frontBrakeLabel!),
                     _InfoChip(
-                      icon: Icons.view_module_outlined,
+                      icon: AppIcons.grid,
                       label: '${visibleComponents.length} komponen',
                     ),
                   ],
                 ),
               ],
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
               if (data == null) ...[
-                const _CardShell(
-                  child: Text(
-                    'Simpan kilometer motor terlebih dahulu untuk menghitung jadwal.',
-                    style: TextStyle(color: muted),
+                _CardShell(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const _SectionHeading(
+                        eyebrow: 'LANGKAH PERTAMA',
+                        title: 'Mulai dari odometer',
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Masukkan kilometer saat ini dan kapan oli terakhir diganti. Setelah disimpan, jadwal part akan muncul otomatis.',
+                        style: TextStyle(
+                          color: RawatinColors.of(context).muted,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      FilledButton.icon(
+                        onPressed: _showOilReminderSettings,
+                        icon: const Icon(AppIcons.play),
+                        label: const Text('Atur kilometer motor'),
+                      ),
+                    ],
                   ),
                 ),
               ] else if (_components.isEmpty) ...[
                 _CardShell(
                   child: _catalogFailed
-                      ? const Text(
+                      ? Text(
                           'Data interval perawatan tidak dapat dimuat. Periksa file data default.',
+                          style: TextStyle(
+                            color: RawatinColors.of(context).muted,
+                          ),
                         )
                       : const Center(child: CircularProgressIndicator()),
                 ),
               ] else if (visibleComponents.isEmpty) ...[
-                const _CardShell(
+                _CardShell(
                   child: Text(
                     'Belum ada komponen yang cocok dengan profil motor.',
-                    style: TextStyle(color: muted),
+                    style: TextStyle(color: RawatinColors.of(context).muted),
                   ),
                 ),
               ] else ...[
@@ -891,24 +970,14 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     final width =
                         (constraints.maxWidth - (columns - 1) * 16) / columns;
                     return Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
+                      spacing: AppSpacing.lg,
+                      runSpacing: AppSpacing.lg,
                       children: [
                         for (final component in visibleComponents)
-                          if (_componentSchedule(component, data)?.status ==
-                              ComponentScheduleStatus.needsCheck)
-                            SizedBox(
-                              width: constraints.maxWidth,
-                              child: _buildUnrecordedComponentRow(
-                                component,
-                                data,
-                              ),
-                            )
-                          else
-                            SizedBox(
-                              width: width,
-                              child: _buildComponentCard(component, data),
-                            ),
+                          SizedBox(
+                            width: width,
+                            child: _buildComponentCard(component, data),
+                          ),
                       ],
                     );
                   },
@@ -994,55 +1063,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
     };
   }
 
-  Widget _buildUnrecordedComponentRow(
-    MaintenanceComponent component,
-    MotorData data,
-  ) {
-    final state = _findComponentState(data, component.name);
-    final interval =
-        state?.intervalKmOverride ??
-        (component.name == 'Oli mesin'
-            ? data.oilInterval
-            : component.intervalKm);
-    return _CardShell(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => _showComponentActions(component, state),
-        child: Row(
-          children: [
-            Icon(_componentIcon(component), color: green, size: 21),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    component.name,
-                    style: const TextStyle(
-                      color: ink,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    'Setiap ${formatKm(interval)} · belum dicatat',
-                    style: const TextStyle(color: muted, fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              tooltip: 'Catat',
-              onPressed: () => _showRecordComponentForm(component),
-              icon: const Icon(Icons.add_task_rounded, color: green),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildComponentCard(MaintenanceComponent component, MotorData data) {
+    final colors = RawatinColors.of(context);
     final state = _findComponentState(data, component.name);
     final interval =
         state?.intervalKmOverride ??
@@ -1077,24 +1099,29 @@ class _OilReminderPageState extends State<OilReminderPage> {
         );
     final due = schedule.status == ComponentScheduleStatus.due;
     final soon = schedule.status == ComponentScheduleStatus.soon;
+    final needsCheck = schedule.status == ComponentScheduleStatus.needsCheck;
     final statusColor = due
-        ? danger
+        ? colors.due
         : soon
-        ? warning
-        : green;
+        ? colors.soon
+        : needsCheck
+        ? colors.check
+        : colors.safe;
     final statusBackground = due
-        ? dangerSoft
+        ? colors.dueSoft
         : soon
-        ? warningSoft
-        : safeSoft;
+        ? colors.soonSoft
+        : needsCheck
+        ? colors.checkSoft
+        : colors.safeSoft;
     final statusIcon = due
-        ? Icons.priority_high_rounded
+        ? AppIcons.due
         : soon
-        ? Icons.schedule_rounded
-        : schedule.status == ComponentScheduleStatus.needsCheck
-        ? Icons.info_outline_rounded
-        : Icons.check_rounded;
-    final statusText = schedule.status == ComponentScheduleStatus.needsCheck
+        ? AppIcons.soon
+        : needsCheck
+        ? AppIcons.needsCheck
+        : AppIcons.check;
+    final statusText = needsCheck
         ? 'Perlu dicek'
         : switch (schedule.status) {
             ComponentScheduleStatus.safe => 'Aman',
@@ -1102,152 +1129,75 @@ class _OilReminderPageState extends State<OilReminderPage> {
             ComponentScheduleStatus.soon =>
               component.isInspection ? 'Segera cek' : 'Segera ganti',
             ComponentScheduleStatus.due =>
-              component.isInspection
-                  ? 'Waktunya cek kondisi'
-                  : 'Waktunya ganti',
+              component.isInspection ? 'Waktunya cek' : 'Waktunya ganti',
           };
     final intervalText =
-        '${component.isInspection ? 'Cek' : 'Ganti'} setiap ${formatKm(interval)}'
-        '${months == null ? '' : ' atau $months bulan'}';
-    final progress =
-        schedule.status == ComponentScheduleStatus.needsCheck ||
-            interval <= 0 ||
-            lastServicedKm == null
+        '${component.isInspection ? 'Cek' : 'Ganti'} tiap ${formatKm(interval)}'
+        '${months == null ? '' : ' / $months bln'}';
+    final progress = needsCheck || interval <= 0 || lastServicedKm == null
         ? null
         : ((data.currentOdometer - lastServicedKm) / interval)
               .clamp(0.0, 1.0)
               .toDouble();
-    final targetKm = schedule.targetKm;
     final remainingKm = schedule.remainingKm;
+    final description = needsCheck
+        ? 'Belum ada catatan servis untuk komponen ini.'
+        : remainingKm <= 0
+        ? component.isInspection
+              ? 'Sudah waktunya periksa sekarang.'
+              : 'Sudah waktunya ganti sekarang.'
+        : '${component.isInspection ? 'Periksa' : 'Ganti'} sekitar '
+              '${formatKm(remainingKm)} lagi'
+              '${schedule.daysRemaining == null ? '' : ' atau ${schedule.daysRemaining} hari'}';
 
-    return _CardShell(
-      padding: const EdgeInsets.all(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: () => _showComponentActions(component, state),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(_componentIcon(component), color: green, size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    component.name,
-                    style: const TextStyle(
-                      color: ink,
-                      fontSize: 15,
-                      height: 1.3,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _StatusBadge(
-                  label: statusText,
-                  icon: statusIcon,
-                  color: statusColor,
-                  background: statusBackground,
-                ),
-                _InfoChip(
-                  icon: component.isInspection
-                      ? Icons.search_rounded
-                      : Icons.build_outlined,
-                  label: component.isInspection ? 'Pemeriksaan' : 'Penggantian',
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              intervalText,
-              style: const TextStyle(color: muted, fontSize: 12, height: 1.45),
-            ),
-            if (component.note != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                component.note!,
-                style: const TextStyle(
-                  color: muted,
-                  fontSize: 11,
-                  height: 1.45,
-                ),
-              ),
-            ],
-            const SizedBox(height: 14),
-            if (progress != null) ...[
-              _ProgressBlock(
-                value: progress,
-                color: statusColor,
-                leftLabel: 'Terakhir ${formatKm(lastServicedKm!)}',
-                rightLabel: 'Target ${formatKm(targetKm)}',
-                caption: remainingKm <= 0
-                    ? 'Jadwal sudah tercapai'
-                    : '${formatKm(remainingKm)} lagi',
-              ),
-              if (schedule.daysRemaining != null)
-                Text(
-                  schedule.daysRemaining! <= 0
-                      ? 'Waktu servis tercapai'
-                      : '${schedule.daysRemaining} hari lagi',
-                  style: const TextStyle(color: muted, fontSize: 11),
-                ),
-            ] else ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: _MiniMetric(
-                      label: 'Terakhir',
-                      value: lastServicedKm == null
-                          ? 'Belum ada'
-                          : formatKm(lastServicedKm),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: _MiniMetric(label: 'Target', value: '—'),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 16),
-            Container(height: 1, color: line),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () => _showRecordComponentForm(component),
-                icon: const Icon(Icons.add_task_rounded, size: 18),
-                label: const Text('Catat ganti'),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return _PartCard(
+      name: component.name,
+      icon: _componentIcon(component),
+      statusLabel: statusText,
+      statusColor: statusColor,
+      statusSoft: statusBackground,
+      statusIcon: statusIcon,
+      description: description,
+      meta: intervalText,
+      progress: progress,
+      prominent: due || soon,
+      inspection: component.isInspection,
+      onOpen: () => _showComponentActions(component, state),
+      onRecord: () => _showRecordComponentForm(component),
     );
   }
 
   IconData _componentIcon(MaintenanceComponent component) {
     final name = component.name.toLowerCase();
-    if (name.contains('oli')) return Icons.oil_barrel_outlined;
-    if (name.contains('rem')) return Icons.disc_full_rounded;
-    if (name.contains('ban')) return Icons.tire_repair_rounded;
-    if (name.contains('rantai')) return Icons.link_rounded;
-    if (name.contains('busi')) return Icons.electrical_services_rounded;
-    if (name.contains('aki') || name.contains('baterai')) {
-      return Icons.battery_charging_full_rounded;
+    if (name.contains('oli gardan') || name.contains('oli')) {
+      return AppIcons.oil;
     }
-    if (name.contains('filter')) return Icons.air_rounded;
-    if (name.contains('lampu')) return Icons.lightbulb_outline_rounded;
-    return component.isInspection
-        ? Icons.search_rounded
-        : Icons.build_circle_outlined;
+    if (name.contains('busi')) return AppIcons.sparkPlug;
+    if (name.contains('rem') || name.contains('minyak rem')) {
+      return AppIcons.brake;
+    }
+    if (name.contains('ban')) return AppIcons.tire;
+    if (name.contains('v-belt') ||
+        name.contains('vbelt') ||
+        name.contains('belt') ||
+        name.contains('roller') ||
+        name.contains('cvt')) {
+      return AppIcons.belt;
+    }
+    if (name.contains('rantai') || name.contains('gear')) {
+      return AppIcons.chain;
+    }
+    if (name.contains('coolant') ||
+        name.contains('radiator') ||
+        name.contains('pendingin')) {
+      return AppIcons.cooling;
+    }
+    if (name.contains('filter')) return AppIcons.airFilter;
+    if (name.contains('aki') || name.contains('baterai')) {
+      return AppIcons.battery;
+    }
+    if (name.contains('lampu')) return AppIcons.tip;
+    return component.isInspection ? AppIcons.search : AppIcons.wrench;
   }
 
   Future<void> _showComponentActions(
@@ -1369,72 +1319,88 @@ class _OilReminderPageState extends State<OilReminderPage> {
           '',
     );
     String? error;
-    final result = await showDialog<({int km, int? months})>(
+    final result = await showModalBottomSheet<({int km, int? months})>(
       context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
       builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text('Interval ${component.name}'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: kmController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Kilometer',
-                  suffixText: 'km',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: monthController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Bulan (opsional)',
-                  suffixText: 'bulan',
-                ),
-              ),
-              if (error != null) ...[
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    error!,
-                    style: const TextStyle(color: danger, fontSize: 12),
+        builder: (context, setDialogState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              8,
+              20,
+              20 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Atur interval · ${component.name}',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
+                TextField(
+                  controller: kmController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Kilometer',
+                    suffixText: 'km',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: monthController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Bulan (opsional)',
+                    suffixText: 'bulan',
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      error!,
+                      style: const TextStyle(color: danger, fontSize: 12),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () {
+                    final km = int.tryParse(kmController.text.trim());
+                    final monthText = monthController.text.trim();
+                    final months = monthText.isEmpty
+                        ? null
+                        : int.tryParse(monthText);
+                    if (km == null || km <= 0) {
+                      setDialogState(
+                        () => error = 'Isi interval kilometer lebih dari 0.',
+                      );
+                      return;
+                    }
+                    if (monthText.isNotEmpty &&
+                        (months == null || months <= 0)) {
+                      setDialogState(
+                        () => error = 'Interval bulan harus lebih dari 0.',
+                      );
+                      return;
+                    }
+                    Navigator.pop(dialogContext, (km: km, months: months));
+                  },
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                  child: const Text('Simpan'),
+                ),
               ],
-            ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Batal'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final km = int.tryParse(kmController.text.trim());
-                final monthText = monthController.text.trim();
-                final months = monthText.isEmpty
-                    ? null
-                    : int.tryParse(monthText);
-                if (km == null || km <= 0) {
-                  setDialogState(
-                    () => error = 'Isi interval kilometer lebih dari 0.',
-                  );
-                  return;
-                }
-                if (monthText.isNotEmpty && (months == null || months <= 0)) {
-                  setDialogState(
-                    () => error = 'Interval bulan harus lebih dari 0.',
-                  );
-                  return;
-                }
-                Navigator.pop(dialogContext, (km: km, months: months));
-              },
-              child: const Text('Simpan'),
-            ),
-          ],
         ),
       ),
     );
@@ -1471,6 +1437,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
     final costController = TextEditingController();
     final notesController = TextEditingController();
     var serviceDate = DateTime.now();
+    var showDetails = false;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -1519,19 +1486,29 @@ class _OilReminderPageState extends State<OilReminderPage> {
                   'Tanggal: ${serviceDate.day}/${serviceDate.month}/${serviceDate.year}',
                 ),
               ),
-              TextField(
-                controller: costController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Biaya (opsional)',
+              TextButton.icon(
+                onPressed: () =>
+                    setSheetState(() => showDetails = !showDetails),
+                icon: Icon(showDetails ? Icons.expand_less : Icons.expand_more),
+                label: Text(
+                  showDetails ? 'Sembunyikan detail' : 'Tambah detail',
                 ),
               ),
-              TextField(
-                controller: notesController,
-                decoration: const InputDecoration(
-                  labelText: 'Catatan (opsional)',
+              if (showDetails) ...[
+                TextField(
+                  controller: costController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Biaya (opsional)',
+                  ),
                 ),
-              ),
+                TextField(
+                  controller: notesController,
+                  decoration: const InputDecoration(
+                    labelText: 'Catatan (opsional)',
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: () async {
@@ -1600,7 +1577,10 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     }
                   }
                 },
-                child: const Text('Simpan catatan'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                ),
+                child: const Text('Simpan'),
               ),
             ],
           ),
@@ -1668,8 +1648,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const _SectionHeading(
-              eyebrow: 'JADWAL PERAWATAN',
-              title: 'Atur pengingat oli',
+              eyebrow: 'PENGATURAN MOTOR',
+              title: 'Data awal dan interval',
             ),
             const SizedBox(height: 22),
             _OdometerField(
@@ -1761,62 +1741,52 @@ class _OilReminderPageState extends State<OilReminderPage> {
   Widget _buildProfileCard() {
     final profile = widget.profile;
     if (profile == null) return const SizedBox.shrink();
+    final colors = RawatinColors.of(context);
     final typeLabel = _motorTypeLabel;
-    return _CardShell(
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: colors.line),
+      ),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: sage,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: const Icon(Icons.two_wheeler_rounded, color: green),
+          _IconTile(
+            icon: AppIcons.vehicle,
+            color: colors.primaryDark,
+            soft: colors.primarySoft,
+            size: 44,
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   profile.driverName,
-                  style: const TextStyle(
-                    color: ink,
-                    fontWeight: FontWeight.w800,
+                  style: AppType.cardTitle.copyWith(
+                    color: colors.ink,
                     fontSize: 16,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   '${profile.brand} ${profile.model} · ${profile.year}'
                   '${typeLabel == null ? '' : ' · $typeLabel'}',
-                  style: const TextStyle(color: muted, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: colors.muted, fontSize: 12.5),
                 ),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: surfaceSoft,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.verified_rounded, color: green, size: 14),
-                SizedBox(width: 5),
-                Text(
-                  'Aktif',
-                  style: TextStyle(
-                    color: green,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(width: AppSpacing.sm),
+          _StatusBadge(
+            label: 'Aktif',
+            icon: AppIcons.verified,
+            color: colors.safe,
+            background: colors.safeSoft,
           ),
         ],
       ),
@@ -1824,6 +1794,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
   }
 
   Widget _buildDashboardMaintenanceSummary() {
+    final colors = RawatinColors.of(context);
     final data = _motorData;
     final active = _visibleParts();
     final ranked =
@@ -1847,184 +1818,127 @@ class _OilReminderPageState extends State<OilReminderPage> {
           );
         });
     if (ranked.isEmpty) return _buildStatusCard();
+
+    final attention = ranked
+        .where(
+          (item) =>
+              item.schedule?.status == ComponentScheduleStatus.due ||
+              item.schedule?.status == ComponentScheduleStatus.soon,
+        )
+        .toList();
+    final needsCheck = ranked
+        .where(
+          (item) =>
+              item.schedule == null ||
+              item.schedule?.status == ComponentScheduleStatus.needsCheck,
+        )
+        .map((item) => item.component)
+        .toList();
+    final safeEntries = ranked
+        .where((item) => item.schedule?.status == ComponentScheduleStatus.safe)
+        .toList();
+    final safe = safeEntries.map((item) => item.component).toList();
+    final firstSafe = safeEntries.isEmpty ? null : safeEntries.first;
+    final safeSubtitle = firstSafe == null
+        ? 'Tidak perlu tindakan sekarang.'
+        : 'Terdekat: ${firstSafe.component.name}, '
+              '${firstSafe.schedule!.remainingKm <= 0 ? 'sudah waktunya dicek' : '${formatKm(firstSafe.schedule!.remainingKm)} lagi'}';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final item in ranked) ...[
-          _buildDashboardComponentCard(item.component, data),
-          if (item.component.id != ranked.last.component.id)
-            const SizedBox(height: 12),
+        for (final item in attention) ...[
+          _buildComponentCard(item.component, data!),
+          const SizedBox(height: AppSpacing.md),
         ],
+        if (needsCheck.isNotEmpty) ...[
+          _CollapsiblePartGroup(
+            storageKey: 'needs-check',
+            title: 'Belum ada data (${needsCheck.length})',
+            subtitle: 'Lengkapi catatan servis agar jadwal lebih akurat.',
+            icon: AppIcons.needsCheck,
+            color: colors.check,
+            soft: colors.checkSoft,
+            statusLabel: 'Perlu dicek',
+            statusColor: colors.check,
+            statusSoft: colors.checkSoft,
+            statusIcon: AppIcons.needsCheck,
+            parts: needsCheck,
+            iconFor: _componentIcon,
+            onOpen: (component) => _showComponentActions(
+              component,
+              _findComponentState(data, component.name),
+            ),
+            onRecord: _showRecordComponentForm,
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        if (safe.isNotEmpty) ...[
+          _CollapsiblePartGroup(
+            storageKey: 'safe-parts',
+            title: 'Aman (${safe.length})',
+            subtitle: safeSubtitle,
+            icon: AppIcons.checkCircle,
+            color: colors.safe,
+            soft: colors.safeSoft,
+            statusLabel: 'Aman',
+            statusColor: colors.safe,
+            statusSoft: colors.safeSoft,
+            statusIcon: AppIcons.check,
+            parts: safe,
+            iconFor: _componentIcon,
+            onOpen: (component) => _showComponentActions(
+              component,
+              _findComponentState(data, component.name),
+            ),
+            onRecord: _showRecordComponentForm,
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        _CardShell(
+          padding: EdgeInsets.zero,
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: 2,
+              ),
+              childrenPadding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                0,
+                AppSpacing.lg,
+                AppSpacing.md,
+              ),
+              leading: _IconTile(
+                icon: AppIcons.tip,
+                color: colors.primaryDark,
+                soft: colors.primarySoft,
+              ),
+              title: Text(
+                'Panduan oli (contoh)',
+                style: AppType.cardTitle.copyWith(
+                  color: colors.ink,
+                  fontSize: 15,
+                ),
+              ),
+              iconColor: colors.primary,
+              collapsedIconColor: colors.muted,
+              children: [
+                Text(
+                  'Gunakan interval sebagai perkiraan umum. Untuk angka yang tepat, ikuti buku manual motor atau saran bengkel.',
+                  style: TextStyle(color: colors.muted, height: 1.5),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildDashboardPrimaryAction() {
-    final data = _motorData;
-    if (data == null) {
-      return OutlinedButton.icon(
-        onPressed: _showOilReminderSettings,
-        icon: const Icon(Icons.tune_rounded, size: 18),
-        label: const Text('Ubah interval'),
-      );
-    }
-    final active = _visibleParts()
-      ..sort(
-        (a, b) =>
-            _componentUrgency(a, data).compareTo(_componentUrgency(b, data)),
-      );
-    final primary = active.isEmpty ? null : active.first;
-    if (primary?.name == 'Oli mesin') {
-      return OutlinedButton.icon(
-        onPressed: _showOilReminderSettings,
-        icon: const Icon(Icons.tune_rounded, size: 18),
-        label: const Text('Ubah interval'),
-      );
-    }
-    return OutlinedButton.icon(
-      onPressed: primary == null
-          ? null
-          : () => _showComponentActions(
-              primary,
-              _findComponentState(data, primary.name),
-            ),
-      icon: const Icon(Icons.open_in_new_rounded, size: 18),
-      label: const Text('Detail komponen utama'),
-    );
-  }
-
-  Widget _buildDashboardComponentCard(
-    MaintenanceComponent component,
-    MotorData? data,
-  ) {
-    final state = _findComponentState(data, component.name);
-    final schedule = data == null ? null : _componentSchedule(component, data);
-    final interval =
-        state?.intervalKmOverride ??
-        (component.name == 'Oli mesin' && data != null
-            ? data.oilInterval
-            : component.intervalKm);
-    final intervalMonths =
-        state?.intervalMonthsOverride ??
-        (component.name == 'Oli mesin' && data != null
-            ? data.oilIntervalMonths
-            : component.intervalMonths);
-    final lastServiced =
-        state?.lastServicedKm ??
-        (component.name == 'Oli mesin' &&
-                data != null &&
-                data.lastOilOdometer > 0
-            ? data.lastOilOdometer
-            : null);
-    final isDue = schedule?.status == ComponentScheduleStatus.due;
-    final isSoon = schedule?.status == ComponentScheduleStatus.soon;
-    final color = isDue
-        ? danger
-        : isSoon
-        ? warning
-        : green;
-    final background = isDue
-        ? dangerSoft
-        : isSoon
-        ? warningSoft
-        : safeSoft;
-    final label =
-        schedule == null ||
-            schedule.status == ComponentScheduleStatus.needsCheck
-        ? 'Perlu dicek'
-        : isDue
-        ? (component.isInspection ? 'Waktunya cek' : 'Jatuh tempo')
-        : isSoon
-        ? 'Segera'
-        : 'Aman';
-    final remaining = schedule?.remainingKm;
-    final progress =
-        schedule == null ||
-            schedule.status == ComponentScheduleStatus.needsCheck ||
-            lastServiced == null ||
-            interval <= 0
-        ? null
-        : ((data!.currentOdometer - lastServiced) / interval)
-              .clamp(0.0, 1.0)
-              .toDouble();
-
-    return _CardShell(
-      color: isDue
-          ? const Color(0xFFFFF8F5)
-          : isSoon
-          ? const Color(0xFFFFFCF4)
-          : Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(_componentIcon(component), color: color, size: 22),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  component.name,
-                  style: const TextStyle(
-                    color: ink,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              _StatusBadge(
-                label: label,
-                icon: isDue
-                    ? Icons.priority_high_rounded
-                    : isSoon
-                    ? Icons.schedule_rounded
-                    : schedule == null
-                    ? Icons.info_outline_rounded
-                    : Icons.check_rounded,
-                color: color,
-                background: background,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            schedule == null
-                ? 'Catat servis untuk mulai menghitung jadwal.'
-                : schedule.status == ComponentScheduleStatus.needsCheck
-                ? 'Perlu dicek'
-                : remaining! <= 0
-                ? 'Terlambat ${formatKm(remaining.abs())}'
-                : '${formatKm(remaining)} lagi menuju jadwal berikutnya',
-            style: TextStyle(
-              color: isDue ? danger : ink,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            'Interval ${formatKm(interval)}${intervalMonths == null ? '' : ' · $intervalMonths bulan'}',
-            style: const TextStyle(color: muted, fontSize: 12),
-          ),
-          if (progress != null) ...[
-            const SizedBox(height: 14),
-            _SlimProgressIndicator(
-              value: progress,
-              color: color,
-              label: '${(progress * 100).round()}% interval terpakai',
-            ),
-          ],
-          const SizedBox(height: 14),
-          FilledButton.icon(
-            onPressed: () => _showRecordComponentForm(component),
-            icon: const Icon(Icons.add_task_rounded, size: 18),
-            label: const Text('Catat ganti'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildStatusCard() {
+    final colors = RawatinColors.of(context);
     final data = _motorData;
     final schedule = data == null
         ? null
@@ -2033,20 +1947,20 @@ class _OilReminderPageState extends State<OilReminderPage> {
     final due = schedule?.isDue ?? false;
     final soon = schedule?.status == OilScheduleStatus.soon;
     final statusColor = due
-        ? danger
+        ? colors.due
         : soon
-        ? warning
-        : green;
+        ? colors.soon
+        : colors.safe;
     final statusBackground = due
-        ? dangerSoft
+        ? colors.dueSoft
         : soon
-        ? warningSoft
-        : safeSoft;
+        ? colors.soonSoft
+        : colors.safeSoft;
     final statusIcon = due
-        ? Icons.priority_high_rounded
+        ? AppIcons.due
         : soon
-        ? Icons.schedule_rounded
-        : Icons.check_rounded;
+        ? AppIcons.soon
+        : AppIcons.check;
     final statusLabel = due
         ? 'Jatuh tempo'
         : soon
@@ -2073,11 +1987,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
               .toDouble();
 
     return _CardShell(
-      color: due
-          ? const Color(0xFFFFF8F5)
-          : soon
-          ? const Color(0xFFFFFCF4)
-          : Colors.white,
+      color: colors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -2090,22 +2000,14 @@ class _OilReminderPageState extends State<OilReminderPage> {
                   title: 'Ganti oli berikutnya',
                 ),
               ),
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: statusBackground,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: Icon(
-                  Icons.oil_barrel_outlined,
-                  color: statusColor,
-                  size: 22,
-                ),
+              _IconTile(
+                icon: AppIcons.oil,
+                color: statusColor,
+                soft: statusBackground,
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpacing.lg),
           Align(
             alignment: Alignment.centerLeft,
             child: _StatusBadge(
@@ -2115,34 +2017,33 @@ class _OilReminderPageState extends State<OilReminderPage> {
               background: statusBackground,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md),
           Text(
             reminder,
-            style: TextStyle(
-              color: due ? danger : ink,
+            style: AppType.metric.copyWith(
+              color: due ? colors.due : colors.ink,
               fontSize: remaining != null && remaining.abs() >= 100000
-                  ? 28
-                  : 36,
-              height: 1.1,
-              fontWeight: FontWeight.w800,
+                  ? 30
+                  : 38,
+              height: 1.05,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             caption,
-            style: const TextStyle(color: muted, fontSize: 13, height: 1.45),
+            style: TextStyle(color: colors.muted, fontSize: 13, height: 1.45),
           ),
           if (data != null && schedule != null) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: AppSpacing.lg),
             _SlimProgressIndicator(
               value: progress,
               color: statusColor,
               label: '${(progress * 100).round()}% interval terpakai',
             ),
           ],
-          const SizedBox(height: 20),
-          Container(height: 1, color: line),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.xl),
+          Divider(color: colors.line),
+          const SizedBox(height: AppSpacing.lg),
           _SummaryRow(
             label: 'Odometer sekarang',
             value: data == null ? '—' : formatKm(data.currentOdometer),
@@ -2187,117 +2088,36 @@ class _OilReminderPageState extends State<OilReminderPage> {
               runSpacing: 8,
               children: [
                 _InfoChip(
-                  icon: Icons.speed_rounded,
+                  icon: AppIcons.speed,
                   label: '${data.odometerLogs.length} log odometer',
                 ),
                 _InfoChip(
-                  icon: Icons.build_outlined,
+                  icon: AppIcons.wrench,
                   label: '${data.serviceHistory.length} catatan servis',
                 ),
               ],
             ),
           ],
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.xl),
           FilledButton.icon(
             onPressed: data == null ? null : _recordOilChange,
-            icon: const Icon(Icons.check_circle_outline, size: 19),
+            icon: const Icon(AppIcons.checkCircleOutline, size: 19),
             label: const Text('Catat ganti oli'),
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(50),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             data == null
                 ? 'Tombol aktif setelah data motor disimpan.'
                 : 'Ganti oli terakhir dicatat di ${formatKm(data.lastOilOdometer)}.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: muted, fontSize: 12, height: 1.4),
+            style: TextStyle(color: colors.muted, fontSize: 12, height: 1.4),
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildOilRecommendation() {
-    return _CardShell(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionHeading(
-            eyebrow: 'PANDUAN UMUM',
-            title: 'Spesifikasi oli',
-          ),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.all(15),
-            decoration: BoxDecoration(
-              color: surfaceSoft,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: sage,
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                  child: const Icon(Icons.opacity_rounded, color: green),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _recommendedOilTitle,
-                        style: const TextStyle(
-                          color: ink,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Contoh rekomendasi. Selalu cocokkan spesifikasi dengan buku manual motor.',
-                        style: TextStyle(
-                          color: muted,
-                          fontSize: 12,
-                          height: 1.45,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.open_in_new_rounded, size: 17),
-            label: const Text('Lihat contoh produk'),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Tautan produk belum diaktifkan.',
-            style: TextStyle(color: muted, fontSize: 11),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String get _recommendedOilTitle {
-    final profile = widget.profile;
-    final isScooter =
-        profile?.model.toLowerCase().contains('matic') == true ||
-        profile?.model.toLowerCase().contains('gear') == true ||
-        profile?.model.toLowerCase().contains('scoopy') == true ||
-        profile?.model.toLowerCase().contains('beat') == true;
-    return isScooter ? 'Contoh oli matic 10W-40' : 'Contoh oli mesin 10W-40';
   }
 
   String? get _motorTypeLabel => switch (widget.profile?.motorType) {
@@ -2328,34 +2148,10 @@ class _PageHeader extends StatelessWidget {
   final DriverMotorProfile? profile;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'RINGKASAN PERAWATAN',
-        style: TextStyle(
-          color: green,
-          fontSize: 10,
-          letterSpacing: 1.3,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-      const SizedBox(height: 6),
-      Text(
-        profile == null ? 'Kondisi motormu' : 'Hai, ${profile!.driverName}!',
-        style: const TextStyle(
-          color: ink,
-          fontSize: 28,
-          height: 1.12,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-      const SizedBox(height: 6),
-      const Text(
-        'Jadwal dan catatan perawatan dalam satu tempat.',
-        style: TextStyle(color: muted, height: 1.45, fontSize: 14),
-      ),
-    ],
+  Widget build(BuildContext context) => _ScreenIntro(
+    eyebrow: 'RINGKASAN PERAWATAN',
+    title: profile == null ? 'Kondisi motormu' : 'Hai, ${profile!.driverName}!',
+    description: 'Jadwal dan catatan perawatan dalam satu tempat.',
   );
 }
 
@@ -2364,140 +2160,209 @@ class _AppSidebar extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     this.profile,
+    this.onOpenSettings,
   });
   final int selected;
   final ValueChanged<int> onSelect;
   final DriverMotorProfile? profile;
+  final VoidCallback? onOpenSettings;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 252,
-    decoration: const BoxDecoration(
-      color: Color(0xFFF1EFE8),
-      border: Border(right: BorderSide(color: line)),
-    ),
-    padding: const EdgeInsets.fromLTRB(16, 22, 16, 18),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Row(
-            children: [
-              _BrandMark(),
-              SizedBox(width: 11),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Rawatin',
-                    style: TextStyle(
-                      color: ink,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    'Perawatan motor',
-                    style: TextStyle(color: muted, fontSize: 10),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 34),
-        const Padding(
-          padding: EdgeInsets.only(left: 12, bottom: 8),
-          child: Text(
-            'NAVIGASI',
-            style: TextStyle(
-              color: muted,
-              fontSize: 10,
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        _navItem(0, Icons.grid_view_rounded, 'Ringkasan'),
-        _navItem(1, Icons.build_outlined, 'Riwayat servis'),
-        _navItem(2, Icons.speed_rounded, 'Log odometer'),
-        _navItem(3, Icons.handyman_outlined, 'Komponen'),
-        const Spacer(),
-        if (profile != null)
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: line),
-            ),
-            child: Row(
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Container(
+      width: 252,
+      decoration: BoxDecoration(
+        color: colors.surfaceSoft,
+        border: Border(right: BorderSide(color: colors.line)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 22, 16, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: sage,
-                  foregroundColor: green,
-                  child: Text(
-                    profile!.driverName.isEmpty
-                        ? '?'
-                        : profile!.driverName[0].toUpperCase(),
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
                     children: [
-                      Text(
-                        profile!.driverName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: ink,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                      Text(
-                        '${profile!.brand} ${profile!.model}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: muted, fontSize: 11),
+                      const _BrandMark(),
+                      const SizedBox(width: 11),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Rawatin',
+                            style: AppType.cardTitle.copyWith(
+                              color: colors.ink,
+                              fontSize: 21,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          Text(
+                            'PERAWATAN MOTOR',
+                            style: AppType.eyebrow.copyWith(
+                              color: colors.muted,
+                              fontSize: 8,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 30),
+                Padding(
+                  padding: const EdgeInsets.only(left: 12, bottom: 8),
+                  child: Text(
+                    'NAVIGASI',
+                    style: AppType.eyebrow.copyWith(
+                      color: colors.muted,
+                      fontSize: 9,
+                    ),
+                  ),
+                ),
+                _navItem(0, AppIcons.home, 'Beranda', colors),
+                _navItem(1, AppIcons.history, 'Riwayat', colors),
+                _actionItem(
+                  AppIcons.settings,
+                  'Pengaturan motor',
+                  onOpenSettings,
+                  colors,
+                ),
               ],
             ),
           ),
-      ],
-    ),
-  );
+          const Spacer(),
+          if (profile != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(AppRadii.lg),
+                  border: Border.all(color: colors.line),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: colors.primarySoft,
+                      foregroundColor: colors.primaryDark,
+                      child: Text(
+                        profile!.driverName.isEmpty
+                            ? '?'
+                            : profile!.driverName[0].toUpperCase(),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            profile!.driverName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: colors.ink,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          Text(
+                            '${profile!.brand} ${profile!.model}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: colors.muted, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-  Widget _navItem(int index, IconData icon, String label) => Padding(
-    padding: const EdgeInsets.only(bottom: 4),
-    child: ListTile(
-      selected: selected == index,
-      selectedTileColor: sage,
-      selectedColor: green,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-      minLeadingWidth: 22,
-      leading: Icon(icon, color: selected == index ? green : muted, size: 20),
-      title: Text(
-        label,
-        style: TextStyle(
-          color: selected == index ? green : ink,
-          fontWeight: selected == index ? FontWeight.w700 : FontWeight.w500,
-          fontSize: 13,
+  Widget _navItem(
+    int index,
+    IconData icon,
+    String label,
+    RawatinColors colors,
+  ) {
+    final active = selected == index;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          selected: active,
+          selectedTileColor: colors.primarySoft,
+          selectedColor: colors.primaryDark,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          minLeadingWidth: 22,
+          leading: Icon(
+            icon,
+            color: active ? colors.primaryDark : colors.muted,
+            size: 20,
+          ),
+          title: Text(
+            label,
+            style: TextStyle(
+              color: active ? colors.primaryDark : colors.inkSoft,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+              fontSize: 13,
+            ),
+          ),
+          onTap: () => onSelect(index),
+          dense: true,
         ),
       ),
-      onTap: () => onSelect(index),
-      dense: true,
-    ),
-  );
+    );
+  }
+
+  Widget _actionItem(
+    IconData icon,
+    String label,
+    VoidCallback? onTap,
+    RawatinColors colors,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadii.md),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+          minLeadingWidth: 22,
+          leading: Icon(icon, color: colors.muted, size: 20),
+          title: Text(
+            label,
+            style: TextStyle(
+              color: colors.inkSoft,
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+            ),
+          ),
+          onTap: onTap,
+          dense: true,
+        ),
+      ),
+    );
+  }
 }
 
 class _BrandMark extends StatelessWidget {
@@ -2518,6 +2383,7 @@ class _AppTopBar extends StatelessWidget {
     this.onAddVehicle,
     this.onManageVehicles,
     this.vehicles = const [],
+    this.onOpenSettings,
   });
   final String title;
   final DriverMotorProfile? profile;
@@ -2528,198 +2394,229 @@ class _AppTopBar extends StatelessWidget {
   final VoidCallback? onAddVehicle;
   final VoidCallback? onManageVehicles;
   final List<DriverMotorProfile> vehicles;
+  final VoidCallback? onOpenSettings;
 
   @override
-  Widget build(BuildContext context) => Container(
-    height: 72,
-    padding: const EdgeInsets.symmetric(horizontal: 28),
-    decoration: const BoxDecoration(
-      color: Colors.white,
-      border: Border(bottom: BorderSide(color: line)),
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 560;
+    return Container(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(bottom: BorderSide(color: colors.line)),
+      ),
+      child: SizedBox(
+        height: 64,
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 16),
+          child: Row(
             children: [
-              const Text(
-                'RAWATIN',
-                style: TextStyle(
-                  color: green,
-                  fontSize: 9,
-                  letterSpacing: 1.5,
-                  fontWeight: FontWeight.w800,
+              if (compact) ...[
+                const RawatinLogo(size: 28, showShadow: false),
+                const SizedBox(width: 9),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'RAWATIN',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style: AppType.eyebrow.copyWith(
+                        color: colors.primary,
+                        fontSize: 9.5,
+                        letterSpacing: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.cardTitle.copyWith(
+                        color: colors.ink,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 3),
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: ink,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
+              IconButton(
+                tooltip: 'Pengaturan motor',
+                onPressed: onOpenSettings,
+                icon: Icon(AppIcons.settings, color: colors.inkSoft),
               ),
+              if (profile != null) ...[
+                PopupMenuButton<String>(
+                  tooltip: 'Pilih kendaraan',
+                  onSelected: (value) {
+                    if (value == '__add__') {
+                      onAddVehicle?.call();
+                    } else if (value == '__manage__') {
+                      onManageVehicles?.call();
+                    } else if (value == profile!.id) {
+                      return;
+                    } else {
+                      onSelectVehicle?.call(
+                        vehicles.firstWhere((item) => item.id == value),
+                      );
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    for (final vehicle in vehicles)
+                      PopupMenuItem(
+                        value: vehicle.id,
+                        child: Text('${vehicle.brand} ${vehicle.model}'),
+                      ),
+                    if (onManageVehicles != null)
+                      const PopupMenuItem(
+                        value: '__manage__',
+                        child: Text('Kelola kendaraan'),
+                      ),
+                    if (onAddVehicle != null)
+                      const PopupMenuItem(
+                        value: '__add__',
+                        child: Text('Tambah kendaraan'),
+                      ),
+                  ],
+                  child: compact
+                      ? Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Icon(
+                            AppIcons.vehicle,
+                            size: 22,
+                            color: colors.inkSoft,
+                          ),
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 130),
+                              child: Text(
+                                '${profile!.brand} ${profile!.model}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: colors.ink,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            Icon(AppIcons.chevronDown, color: colors.muted),
+                          ],
+                        ),
+                ),
+                if (!compact) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 120),
+                    child: Text(
+                      profile!.driverName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: colors.muted, fontSize: 13),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 2),
+                _AccountMenu(
+                  profile: profile!,
+                  onEditProfile: onEditProfile,
+                  onSignOut: onSignOut,
+                ),
+              ] else
+                _AccountMenu(
+                  profile: null,
+                  onEditProfile: onEditProfile,
+                  onSignOut: onSignOut,
+                ),
             ],
           ),
         ),
-        if (profile != null) ...[
-          const SizedBox(width: 12),
-          PopupMenuButton<String>(
-            tooltip: 'Pilih kendaraan',
-            onSelected: (value) {
-              if (value == '__add__') {
-                onAddVehicle?.call();
-              } else if (value == '__manage__') {
-                onManageVehicles?.call();
-              } else if (value == profile!.id) {
-                return;
-              } else {
-                onSelectVehicle?.call(
-                  vehicles.firstWhere((item) => item.id == value),
-                );
-              }
-            },
-            itemBuilder: (context) => [
-              for (final vehicle in vehicles)
-                PopupMenuItem(
-                  value: vehicle.id,
-                  child: Text('${vehicle.brand} ${vehicle.model}'),
-                ),
-              if (onManageVehicles != null)
-                const PopupMenuItem(
-                  value: '__manage__',
-                  child: Text('Kelola kendaraan'),
-                ),
-              if (onAddVehicle != null)
-                const PopupMenuItem(
-                  value: '__add__',
-                  child: Text('Tambah kendaraan'),
-                ),
-            ],
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 130),
-                  child: Text(
-                    '${profile!.brand} ${profile!.model}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: ink,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const Icon(Icons.arrow_drop_down_rounded, color: muted),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 120),
-                child: Text(
-                  profile!.driverName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: muted, fontSize: 13),
-                ),
-              ),
-              const SizedBox(width: 10),
-              PopupMenuButton<String>(
-                tooltip: 'Menu akun',
-                icon: CircleAvatar(
-                  radius: 18,
-                  backgroundColor: sage,
-                  foregroundColor: green,
-                  child: Text(
-                    profile!.driverName.isNotEmpty
-                        ? profile!.driverName[0].toUpperCase()
-                        : 'U',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                ),
-                onSelected: (value) {
-                  if (value == 'edit') onEditProfile?.call();
-                  if (value == 'signout') onSignOut?.call();
-                },
-                itemBuilder: (context) => [
-                  if (onEditProfile != null)
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Text('Edit profil'),
-                    ),
-                  if (onSignOut != null)
-                    const PopupMenuItem(
-                      value: 'signout',
-                      child: Text('Keluar'),
-                    ),
-                ],
-              ),
-            ],
-          ),
-        ] else ...[
-          PopupMenuButton<String>(
-            tooltip: 'Menu akun',
-            icon: const CircleAvatar(
-              radius: 18,
-              backgroundColor: sage,
-              foregroundColor: green,
-              child: Text('U', style: TextStyle(fontWeight: FontWeight.w800)),
-            ),
-            onSelected: (value) {
-              if (value == 'edit') onEditProfile?.call();
-              if (value == 'signout') onSignOut?.call();
-            },
-            itemBuilder: (context) => [
-              if (onEditProfile != null)
-                const PopupMenuItem(value: 'edit', child: Text('Edit profil')),
-              if (onSignOut != null)
-                const PopupMenuItem(value: 'signout', child: Text('Keluar')),
-            ],
-          ),
-        ],
+      ),
+    );
+  }
+}
+
+class _AccountMenu extends StatelessWidget {
+  const _AccountMenu({
+    required this.profile,
+    this.onEditProfile,
+    this.onSignOut,
+  });
+
+  final DriverMotorProfile? profile;
+  final VoidCallback? onEditProfile;
+  final VoidCallback? onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return PopupMenuButton<String>(
+      tooltip: 'Menu akun',
+      icon: CircleAvatar(
+        radius: 18,
+        backgroundColor: colors.primarySoft,
+        foregroundColor: colors.primaryDark,
+        child: Text(
+          profile?.driverName.isNotEmpty == true
+              ? profile!.driverName[0].toUpperCase()
+              : 'U',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+      onSelected: (value) {
+        if (value == 'edit') onEditProfile?.call();
+        if (value == 'signout') onSignOut?.call();
+      },
+      itemBuilder: (context) => [
+        if (onEditProfile != null)
+          const PopupMenuItem(value: 'edit', child: Text('Edit profil')),
+        if (onSignOut != null)
+          const PopupMenuItem(value: 'signout', child: Text('Keluar')),
       ],
-    ),
-  );
+    );
+  }
 }
 
 class _CardShell extends StatelessWidget {
   const _CardShell({
     required this.child,
-    this.color = Colors.white,
-    this.padding = const EdgeInsets.all(22),
+    this.color,
+    this.padding = const EdgeInsets.all(AppSpacing.xl),
   });
+
   final Widget child;
-  final Color color;
+  final Color? color;
   final EdgeInsetsGeometry padding;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: padding,
-    decoration: BoxDecoration(
-      color: color,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: line),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x0A20352C),
-          blurRadius: 20,
-          offset: Offset(0, 6),
-        ),
-      ],
-    ),
-    child: child,
-  );
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: color ?? colors.surface,
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        border: Border.all(color: colors.line),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow,
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      // Material transparan memberi ListTile/ExpansionTile permukaan untuk
+      // menggambar latar dan ripple di dalam card berwarna.
+      child: Material(type: MaterialType.transparency, child: child),
+    );
+  }
 }
 
 class _StatusBadge extends StatelessWidget {
@@ -2737,22 +2634,26 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
       color: background,
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(AppRadii.pill),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: color, size: 14),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
+        Icon(icon, color: color, size: 13),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppType.eyebrow.copyWith(
+              color: color,
+              fontSize: 10,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
       ],
@@ -2760,66 +2661,465 @@ class _StatusBadge extends StatelessWidget {
   );
 }
 
-class _ProgressBlock extends StatelessWidget {
-  const _ProgressBlock({
+class _IconTile extends StatelessWidget {
+  const _IconTile({
+    required this.icon,
+    required this.color,
+    required this.soft,
+    this.size = 40,
+  });
+
+  final IconData icon;
+  final Color color;
+  final Color soft;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: soft,
+      borderRadius: BorderRadius.circular(size * .29),
+    ),
+    child: Icon(icon, color: color, size: size * .5),
+  );
+}
+
+class _PartCard extends StatelessWidget {
+  const _PartCard({
+    required this.name,
+    required this.icon,
+    required this.statusLabel,
+    required this.statusColor,
+    required this.statusSoft,
+    required this.statusIcon,
+    required this.description,
+    required this.meta,
+    required this.onOpen,
+    required this.onRecord,
+    this.progress,
+    this.prominent = false,
+    this.inspection = false,
+  });
+
+  final String name;
+  final IconData icon;
+  final String statusLabel;
+  final Color statusColor;
+  final Color statusSoft;
+  final IconData statusIcon;
+  final String description;
+  final String meta;
+  final VoidCallback onOpen;
+  final VoidCallback onRecord;
+  final double? progress;
+  final bool prominent;
+  final bool inspection;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(AppRadii.lg),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadii.lg),
+        onTap: onOpen,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            border: Border.all(
+              color: prominent
+                  ? statusColor.withValues(alpha: 0.5)
+                  : colors.line,
+              width: prominent ? 1.4 : 1,
+            ),
+            boxShadow: prominent
+                ? [
+                    BoxShadow(
+                      color: statusColor.withValues(alpha: 0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  _IconTile(icon: icon, color: statusColor, soft: statusSoft),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.cardTitle.copyWith(
+                        color: colors.ink,
+                        fontSize: 17,
+                      ),
+                    ),
+                  ),
+                  if (inspection) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    _InfoChip(icon: AppIcons.search, label: 'Pemeriksaan'),
+                  ],
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Flexible(
+                    child: _StatusBadge(
+                      label: statusLabel,
+                      icon: statusIcon,
+                      color: statusColor,
+                      background: statusSoft,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: colors.muted, fontSize: 11.5),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                description,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: prominent ? statusColor : colors.inkSoft,
+                  fontSize: 12.5,
+                  fontWeight: prominent ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+              if (progress != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                _SegmentedGauge(
+                  value: progress!,
+                  color: statusColor,
+                  height: 8,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      'Interval terpakai',
+                      style: TextStyle(color: colors.muted, fontSize: 10),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${(progress! * 100).round()}%',
+                      style: AppType.eyebrow.copyWith(
+                        color: statusColor,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 6),
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.xs,
+                children: [
+                  TextButton(
+                    onPressed: onOpen,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                      ),
+                      minimumSize: const Size(0, 32),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle: AppType.button.copyWith(fontSize: 12),
+                    ),
+                    child: const Text('Detail · Atur interval'),
+                  ),
+                  _RecordButton(prominent: prominent, onPressed: onRecord),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RecordButton extends StatelessWidget {
+  const _RecordButton({required this.onPressed, this.prominent = false});
+
+  final VoidCallback onPressed;
+  final bool prominent;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return FilledButton.icon(
+      onPressed: onPressed,
+      icon: const Icon(AppIcons.record, size: 15),
+      label: const Text('Catat ganti'),
+      style: FilledButton.styleFrom(
+        minimumSize: const Size(0, 34),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        backgroundColor: prominent ? colors.primary : colors.primarySoft,
+        foregroundColor: prominent ? colors.white : colors.primaryDark,
+        textStyle: AppType.button.copyWith(fontSize: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadii.sm),
+        ),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+    );
+  }
+}
+
+class _CollapsiblePartGroup extends StatelessWidget {
+  const _CollapsiblePartGroup({
+    required this.storageKey,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.soft,
+    required this.statusLabel,
+    required this.statusColor,
+    required this.statusSoft,
+    required this.statusIcon,
+    required this.parts,
+    required this.iconFor,
+    required this.onOpen,
+    required this.onRecord,
+  });
+
+  final String storageKey;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final Color soft;
+  final String statusLabel;
+  final Color statusColor;
+  final Color statusSoft;
+  final IconData statusIcon;
+  final List<MaintenanceComponent> parts;
+  final IconData Function(MaintenanceComponent) iconFor;
+  final ValueChanged<MaintenanceComponent> onOpen;
+  final ValueChanged<MaintenanceComponent> onRecord;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return _CardShell(
+      padding: EdgeInsets.zero,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          key: PageStorageKey(storageKey),
+          tilePadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: 2,
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.sm,
+          ),
+          leading: _IconTile(icon: icon, color: color, soft: soft),
+          title: Text(
+            title,
+            style: AppType.cardTitle.copyWith(color: colors.ink, fontSize: 16),
+          ),
+          subtitle: Text(
+            subtitle,
+            style: TextStyle(color: colors.muted, fontSize: 11.5),
+          ),
+          iconColor: colors.primary,
+          collapsedIconColor: colors.muted,
+          children: [
+            Divider(color: colors.line),
+            for (var index = 0; index < parts.length; index++) ...[
+              _CompactPartRow(
+                part: parts[index],
+                icon: iconFor(parts[index]),
+                statusLabel: statusLabel,
+                statusColor: statusColor,
+                statusSoft: statusSoft,
+                statusIcon: statusIcon,
+                onOpen: () => onOpen(parts[index]),
+                onRecord: () => onRecord(parts[index]),
+              ),
+              if (index != parts.length - 1) Divider(color: colors.line),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactPartRow extends StatelessWidget {
+  const _CompactPartRow({
+    required this.part,
+    required this.icon,
+    required this.statusLabel,
+    required this.statusColor,
+    required this.statusSoft,
+    required this.statusIcon,
+    required this.onOpen,
+    required this.onRecord,
+  });
+
+  final MaintenanceComponent part;
+  final IconData icon;
+  final String statusLabel;
+  final Color statusColor;
+  final Color statusSoft;
+  final IconData statusIcon;
+  final VoidCallback onOpen;
+  final VoidCallback onRecord;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            children: [
+              Icon(icon, color: colors.inkSoft, size: 20),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  part.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colors.ink,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _StatusBadge(
+                label: statusLabel,
+                icon: statusIcon,
+                color: statusColor,
+                background: statusSoft,
+              ),
+              IconButton(
+                tooltip: 'Catat ganti',
+                onPressed: onRecord,
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                padding: EdgeInsets.zero,
+                icon: Icon(AppIcons.record, size: 19, color: colors.primary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SegmentedGauge extends StatelessWidget {
+  const _SegmentedGauge({
     required this.value,
     required this.color,
-    required this.leftLabel,
-    required this.rightLabel,
-    required this.caption,
+    this.height = 8,
+    this.segments = 14,
   });
 
   final double value;
   final Color color;
-  final String leftLabel;
-  final String rightLabel;
-  final String caption;
+  final double height;
+  final int segments;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      ClipRRect(
-        borderRadius: BorderRadius.circular(999),
-        child: LinearProgressIndicator(
-          value: value.clamp(0.0, 1.0).toDouble(),
-          minHeight: 8,
-          backgroundColor: line,
-          valueColor: AlwaysStoppedAnimation<Color>(color),
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: value.clamp(0.0, 1.0).toDouble()),
+      duration: reduceMotion ? Duration.zero : AppMotion.normal,
+      curve: Curves.easeOutCubic,
+      builder: (context, animated, child) => SizedBox(
+        height: height,
+        width: double.infinity,
+        child: CustomPaint(
+          painter: _SegmentedGaugePainter(
+            value: animated,
+            color: color,
+            track: colors.line,
+            segments: segments,
+          ),
         ),
       ),
-      const SizedBox(height: 8),
-      Row(
-        children: [
-          Expanded(
-            child: Text(
-              leftLabel,
-              style: const TextStyle(color: muted, fontSize: 11),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            rightLabel,
-            textAlign: TextAlign.end,
-            style: const TextStyle(
-              color: ink,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 4),
-      Text(
-        caption,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ],
-  );
+    );
+  }
+}
+
+class _SegmentedGaugePainter extends CustomPainter {
+  const _SegmentedGaugePainter({
+    required this.value,
+    required this.color,
+    required this.track,
+    required this.segments,
+  });
+
+  final double value;
+  final Color color;
+  final Color track;
+  final int segments;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+    final gap = math.min(3.0, size.width / (segments * 4));
+    final segmentWidth = (size.width - gap * (segments - 1)) / segments;
+    if (segmentWidth <= 0) return;
+    final filled = (value.clamp(0.0, 1.0) * segments).round();
+    final paint = Paint()..isAntiAlias = true;
+    for (var index = 0; index < segments; index++) {
+      paint.color = index < filled ? color : track;
+      final rect = Rect.fromLTWH(
+        index * (segmentWidth + gap),
+        0,
+        segmentWidth,
+        size.height,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, Radius.circular(size.height / 2)),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SegmentedGaugePainter oldDelegate) =>
+      oldDelegate.value != value ||
+      oldDelegate.color != color ||
+      oldDelegate.track != track ||
+      oldDelegate.segments != segments;
 }
 
 class _SlimProgressIndicator extends StatelessWidget {
@@ -2837,53 +3137,13 @@ class _SlimProgressIndicator extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      ClipRRect(
-        borderRadius: BorderRadius.circular(999),
-        child: LinearProgressIndicator(
-          value: value.clamp(0.0, 1.0).toDouble(),
-          minHeight: 5,
-          backgroundColor: line,
-          valueColor: AlwaysStoppedAnimation<Color>(color),
-        ),
-      ),
-      const SizedBox(height: 6),
-      Text(
-        label,
-        textAlign: TextAlign.end,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    ],
-  );
-}
-
-class _MiniMetric extends StatelessWidget {
-  const _MiniMetric({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        label,
-        style: const TextStyle(
-          color: muted,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      const SizedBox(height: 3),
-      Text(
-        value,
-        style: const TextStyle(
-          color: ink,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
+      _SegmentedGauge(value: value, color: color, height: 8, segments: 16),
+      const SizedBox(height: 5),
+      Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          label,
+          style: AppType.eyebrow.copyWith(color: color, fontSize: 10),
         ),
       ),
     ],
@@ -2897,28 +3157,32 @@ class _InfoChip extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-    decoration: BoxDecoration(
-      color: surfaceSoft,
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: green, size: 14),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: const TextStyle(
-            color: muted,
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: colors.surfaceSoft,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
+        border: Border.all(color: colors.line),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: colors.primaryDark, size: 14),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: colors.inkSoft,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class _SourceChip extends StatelessWidget {
@@ -2927,21 +3191,24 @@ class _SourceChip extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-    decoration: BoxDecoration(
-      color: surfaceSoft,
-      borderRadius: BorderRadius.circular(999),
-    ),
-    child: Text(
-      label,
-      style: const TextStyle(
-        color: muted,
-        fontSize: 9,
-        fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: colors.surfaceSoft,
+        borderRadius: BorderRadius.circular(AppRadii.pill),
       ),
-    ),
-  );
+      child: Text(
+        label.toUpperCase(),
+        style: AppType.eyebrow.copyWith(
+          color: colors.muted,
+          fontSize: 8,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
 }
 
 class _SectionHeading extends StatelessWidget {
@@ -2950,30 +3217,41 @@ class _SectionHeading extends StatelessWidget {
   final String title;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        eyebrow,
-        style: const TextStyle(
-          color: green,
-          fontSize: 10,
-          letterSpacing: 1.2,
-          fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _SpeedStripe(color: colors.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Flexible(
+              child: Text(
+                eyebrow,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppType.eyebrow.copyWith(
+                  color: colors.primaryDark,
+                  fontSize: 9.5,
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-      const SizedBox(height: 5),
-      Text(
-        title,
-        style: const TextStyle(
-          color: ink,
-          fontSize: 19,
-          height: 1.25,
-          fontWeight: FontWeight.w800,
+        const SizedBox(height: 4),
+        Text(
+          title,
+          style: AppType.cardTitle.copyWith(
+            color: colors.ink,
+            fontSize: 20,
+            height: 1.15,
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 class _OdometerField extends StatelessWidget {
@@ -2985,6 +3263,7 @@ class _OdometerField extends StatelessWidget {
     required this.validator,
     this.suffixText = 'km',
   });
+
   final TextEditingController controller;
   final String label;
   final String hint;
@@ -2993,58 +3272,70 @@ class _OdometerField extends StatelessWidget {
   final String suffixText;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        label,
-        style: const TextStyle(
-          color: ink,
-          fontSize: 12.5,
-          fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: colors.ink,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-      ),
-      const SizedBox(height: 7),
-      TextFormField(
-        controller: controller,
-        validator: validator,
-        keyboardType: TextInputType.number,
-        textInputAction: textInputAction,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        decoration: InputDecoration(
-          hintText: hint,
-          suffixText: suffixText,
-          prefixIcon: const Icon(Icons.speed_rounded, color: muted, size: 19),
+        const SizedBox(height: 7),
+        TextFormField(
+          controller: controller,
+          validator: validator,
+          keyboardType: TextInputType.number,
+          textInputAction: textInputAction,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          style: AppType.metric.copyWith(
+            color: colors.ink,
+            fontSize: 16,
+            fontFeatures: const [],
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            suffixText: suffixText,
+            prefixIcon: Icon(AppIcons.speed, color: colors.muted, size: 19),
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 class _SafetyNote extends StatelessWidget {
   const _SafetyNote();
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    decoration: BoxDecoration(
-      color: surfaceSoft,
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: const Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(Icons.info_outline_rounded, color: muted, size: 18),
-        SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            'Pengingat ini membantu mencatat jadwal. Ikuti juga rekomendasi buku manual motormu.',
-            style: TextStyle(color: muted, fontSize: 12, height: 1.45),
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: colors.surfaceSoft,
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(color: colors.line),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(AppIcons.infoOutline, color: colors.muted, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Pengingat ini membantu mencatat jadwal. Ikuti juga rekomendasi buku manual motormu.',
+              style: TextStyle(color: colors.muted, fontSize: 12, height: 1.45),
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 class _SummaryRow extends StatelessWidget {
@@ -3053,26 +3344,376 @@ class _SummaryRow extends StatelessWidget {
   final String value;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Expanded(
-        child: Text(
-          label,
-          style: const TextStyle(color: muted, fontSize: 12.5),
-        ),
-      ),
-      const SizedBox(width: 12),
-      Flexible(
-        child: Text(
-          value,
-          textAlign: TextAlign.end,
-          style: const TextStyle(
-            color: ink,
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(color: colors.muted, fontSize: 12.5),
           ),
         ),
-      ),
-    ],
+        const SizedBox(width: AppSpacing.md),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: AppType.metric.copyWith(
+              color: colors.ink,
+              fontSize: 13,
+              fontFeatures: const [],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ScreenIntro extends StatelessWidget {
+  const _ScreenIntro({
+    required this.eyebrow,
+    required this.title,
+    required this.description,
+  });
+
+  final String eyebrow;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _SpeedStripe(color: colors.primary),
+            const SizedBox(width: AppSpacing.sm),
+            Flexible(
+              child: Text(
+                eyebrow,
+                style: AppType.eyebrow.copyWith(
+                  color: colors.primaryDark,
+                  fontSize: 9.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          title,
+          style: AppType.km.copyWith(
+            color: colors.ink,
+            fontSize: 34,
+            height: 1.02,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          description,
+          style: TextStyle(color: colors.muted, height: 1.45, fontSize: 13.5),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpeedStripe extends StatelessWidget {
+  const _SpeedStripe({required this.color});
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 3.5,
+    height: 12,
+    decoration: BoxDecoration(
+      color: color,
+      borderRadius: BorderRadius.circular(2),
+    ),
   );
+}
+
+class _CountUpOdometer extends StatelessWidget {
+  const _CountUpOdometer({required this.value, required this.style});
+  final int value;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: value.toDouble()),
+      duration: reduceMotion ? Duration.zero : AppMotion.odometer,
+      curve: Curves.easeOutCubic,
+      builder: (context, animated, child) => Text(
+        formatNumber(animated.round()),
+        maxLines: 1,
+        overflow: TextOverflow.fade,
+        softWrap: false,
+        style: style,
+      ),
+    );
+  }
+}
+
+class _HeroStat extends StatelessWidget {
+  const _HeroStat({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.soft,
+    required this.icon,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+  final Color soft;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(AppRadii.sm),
+      border: Border.all(color: color.withValues(alpha: 0.32), width: 1),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: color),
+        const SizedBox(width: 5),
+        Text(
+          '$value',
+          style: AppType.metric.copyWith(
+            color: Colors.white,
+            fontSize: 14,
+            fontFeatures: const [],
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.8),
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _FinishBanner extends StatelessWidget {
+  const _FinishBanner({required this.title, required this.subtitle});
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: colors.safe.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadii.md),
+        border: Border.all(
+          color: colors.safe.withValues(alpha: 0.28),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: colors.safe.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(AppIcons.checkCircle, color: colors.safeSoft, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: colors.white,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: colors.white.withValues(alpha: 0.75),
+                    fontSize: 11.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+      child: Column(
+        children: [
+          _IconTile(
+            icon: icon,
+            color: colors.primaryDark,
+            soft: colors.primarySoft,
+            size: 50,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            title,
+            style: AppType.cardTitle.copyWith(color: colors.ink, fontSize: 17),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: colors.muted, height: 1.45, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SheetHeading extends StatelessWidget {
+  const _SheetHeading({
+    required this.eyebrow,
+    required this.title,
+    required this.icon,
+  });
+
+  final String eyebrow;
+  final String title;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = RawatinColors.of(context);
+    return Row(
+      children: [
+        _IconTile(
+          icon: icon,
+          color: colors.primaryDark,
+          soft: colors.primarySoft,
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                eyebrow,
+                style: AppType.eyebrow.copyWith(
+                  color: colors.primaryDark,
+                  fontSize: 9,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                title,
+                style: AppType.cardTitle.copyWith(
+                  color: colors.ink,
+                  fontSize: 21,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroBackdropPainter extends CustomPainter {
+  const _HeroBackdropPainter({required this.stripe, required this.accent});
+  final Color stripe;
+  final Color accent;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.clipRect(Offset.zero & size);
+
+    // 1. Garis aksen presisi telemetry di tepi atas instrumen cluster (3px)
+    final topBarPaint = Paint()
+      ..shader = LinearGradient(
+        colors: [stripe, accent.withValues(alpha: 0.8), Colors.transparent],
+        stops: const [0.0, 0.45, 0.85],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, 3));
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, 3), topBarPaint);
+
+    // 2. Ambient radial glow halus di sudut kanan atas
+    final glowCenter = Offset(size.width * 0.9, size.height * 0.2);
+    final glowRadius = size.width * 0.65;
+    final glowPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          stripe.withValues(alpha: 0.14),
+          stripe.withValues(alpha: 0.03),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.5, 1.0],
+      ).createShader(Rect.fromCircle(center: glowCenter, radius: glowRadius));
+    canvas.drawCircle(glowCenter, glowRadius, glowPaint);
+
+    // 3. Lengkung takometer/spedometer digital yang bersih dan presisi
+    final gaugeCenter = Offset(size.width * 0.88, size.height * 0.2);
+    final outerRing = Paint()
+      ..color = Colors.white.withValues(alpha: 0.04)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    canvas.drawCircle(gaugeCenter, 115, outerRing);
+    canvas.drawCircle(gaugeCenter, 132, outerRing);
+
+    final telemetryArc = Paint()
+      ..color = accent.withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(
+      Rect.fromCircle(center: gaugeCenter, radius: 124),
+      math.pi * 0.65,
+      math.pi * 0.45,
+      false,
+      telemetryArc,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _HeroBackdropPainter oldDelegate) =>
+      oldDelegate.stripe != stripe || oldDelegate.accent != accent;
 }

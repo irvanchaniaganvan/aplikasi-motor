@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Logo Rawatin">
+  <!-- Sumber desain logo sementara. Geometri ini disalin ke RawatinLogoPainter. -->
+  <rect width="512" height="512" rx="112" fill="#D63A00"/>
+  <g fill="#FFC83D">
+    <rect x="64" y="324" width="48" height="14" rx="7"/>
+    <rect x="64" y="360" width="34" height="14" rx="7"/>
+    <rect x="64" y="396" width="20" height="14" rx="7"/>
+  </g>
+  <path d="M250 282h80l86 126h-80z" fill="#FFFDF9"/>
+  <rect x="136" y="104" width="64" height="304" rx="8" fill="#FFFDF9"/>
+  <path d="M200 104h102c62 0 102 40 102 98s-40 98-102 98H200z" fill="#FFFDF9"/>
+  <path d="M200 164h98c22 0 36 14 36 38s-14 38-36 38h-98z" fill="#D63A00"/>
+</svg>

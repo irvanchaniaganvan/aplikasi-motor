@@ -25,25 +25,42 @@ enum OilScheduleStatus { safe, soon, due }
 class OilScheduleCalculator {
   const OilScheduleCalculator();
 
-  OilSchedule calculate(MotorData data, {DateTime? today, int soonThresholdKm = 500, int soonThresholdDays = 14}) {
+  OilSchedule calculate(
+    MotorData data, {
+    DateTime? today,
+    int soonThresholdKm = 500,
+    int soonThresholdDays = 14,
+  }) {
     final nextOdometer = data.lastOilOdometer + data.oilInterval;
-    final nextDate = data.lastOilChangeDate != null && data.oilIntervalMonths != null
+    final nextDate =
+        data.lastOilChangeDate != null && data.oilIntervalMonths != null
         ? _addMonths(data.lastOilChangeDate!, data.oilIntervalMonths!)
         : null;
     final currentDate = today ?? DateTime.now();
     final daysRemaining = nextDate == null
         ? null
         : DateTime(nextDate.year, nextDate.month, nextDate.day)
-            .difference(DateTime(currentDate.year, currentDate.month, currentDate.day))
-            .inDays;
-    final due = nextOdometer <= data.currentOdometer || (daysRemaining != null && daysRemaining <= 0);
-    final soon = !due && (nextOdometer - data.currentOdometer <= soonThresholdKm || (daysRemaining != null && daysRemaining <= soonThresholdDays));
+              .difference(
+                DateTime(currentDate.year, currentDate.month, currentDate.day),
+              )
+              .inDays;
+    final due =
+        nextOdometer <= data.currentOdometer ||
+        (daysRemaining != null && daysRemaining <= 0);
+    final soon =
+        !due &&
+        (nextOdometer - data.currentOdometer <= soonThresholdKm ||
+            (daysRemaining != null && daysRemaining <= soonThresholdDays));
     return OilSchedule(
       nextOdometer: nextOdometer,
       distanceRemaining: nextOdometer - data.currentOdometer,
       nextDate: nextDate,
       daysRemaining: daysRemaining,
-      status: due ? OilScheduleStatus.due : soon ? OilScheduleStatus.soon : OilScheduleStatus.safe,
+      status: due
+          ? OilScheduleStatus.due
+          : soon
+          ? OilScheduleStatus.soon
+          : OilScheduleStatus.safe,
     );
   }
 
