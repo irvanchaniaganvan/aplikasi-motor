@@ -161,4 +161,8 @@ abstract final class AppIcons {
   static const checkCircle = Icons.check_circle_rounded;
   static const flag = Icons.sports_score_rounded;
   static const visibility = Icons.visibility_rounded;
+  static const send = Icons.send_rounded;
+  static const refresh = Icons.refresh_rounded;
+  static const restart = Icons.restart_alt_rounded;
+  static const arrowBack = Icons.arrow_back_rounded;
 }

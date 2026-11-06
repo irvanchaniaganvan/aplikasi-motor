@@ -1,3 +1,5 @@
+import '../../../maintenance/domain/entities/oil_specification.dart';
+
 class MotorModelCatalog {
   const MotorModelCatalog({required this.brands});
 
@@ -58,6 +60,7 @@ class MotorModel {
     this.generation,
     this.aliases = const [],
     this.notes,
+    this.oilSpec,
   });
 
   final String name;
@@ -67,6 +70,7 @@ class MotorModel {
   final String? generation;
   final List<String> aliases;
   final String? notes;
+  final OilSpecification? oilSpec;
 
   String get searchLabel {
     final details = <String>[
@@ -84,6 +88,13 @@ class MotorModel {
     final generation = json['generasi'];
     final aliases = json['alias'] ?? const <dynamic>[];
     final notes = json['catatan'];
+    OilSpecification? oilSpec;
+    final rawOil = json['spesifikasi_oli'] ?? json['oil_spec'];
+    if (rawOil is Map<String, dynamic>) {
+      oilSpec = OilSpecification.fromJson(rawOil);
+    } else if (rawOil is Map) {
+      oilSpec = OilSpecification.fromJson(Map<String, dynamic>.from(rawOil));
+    }
     if (name is! String ||
         motorType is! String ||
         cooling is! String ||
@@ -106,6 +117,7 @@ class MotorModel {
       generation: generation as String?,
       aliases: aliases.cast<String>(),
       notes: notes as String?,
+      oilSpec: oilSpec,
     );
   }
 }

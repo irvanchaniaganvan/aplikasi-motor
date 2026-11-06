@@ -1,3 +1,5 @@
+import 'oil_specification.dart';
+
 class MaintenanceMotorCatalog {
   const MaintenanceMotorCatalog({required this.motors});
 
@@ -27,6 +29,7 @@ class MaintenanceMotor {
     required this.transmission,
     required this.cooling,
     required this.parts,
+    this.oilSpec,
   });
 
   final String id;
@@ -34,6 +37,7 @@ class MaintenanceMotor {
   final String transmission;
   final String cooling;
   final List<String> parts;
+  final OilSpecification? oilSpec;
 
   factory MaintenanceMotor.fromJson(Map<String, dynamic> json) {
     final id = json['id'];
@@ -41,6 +45,13 @@ class MaintenanceMotor {
     final transmission = json['transmisi'];
     final cooling = json['pendingin'];
     final parts = json['parts'];
+    OilSpecification? oilSpec;
+    final rawOil = json['spesifikasi_oli'] ?? json['oil_spec'];
+    if (rawOil is Map<String, dynamic>) {
+      oilSpec = OilSpecification.fromJson(rawOil);
+    } else if (rawOil is Map) {
+      oilSpec = OilSpecification.fromJson(Map<String, dynamic>.from(rawOil));
+    }
     if (id is! String ||
         name is! String ||
         transmission is! String ||
@@ -55,6 +66,7 @@ class MaintenanceMotor {
       transmission: transmission,
       cooling: cooling,
       parts: parts.cast<String>(),
+      oilSpec: oilSpec,
     );
   }
 }

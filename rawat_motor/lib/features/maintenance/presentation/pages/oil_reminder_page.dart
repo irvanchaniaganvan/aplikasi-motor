@@ -20,6 +20,7 @@ import '../../domain/services/oil_schedule_calculator.dart';
 import '../../domain/use_cases/load_motor_data.dart';
 import '../../domain/use_cases/save_motor_data.dart';
 import '../../../profile/domain/entities/driver_motor_profile.dart';
+import 'oil_guide_page.dart';
 
 class OilReminderPage extends StatefulWidget {
   const OilReminderPage({
@@ -1251,6 +1252,18 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 icon: const Icon(Icons.tune_rounded),
                 label: const Text('Ubah interval'),
               ),
+              if (component.name == 'Oli mesin' ||
+                  component.name == 'Oli gardan') ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _openOilGuide();
+                  },
+                  icon: const Icon(AppIcons.oil),
+                  label: const Text('Panduan oli'),
+                ),
+              ],
               const SizedBox(height: 16),
               const Text(
                 'Riwayat servis',
@@ -1303,6 +1316,32 @@ class _OilReminderPageState extends State<OilReminderPage> {
         ),
       ),
     );
+  }
+
+  void _openOilGuide() {
+    final motor = _selectedMaintenanceMotor;
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => OilGuidePage(
+          motor: motor,
+          profile: widget.profile,
+          onRecordOilService: _openOilChangeForm,
+        ),
+      ),
+    );
+  }
+
+  /// Membuka form "Catat ganti" oli mesin, terlepas dari kartu mana
+  /// yang dipakai untuk membuka panduan oli.
+  void _openOilChangeForm() {
+    for (final component in _components) {
+      final name = component.name.toLowerCase();
+      if (name == 'oli mesin' || name == 'oli-mesin') {
+        _showRecordComponentForm(component);
+        return;
+      }
+    }
+    _showMessage('Komponen oli mesin belum tersedia.');
   }
 
   Future<void> _editComponentInterval(

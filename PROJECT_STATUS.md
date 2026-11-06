@@ -37,9 +37,16 @@ Terakhir diperbarui: 5 November 2026
 - Data oli lama (km servis terakhir, interval, tanggal, riwayat) tetap dipertahankan dan dimigrasikan ke state part `oli-mesin`; skema lama tanpa ID tetap dapat dibaca.
 - Alur UI dirapikan: navigasi mobile kini memakai label **Servis**, **Kilometer**, dan **Jadwal**; Ringkasan menampilkan semua kartu part berurut urgensi dengan tombol pencatatan langsung. Pengguna yang belum mengatur odometer mendapat ajakan langkah pertama yang jelas, dan info interval umum diringkas di bawah jadwal.
 - Tampilan dirapikan menjadi modern motorsport yang proper dan clean: menghapus motif bendera catur (checkered strip) dan stiker garis miring diagonal yang mencolok di header, kartu, dan dialog; mengubah palet kanvas ke slate-white bersih (`#F8FAFC`) dengan kartu putih bergaris tipis modern; menyelaraskan teks antarmuka dengan font Barlow yang rapi dan mudah dibaca; serta mengubah latar odometer hero menjadi instrumen cluster digital modern dengan ambient telemetry glow dan lengkung takometer presisi.
+- Fitur **Panduan Oli** ditambahkan sebagai layar edukasi terpisah (`lib/features/maintenance/presentation/pages/oil_guide_page.dart`). Seluruh isi 8 bagian panduan disimpan di `presentation/content/oil_guide_content.dart` agar mudah disunting tanpa menyentuh UI. Layar memakai banner "Panduan umum. Selalu utamakan buku manual motor kamu.", accordion dengan bagian pertama terbuka, dan tombol "Catat ganti oli" yang membuka form pencatatan oli mesin yang sudah ada.
+- Pintu masuk **Panduan oli** tersedia pada bottom sheet detail kartu **Oli mesin** dan **Oli gardan** di `oil_reminder_page.dart`; kartu komponen lain tidak menampilkannya.
+- Model `OilSpecification` (`sae`, `jaso`, `volume`, `verified`) ditambahkan sebagai field opsional di `MotorModel` dan `MaintenanceMotor`. Data lama tanpa field `spesifikasi_oli`/`oil_spec` tetap terbaca dan dianggap belum terverifikasi. UI hanya menampilkan angka SAE/JASO/volume jika `verified: true`; selain itu menampilkan "Spesifikasi belum diverifikasi. Cek buku manual motor kamu."
+- Fitur **Tanya Panduan Oli** memakai interface `AiService` dengan `FakeAiService` sebagai default (tanpa backend) dan `HttpAiService` untuk memanggil `POST /ask-oil` via `--dart-define=AI_BACKEND_URL=...`. Tidak ada API key LLM di aplikasi. `--dart-define=AI_FEATURE=off` menyembunyikan bagian AI.
+- Asisten AI memiliki input maksimal 500 karakter dengan penghitung, tiga chip pertanyaan contoh, jawaban berbentuk gelembung berlabel "Dijawab AI, bisa keliru. Cek buku manual.", tombol "Mulai ulang", serta penanganan memuat, galat jaringan dengan "Coba lagi", rate limit, dan kondisi AI belum dikonfigurasi ("Segera hadir").
+- Persetujuan AI disimpan lokal lewat `LocalAiConsentStorage`; tanpa persetujuan tidak ada permintaan jaringan. `install_id` berupa UUID v4 acak perangkat. Riwayat chat hanya di memori sesi layar. Spesifikasi motor hanya dikirim ke backend jika `verified: true`, selain itu `oil_spec: null`.
+- Kontrak backend serverless dan system prompt didokumentasikan di `docs/ai-contract.md`, mencakup skema request/response, kode galat `too_long`/`rate_limited`/`server_error`, serta aturan privasi.
+- Tes memeriksa jadwal oli dan multi-part (km/bulan, status awal, filter part, migrasi oli, reset part terpilih, serta log odometer), pemuatan katalog, pemilihan model, penyimpanan lokal, alur utama profil/akun, navigasi Panduan Oli dari kartu oli, tampilan spesifikasi terverifikasi vs belum, kompatibilitas data lama, perilaku `FakeAiService`, batas 500 karakter, dan penegakan persetujuan AI.
 - Saat sesi terputus atau konteks percakapan hilang, gunakan file ini sebagai ringkasan pemulihan. Baca juga `AGENTS.md`, lalu periksa status Git dan file terkait sebelum melanjutkan. Jangan menimpa perubahan lokal yang belum dikomit.
 - Pada pembaruan dokumentasi 5 November 2026, working tree memiliki perubahan lokal belum dikomit di dokumentasi dan beberapa berkas Flutter/data/tes. Jangan menganggap perubahan tersebut telah masuk commit; mulai dengan `git status --short` dan `git diff` untuk melihat kondisi terbaru.
-- Tes memeriksa jadwal oli dan multi-part (km/bulan, status awal, filter part, migrasi oli, reset part terpilih, serta log odometer), pemuatan katalog, pemilihan model, penyimpanan lokal, dan alur utama profil/akun.
 
 ## Batasan saat ini
 
@@ -57,7 +64,7 @@ Terakhir diperbarui: 5 November 2026
 
 ## Pemeriksaan terakhir
 
-- Pemeriksaan terakhir setelah implementasi jadwal multi-part dan penyederhanaan UI: `flutter analyze` bersih dan `flutter test` lulus (32 tes).
+- Pemeriksaan terakhir setelah implementasi Panduan Oli dan Tanya Panduan Oli: `flutter analyze` bersih dan `flutter test` lulus (62 tes: 32 tes lama + 30 tes baru di `test/oil_guide_test.dart`).
 - Build Windows debug berhasil setelah memperbaiki typo variabel ID profil terpilih di `rawat_motor/lib/main.dart`.
 - `flutter doctor`: Flutter 3.47.8 terdeteksi; Android SDK belum tersedia; iOS build tidak dapat dilakukan dari Windows.
 - Build Windows debug berhasil: `build/windows/x64/runner/Debug/rawatin.exe`.
@@ -67,9 +74,11 @@ Terakhir diperbarui: 5 November 2026
 
 1. Pasang Android Studio dan Android SDK, lalu ikuti petunjuk lisensi yang dilaporkan `flutter doctor`.
 2. Pasang/konfigurasi Android SDK agar aplikasi dapat diuji di emulator atau perangkat Android.
-3. Validasi alur log odometer, jadwal komponen, penyaringan profil, dan riwayat servis di emulator/perangkat.
-4. Ganti penyimpanan key-value dengan basis data lokal bila model data/riwayat servis bertambah kompleks.
-5. Siapkan build iOS di komputer macOS dengan Xcode.
+3. Validasi alur log odometer, jadwal komponen, penyaringan profil, riwayat servis, serta Panduan Oli di emulator/perangkat.
+4. Isi `spesifikasi_oli` hanya untuk model yang sudah dicek dari buku manual resmi, lalu set `verified: true`.
+5. Bangun backend serverless sesuai `docs/ai-contract.md`, lalu jalankan aplikasi dengan `--dart-define=AI_BACKEND_URL=...`.
+6. Ganti penyimpanan key-value dengan basis data lokal bila model data/riwayat servis bertambah kompleks.
+7. Siapkan build iOS di komputer macOS dengan Xcode.
 
 ## Catatan pemulihan sesi
 
