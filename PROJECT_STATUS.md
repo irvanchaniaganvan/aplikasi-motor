@@ -54,6 +54,13 @@ Terakhir diperbarui: 7 November 2026
   - `lib/features/maintenance/presentation/widgets/oil_guide_widgets.dart` (309 baris): komponen edukasi statis panduan oli (`OilGuideDisclaimer`, `OilGuideMotorSpec`, `OilGuideAccordion`).
   - `oil_reminder_page.dart` terpangkas dari 3.758 menjadi 1.937 baris (hanya memegang state, builder halaman utama, dan form/sheet), sedangkan `oil_guide_page.dart` terpangkas dari 878 menjadi 605 baris.
 - Tes memeriksa jadwal oli dan multi-part (km/bulan, status awal, filter part, migrasi oli, reset part terpilih, serta log odometer), pemuatan katalog, pemilihan model, penyimpanan lokal, alur utama profil/akun, navigasi Panduan Oli dari kartu oli, tampilan spesifikasi terverifikasi vs belum, kompatibilitas data lama, perilaku `FakeAiService`, batas 500 karakter, dan penegakan persetujuan AI.
+- Tahap 1 fitur **Perjalanan** (7 November 2026, belum dikomit): dibuat model `Trip`/`TripPoint`, perhitungan Haversine, filter akurasi >50 m, jitter <8 m, timestamp tidak valid, lonjakan >200 km/jam, durasi bergerak, batas 2.000 titik, dan simplifikasi Douglas-Peucker. `TripRecorder` mendukung mulai/jeda/lanjut/selesai secara manual; jeda memutus segmen sehingga jarak antarsegmen jeda tidak dihitung.
+- Rute dan statistik perjalanan disimpan sebagai JSON lokal per ID kendaraan lewat `LocalTripRepository`; tidak ada endpoint perjalanan. Ada `FakeLocationService` berbasis `data/sample_trip.json` untuk Windows dan `GeolocatorLocationService` untuk platform lain. UI menyediakan peta, ringkasan, daftar/detail/hapus perjalanan, serta tautan dari navigasi Perjalanan dan Riwayat.
+- Tile peta disatukan di `features/trips/presentation/map_tile_config.dart`; URL/user-agent/atribusi dapat diatur lewat `--dart-define`. OSM publik hanya fallback pengembangan dan ditandai demikian di UI. Baca `rawat_motor/docs/maps.md` untuk batas penggunaan tile dan konfigurasi.
+- Integrasi odometer hanya berjalan setelah pengguna memilih tambah jarak, meneruskan ke konfirmasi Update KM yang sudah ada, memakai sumber log `perjalanan`, dan menyimpan perubahan melalui use case penyimpanan motor. Nilai jarak GPS ditampilkan sebagai perkiraan, bukan angka speedometer.
+- Android sudah mendapat deklarasi izin lokasi foreground, izin notifikasi, dan konfigurasi plugin foreground service. Namun handler service Android saat ini **belum menjalankan/menjaga stream lokasi di isolate latar belakang**; perekaman layar mati/minimalkan belum siap dinyatakan berfungsi. Perlu implementasi komunikasi/background yang tervalidasi dan TODO uji perangkat di `rawat_motor/docs/maps.md`. Tidak ada izin lokasi latar belakang. iOS hanya memiliki deskripsi izin saat digunakan; background tracking tidak dikerjakan.
+- Batasan: application/bundle ID masih `com.example.rawatin` dan user-agent tile default sementara `id.rawatin.app`; tetapkan ID final sebelum rilis. Peta memakai OSM fallback publik hanya untuk development, bukan konfigurasi produksi. Kegagalan penyimpanan pada tahap selesai menampilkan pesan, tetapi perlu uji tambahan agar rekaman yang gagal simpan tetap dapat dipulihkan dengan aman.
+- Tes perjalanan baru di `test/trip_route_math_test.dart` dan `test/trip_recorder_test.dart` mencakup Haversine, penolakan titik, simplifikasi, izin, dan transisi jeda/lanjut/selesai. Belum ada widget test khusus halaman perjalanan/riwayat/konfirmasi odometer.
 - Saat sesi terputus atau konteks percakapan hilang, gunakan file ini sebagai ringkasan pemulihan. Baca juga `AGENTS.md`, lalu periksa status Git dan file terkait sebelum melanjutkan. Jangan menimpa perubahan lokal yang belum dikomit.
 - Pada pembaruan dokumentasi 5 November 2026, working tree memiliki perubahan lokal belum dikomit di dokumentasi dan beberapa berkas Flutter/data/tes. Jangan menganggap perubahan tersebut telah masuk commit; mulai dengan `git status --short` dan `git diff` untuk melihat kondisi terbaru.
 
@@ -77,6 +84,7 @@ Terakhir diperbarui: 7 November 2026
 - Profil kendaraan (7 November 2026, belum dikomit): `DriverMotorProfile` dan penyimpanan lokal mendukung rem belakang, sistem rem, dan varian secara opsional; data profil lama tanpa field tersebut tetap kompatibel. Katalog memisahkan `Vario 160 CBS` dan `Vario 160 ABS`, serta data rem model terisi otomatis saat model dipilih. Data ABS tetap ditandai belum terverifikasi karena sumber spesifikasi yang dikirim sebelumnya mengarah ke varian CBS.
 - Form edit profil mencoba memulihkan merek/model katalog berdasarkan data tersimpan, sehingga pengguna tidak perlu memilih motor kembali; jika cocokannya tidak ada, field manual tetap menampilkan nilai tersimpan. Foto Windows memakai `file_picker` untuk JPG/JPEG/PNG/WEBP, sedangkan platform mobile tetap memakai `image_picker`; pembatalan picker tidak dianggap error dan jenis error pemilihan, izin, pembacaan, serta penyimpanan dibedakan.
 - Pemeriksaan tugas profil/rem (7 November 2026): `flutter analyze` bersih (0 isu), `flutter test` lulus 100% (89 tes: 34 tes di `widget_test.dart`, 30 tes di `oil_guide_test.dart`, 25 tes di `vehicle_profile_test.dart`). Tes tambahan mencakup pemisahan rem Vario 160 CBS/ABS, auto-fill rem, dan penyimpanan profil saat edit tanpa memilih ulang.
+- Pemeriksaan Tahap 1 Perjalanan (7 November 2026): `flutter analyze` bersih; tes khusus perjalanan lulus (5 tes); `flutter test` penuh lulus (94 tes total: 89 tes lama + 5 tes perjalanan).
 - Perapian Beranda (7 November 2026): `DashboardHeader` hanya menampilkan sapaan pengendara; kartu profil menjadi satu-satunya tempat identitas motor. Jika nickname kosong, judul kartu memakai nama merek dan model, dengan tahun serta jenis motor sebagai keterangan. Tes header dan kedua variasi judul kartu diperbarui.
 - Placeholder foto Beranda (7 November 2026): saat foto belum dipilih, kartu profil kini menampilkan placeholder netral bergambar tambah foto—bukan ikon motor—dan tautan "Tambahkan foto motor di profil" membuka editor profil. Avatar di halaman pengaturan tetap memakai fallback ikon motor.
 - Fitur profil kendaraan ditambahkan:
@@ -94,13 +102,16 @@ Terakhir diperbarui: 7 November 2026
 
 ## Langkah berikutnya
 
-1. Pasang Android Studio dan Android SDK, lalu ikuti petunjuk lisensi yang dilaporkan `flutter doctor`.
-2. Pasang/konfigurasi Android SDK agar aplikasi dapat diuji di emulator atau perangkat Android.
-3. Validasi alur log odometer, jadwal komponen, penyaringan profil, riwayat servis, serta Panduan Oli di emulator/perangkat.
-4. Isi `spesifikasi_oli` hanya untuk model yang sudah dicek dari buku manual resmi, lalu set `verified: true`.
-5. Bangun backend serverless sesuai `docs/ai-contract.md`, lalu jalankan aplikasi dengan `--dart-define=AI_BACKEND_URL=...`.
-6. Ganti penyimpanan key-value dengan basis data lokal bila model data/riwayat servis bertambah kompleks.
-7. Siapkan build iOS di komputer macOS dengan Xcode.
+1. Lengkapi handler foreground Android agar location stream tetap aktif dan aman di isolate service; lalu uji notifikasi, minimalkan/layar mati, jeda/lanjut, selesai, izin, dan Android 14+ di perangkat fisik sesuai `docs/maps.md`.
+2. Pasang Android Studio dan Android SDK, lalu ikuti petunjuk lisensi yang dilaporkan `flutter doctor`.
+3. Pasang/konfigurasi Android SDK agar aplikasi dapat diuji di emulator atau perangkat Android.
+4. Tambahkan widget tests untuk halaman Perjalanan, Riwayat, dan alur odometer; uji repository file lokal termasuk skema rusak/tidak kompatibel.
+5. Validasi alur log odometer, jadwal komponen, penyaringan profil, riwayat servis, serta Panduan Oli di emulator/perangkat.
+6. Isi `spesifikasi_oli` hanya untuk model yang sudah dicek dari buku manual resmi, lalu set `verified: true`.
+7. Bangun backend serverless sesuai `docs/ai-contract.md`, lalu jalankan aplikasi dengan `--dart-define=AI_BACKEND_URL=...`.
+8. Tetapkan application/bundle ID resmi dan tile provider produksi sebelum rilis.
+9. Ganti penyimpanan key-value dengan basis data lokal bila model data/riwayat servis bertambah kompleks.
+10. Siapkan build iOS di komputer macOS dengan Xcode.
 
 ## Catatan pemulihan sesi
 

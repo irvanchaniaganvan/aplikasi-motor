@@ -7,11 +7,18 @@ import '../../domain/entities/motor_data.dart';
 import '../../domain/entities/odometer_entry.dart';
 import '../../domain/entities/service_record.dart';
 import '../widgets/common_widgets.dart';
+import '../../../trips/data/repositories/local_trip_repository.dart';
+import '../../../trips/presentation/pages/trip_record_page.dart';
 
 class HistoryView extends StatelessWidget {
-  const HistoryView({required this.data, super.key});
+  const HistoryView({
+    required this.data,
+    this.vehicleId = 'vehicle-1',
+    super.key,
+  });
 
   final MotorData? data;
+  final String vehicleId;
 
   @override
   Widget build(BuildContext context) {
@@ -99,6 +106,14 @@ class HistoryView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: grouped,
                       ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              RawatinCard(
+                padding: EdgeInsets.all(AppSpacing.lg),
+                child: TripHistorySection(
+                  vehicleId: vehicleId,
+                  repository: LocalTripRepository(),
+                ),
               ),
             ],
           ),

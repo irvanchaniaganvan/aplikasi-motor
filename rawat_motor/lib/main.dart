@@ -10,8 +10,10 @@ import 'features/profile/data/repositories/local_profile_repository.dart';
 import 'features/profile/domain/entities/driver_motor_profile.dart';
 import 'features/profile/presentation/pages/local_account_page.dart';
 import 'features/profile/presentation/pages/profile_setup_page.dart';
+import 'features/trips/data/services/android_trip_foreground_service.dart';
 
 void main() {
+  AndroidTripForegroundService.initialize();
   runApp(const RawatinApp());
 }
 

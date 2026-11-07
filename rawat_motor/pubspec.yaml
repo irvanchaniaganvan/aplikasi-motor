@@ -38,6 +38,10 @@ dependencies:
   image_picker: ^1.2.4
   path_provider: ^2.1.6
   file_picker: ^10.3.10
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
+  geolocator: ^14.0.2
+  flutter_foreground_task: ^11.0.3
 
 dev_dependencies:
   flutter_test:
@@ -65,6 +69,7 @@ flutter:
     - data/motor/data/default_interval.json
     - data/motor/data/maintenance_motor_catalog.json
     - data/model_motor.json
+    - data/sample_trip.json
     - assets/brand/
   fonts:
     - family: Rajdhani

@@ -20,6 +20,8 @@ import '../../domain/use_cases/load_motor_data.dart';
 import '../../domain/use_cases/save_motor_data.dart';
 import '../../../profile/domain/entities/driver_motor_profile.dart';
 import '../../../profile/presentation/widgets/vehicle_avatar.dart';
+import '../../../trips/data/repositories/local_trip_repository.dart';
+import '../../../trips/presentation/pages/trip_record_page.dart';
 import 'history_view.dart';
 import 'oil_guide_page.dart';
 import '../widgets/common_widgets.dart';
@@ -296,8 +298,11 @@ class _OilReminderPageState extends State<OilReminderPage> {
                       Expanded(
                         child: switch (_selectedSection) {
                           0 => _buildDashboard(),
-                          1 => HistoryView(data: _motorData),
-                          2 => HistoryView(data: _motorData),
+                          1 => HistoryView(
+                            data: _motorData,
+                            vehicleId: widget.profile?.id ?? 'vehicle-1',
+                          ),
+                          2 => _buildTripsPage(),
                           _ => _buildPartsPage(),
                         },
                       ),
@@ -315,8 +320,99 @@ class _OilReminderPageState extends State<OilReminderPage> {
 
   void _selectSection(int index) => setState(() => _selectedSection = index);
 
+  Widget _buildTripsPage() => SingleChildScrollView(
+    padding: const EdgeInsets.all(AppSpacing.lg),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 52,
+          child: FilledButton.icon(
+            onPressed: widget.profile == null
+                ? null
+                : () async {
+                    await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => TripRecordPage(
+                          vehicleId: widget.profile!.id,
+                          repository: LocalTripRepository(),
+                          onAddOdometer: _addTripDistanceToOdometer,
+                        ),
+                      ),
+                    );
+                    if (mounted) setState(() {});
+                  },
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: const Text('Mulai perjalanan'),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        if (widget.profile != null)
+          TripHistorySection(
+            key: ValueKey('trip-history-${widget.profile!.id}'),
+            vehicleId: widget.profile!.id,
+            repository: LocalTripRepository(),
+          ),
+      ],
+    ),
+  );
+
+  Future<bool> _addTripDistanceToOdometer(int kilometers) async {
+    if (kilometers <= 0) {
+      _showMessage('Jarak perjalanan terlalu kecil untuk ditambahkan.');
+      return false;
+    }
+    final confirmed = await _confirmTripOdometerUpdate(kilometers);
+    if (!confirmed || !mounted) return false;
+    final current = _motorData?.currentOdometer ?? 0;
+    final updatedKm = current + kilometers;
+    final data = _motorData;
+    final List<OdometerEntry> logs = [
+      ...(data?.odometerLogs ?? const []),
+      OdometerEntry(
+        kilometers: updatedKm,
+        date: DateTime.now(),
+        source: 'perjalanan',
+      ),
+    ];
+    final updated = data == null
+        ? MotorData(
+            currentOdometer: updatedKm,
+            lastOilOdometer: 0,
+            oilInterval: 3000,
+            odometerLogs: logs,
+          )
+        : data.copyWith(currentOdometer: updatedKm, odometerLogs: logs);
+    await _saveComponentData(updated);
+    return _motorData?.currentOdometer == updatedKm;
+  }
+
+  Future<bool> _confirmTripOdometerUpdate(int kilometers) async {
+    final current = _motorData?.currentOdometer ?? 0;
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Konfirmasi Update KM'),
+            content: Text(
+              'Odometer akan diperbarui dari ${formatKm(current)} menjadi ${formatKm(current + kilometers)} berdasarkan jarak GPS perjalanan. Jarak GPS dapat sedikit berbeda dari speedometer.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Batal'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Konfirmasi'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
   Widget _buildMobileNavigation() => NavigationBar(
-    selectedIndex: _selectedSection == 0 ? 0 : 1,
+    selectedIndex: _selectedSection.clamp(0, 2),
     onDestinationSelected: (index) => _selectSection(index),
     destinations: const [
       NavigationDestination(
@@ -329,12 +425,18 @@ class _OilReminderPageState extends State<OilReminderPage> {
         selectedIcon: Icon(AppIcons.history),
         label: 'Riwayat',
       ),
+      NavigationDestination(
+        icon: Icon(Icons.route_outlined),
+        selectedIcon: Icon(Icons.route_rounded),
+        label: 'Perjalanan',
+      ),
     ],
   );
 
   String get _sectionTitle => switch (_selectedSection) {
     0 => 'Beranda',
-    1 || 2 => 'Riwayat',
+    1 => 'Riwayat',
+    2 => 'Perjalanan',
     _ => 'Semua jadwal',
   };
 
@@ -714,9 +816,15 @@ class _OilReminderPageState extends State<OilReminderPage> {
                         label: _motorTypeLabel!,
                       ),
                     if (_coolingLabel != null)
-                      RawatinInfoChip(icon: AppIcons.cooling, label: _coolingLabel!),
+                      RawatinInfoChip(
+                        icon: AppIcons.cooling,
+                        label: _coolingLabel!,
+                      ),
                     if (_frontBrakeLabel != null)
-                      RawatinInfoChip(icon: AppIcons.brake, label: _frontBrakeLabel!),
+                      RawatinInfoChip(
+                        icon: AppIcons.brake,
+                        label: _frontBrakeLabel!,
+                      ),
                     RawatinInfoChip(
                       icon: AppIcons.grid,
                       label: '${visibleComponents.length} komponen',
@@ -1440,12 +1548,14 @@ class _OilReminderPageState extends State<OilReminderPage> {
     notesController.dispose();
   }
 
-  Future<void> _saveComponentData(MotorData data) async {
+  Future<bool> _saveComponentData(MotorData data) async {
     try {
       await widget.saveMotorData(data);
       if (mounted) setState(() => _motorData = data);
+      return true;
     } catch (_) {
       if (mounted) _showMessage('Perubahan komponen gagal disimpan.');
+      return false;
     }
   }
 

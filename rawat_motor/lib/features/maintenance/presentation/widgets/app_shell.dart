@@ -76,6 +76,7 @@ class RawatinSidebar extends StatelessWidget {
                 ),
                 _navItem(0, AppIcons.home, 'Beranda', colors),
                 _navItem(1, AppIcons.history, 'Riwayat', colors),
+                _navItem(2, Icons.route_rounded, 'Perjalanan', colors),
                 _actionItem(
                   AppIcons.settings,
                   'Pengaturan motor',
