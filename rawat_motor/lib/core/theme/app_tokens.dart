@@ -6,23 +6,22 @@ import 'package:flutter/material.dart';
 /// Warna status juga tersedia lewat [RawatinColors] agar nanti mudah
 /// ditukar saat dark mode ditambahkan.
 abstract final class AppPalette {
-  // Netral: modern, clean, dan breathable
-  static const ink = Color(0xFF0F172A);
-  static const inkSoft = Color(0xFF334155);
-  static const muted = Color(0xFF64748B);
-  static const canvas = Color(0xFFF8FAFC);
-  static const surface = Color(0xFFFFFFFF);
-  static const surfaceSoft = Color(0xFFF1F5F9);
-  static const line = Color(0xFFE2E8F0);
+  // Identitas Rawatin: graphite navy, warm ivory, dan brass yang digunakan hemat.
+  static const ink = Color(0xFF111820);
+  static const inkSoft = Color(0xFF35414A);
+  static const muted = Color(0xFF737D83);
+  static const canvas = Color(0xFFF5F3EE);
+  static const surface = Color(0xFFFFFEFC);
+  static const surfaceSoft = Color(0xFFEFEEE8);
+  static const line = Color(0xFFE4E1D9);
 
-  // Brand motorsport: racing red berenergi tapi proper & clean, dengan aksen telemetry amber
-  static const primary = Color(0xFFDC2626);
-  static const primaryBright = Color(0xFFEF4444);
-  static const primaryDark = Color(0xFFB91C1C);
-  static const primarySoft = Color(0xFFFEE2E2);
-  static const accent = Color(0xFFF59E0B);
-  static const accentSoft = Color(0xFFFEF3C7);
-  static const onAccent = Color(0xFF451A03);
+  static const primary = Color(0xFF111820);
+  static const primaryBright = Color(0xFF35414A);
+  static const primaryDark = Color(0xFF0A1015);
+  static const primarySoft = Color(0xFFE8E8E3);
+  static const accent = Color(0xFFB79A63);
+  static const accentSoft = Color(0xFFF1EBDD);
+  static const onAccent = Color(0xFF211B10);
 
   // Status semantik: jernih dan berstandar desain modern
   static const safe = Color(0xFF059669);
@@ -37,7 +36,7 @@ abstract final class AppPalette {
   // Netral tambahan
   static const white = Color(0xFFFFFFFF);
   static const black = Color(0xFF000000);
-  static const shadow = Color(0x0C0F172A);
+  static const shadow = Color(0x0C111820);
   static const checkered = Color(0xFF1E293B);
 }
 

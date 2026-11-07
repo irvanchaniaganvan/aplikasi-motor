@@ -72,6 +72,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
   MotorData? _motorData;
   bool _isLoading = true;
   bool _isSaving = false;
+  ReminderBasis _reminderBasis = ReminderBasis.whicheverFirst;
   int _selectedSection = 0;
   List<MaintenanceComponent> _components = const [];
   List<MaintenanceMotor> _maintenanceMotors = const [];
@@ -111,6 +112,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
       if (!mounted) return;
       setState(() {
         _motorData = data;
+        _reminderBasis = data?.reminderBasis ?? ReminderBasis.whicheverFirst;
         _isLoading = false;
         if (data != null) {
           _currentController.text = data.currentOdometer.toString();
@@ -139,8 +141,12 @@ class _OilReminderPageState extends State<OilReminderPage> {
     if (!_formKey.currentState!.validate()) return false;
     final previousDate = _motorData?.lastOilChangeDate;
     final lastOil = int.parse(_lastOilController.text);
-    final interval = int.parse(_intervalController.text);
-    final months = int.parse(_monthsController.text);
+    final interval = _reminderBasis == ReminderBasis.time
+        ? (_motorData?.oilInterval ?? 3000)
+        : int.parse(_intervalController.text);
+    final months = _reminderBasis == ReminderBasis.distance
+        ? (_motorData?.oilIntervalMonths ?? 3)
+        : int.parse(_monthsController.text);
     final previousOilState = _findComponentState(_motorData, 'Oli mesin');
     final oilState = ComponentMaintenanceState(
       componentName: 'Oli mesin',
@@ -154,6 +160,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
       lastOilOdometer: lastOil,
       oilInterval: interval,
       oilIntervalMonths: months,
+      reminderBasis: _reminderBasis,
       lastOilChangeDate: previousDate,
       odometerLogs: _appendOdometerLog(
         _motorData?.odometerLogs ?? const [],
@@ -954,15 +961,19 @@ class _OilReminderPageState extends State<OilReminderPage> {
         (component.name == 'Oli mesin'
             ? data.oilInterval
             : component.intervalKm);
+    final isOil = component.id == 'oli-mesin' || component.name == 'Oli mesin';
+    final months =
+        state?.intervalMonthsOverride ??
+        (isOil ? data.oilIntervalMonths : component.intervalMonths);
     return const ComponentScheduleCalculator().calculate(
       currentOdometer: data.currentOdometer,
-      intervalKm: interval,
+      intervalKm: isOil && data.reminderBasis == ReminderBasis.time
+          ? 0
+          : interval,
       lastServicedKm: lastServicedKm,
-      intervalMonths:
-          state?.intervalMonthsOverride ??
-          (component.id == 'oli-mesin'
-              ? data.oilIntervalMonths
-              : component.intervalMonths),
+      intervalMonths: isOil && data.reminderBasis == ReminderBasis.distance
+          ? null
+          : months,
       lastServicedAt:
           state?.lastServicedAt ??
           (component.id == 'oli-mesin' ? data.lastOilChangeDate : null),
@@ -989,6 +1000,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
         (component.name == 'Oli mesin'
             ? data.oilInterval
             : component.intervalKm);
+    final isOil = component.id == 'oli-mesin' || component.name == 'Oli mesin';
     final months =
         state?.intervalMonthsOverride ??
         (component.name == 'Oli mesin'
@@ -1003,9 +1015,13 @@ class _OilReminderPageState extends State<OilReminderPage> {
     final schedule =
         const ComponentScheduleCalculator().calculate(
           currentOdometer: data.currentOdometer,
-          intervalKm: interval,
+          intervalKm: isOil && data.reminderBasis == ReminderBasis.time
+              ? 0
+              : interval,
           lastServicedKm: lastServicedKm,
-          intervalMonths: months,
+          intervalMonths: isOil && data.reminderBasis == ReminderBasis.distance
+              ? null
+              : months,
           lastServicedAt:
               state?.lastServicedAt ??
               (component.id == 'oli-mesin' ? data.lastOilChangeDate : null),
@@ -1577,7 +1593,12 @@ class _OilReminderPageState extends State<OilReminderPage> {
             20,
             20 + MediaQuery.viewInsetsOf(sheetContext).bottom,
           ),
-          child: SingleChildScrollView(child: _buildFormCard()),
+          child: SingleChildScrollView(
+            child: StatefulBuilder(
+              builder: (context, setSheetState) =>
+                  _buildFormCard(setSheetState),
+            ),
+          ),
         ),
       ),
     );
@@ -1598,7 +1619,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
     }
   }
 
-  Widget _buildFormCard() {
+  Widget _buildFormCard(StateSetter setSheetState) {
     return RawatinCard(
       child: Form(
         key: _formKey,
@@ -1639,36 +1660,81 @@ class _OilReminderPageState extends State<OilReminderPage> {
               },
             ),
             const SizedBox(height: 16),
-            RawatinOdometerField(
-              controller: _intervalController,
-              label: 'Pengingat setiap',
-              hint: '3000',
-              textInputAction: TextInputAction.done,
-              validator: (value) {
-                final error = requiredNumber(value, 'Isi jarak pengingat.');
-                if (error != null) return error;
-                if (int.parse(value!.trim()) <= 0) {
-                  return 'Jarak pengingat harus lebih besar dari 0 km.';
-                }
-                return null;
-              },
+            Text(
+              'Dasar pengingat',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 16),
-            RawatinOdometerField(
-              controller: _monthsController,
-              label: 'Pengingat setiap berapa bulan',
-              hint: '3',
-              textInputAction: TextInputAction.done,
-              suffixText: 'bulan',
-              validator: (value) {
-                final error = requiredNumber(value, 'Isi interval bulan.');
-                if (error != null) return error;
-                if (int.parse(value!.trim()) <= 0) {
-                  return 'Interval bulan harus lebih dari 0.';
-                }
-                return null;
-              },
+            const SizedBox(height: AppSpacing.sm),
+            SegmentedButton<ReminderBasis>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: ReminderBasis.distance,
+                  label: Text('Jarak'),
+                ),
+                ButtonSegment(value: ReminderBasis.time, label: Text('Waktu')),
+                ButtonSegment(
+                  value: ReminderBasis.whicheverFirst,
+                  label: Text('Lebih dulu'),
+                ),
+              ],
+              selected: {_reminderBasis},
+              onSelectionChanged: (selection) =>
+                  setSheetState(() => _reminderBasis = selection.first),
             ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              switch (_reminderBasis) {
+                ReminderBasis.distance =>
+                  'Pengingat mengikuti kilometer yang ditempuh.',
+                ReminderBasis.time =>
+                  'Pengingat mengikuti waktu sejak servis terakhir.',
+                ReminderBasis.whicheverFirst =>
+                  'Pengingat muncul saat jarak atau waktu tercapai lebih dulu.',
+              },
+              style: TextStyle(
+                color: RawatinColors.of(context).muted,
+                fontSize: 12,
+              ),
+            ),
+            if (_reminderBasis != ReminderBasis.time) ...[
+              const SizedBox(height: 16),
+              RawatinOdometerField(
+                controller: _intervalController,
+                label: 'Interval jarak',
+                hint: '3000',
+                suffixText: 'km',
+                textInputAction: TextInputAction.done,
+                validator: (value) {
+                  if (_reminderBasis == ReminderBasis.time) return null;
+                  final error = requiredNumber(value, 'Isi jarak pengingat.');
+                  if (error != null) return error;
+                  if (int.parse(value!.trim()) <= 0) {
+                    return 'Jarak pengingat harus lebih besar dari 0 km.';
+                  }
+                  return null;
+                },
+              ),
+            ],
+            if (_reminderBasis != ReminderBasis.distance) ...[
+              const SizedBox(height: 16),
+              RawatinOdometerField(
+                controller: _monthsController,
+                label: 'Interval waktu',
+                hint: '3',
+                textInputAction: TextInputAction.done,
+                suffixText: 'bulan',
+                validator: (value) {
+                  if (_reminderBasis == ReminderBasis.distance) return null;
+                  final error = requiredNumber(value, 'Isi interval bulan.');
+                  if (error != null) return error;
+                  if (int.parse(value!.trim()) <= 0) {
+                    return 'Interval bulan harus lebih dari 0.';
+                  }
+                  return null;
+                },
+              ),
+            ],
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _isSaving
@@ -1973,21 +2039,28 @@ class _OilReminderPageState extends State<OilReminderPage> {
         : soon
         ? 'Segera'
         : 'Aman';
-    final reminder = remaining == null
+    final timeBasis = data?.reminderBasis == ReminderBasis.time;
+    final reminder = schedule == null
         ? '—'
+        : timeBasis
+        ? (schedule.daysRemaining ?? 0) <= 0
+              ? 'Sudah waktunya'
+              : '${schedule.daysRemaining} hari lagi'
         : remaining == 0
         ? 'Sudah waktunya'
-        : remaining < 0
+        : remaining! < 0
         ? 'Terlambat ${formatKm(remaining.abs())}'
         : '${formatKm(remaining)} lagi';
-    final caption = remaining == null
+    final caption = schedule == null
         ? 'Isi data motor untuk melihat jadwal oli.'
-        : remaining <= 0
+        : timeBasis
+        ? 'menuju jadwal ganti oli berikutnya'
+        : remaining! <= 0
         ? remaining == 0
               ? 'Jadwal ganti oli sudah tercapai.'
               : 'Jadwal ganti oli sudah terlewat.'
         : 'menuju jadwal ganti oli berikutnya';
-    final progress = data == null || data.oilInterval <= 0
+    final progress = data == null || data.oilInterval <= 0 || timeBasis
         ? 0.0
         : ((data.currentOdometer - data.lastOilOdometer) / data.oilInterval)
               .clamp(0.0, 1.0)
@@ -2068,10 +2141,11 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 : formatShortDate(data!.lastOilChangeDate!),
           ),
           const SizedBox(height: 12),
-          RawatinSummaryRow(
-            label: 'Target berikutnya',
-            value: schedule == null ? '—' : formatKm(schedule.nextOdometer),
-          ),
+          if (data?.reminderBasis != ReminderBasis.time)
+            RawatinSummaryRow(
+              label: 'Target berikutnya',
+              value: schedule == null ? '—' : formatKm(schedule.nextOdometer),
+            ),
           if (schedule?.nextDate != null) ...[
             const SizedBox(height: 12),
             RawatinSummaryRow(

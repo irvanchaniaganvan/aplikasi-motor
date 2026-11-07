@@ -44,18 +44,31 @@ class OilScheduleCalculator {
                 DateTime(currentDate.year, currentDate.month, currentDate.day),
               )
               .inDays;
-    final due =
-        nextOdometer <= data.currentOdometer ||
-        (daysRemaining != null && daysRemaining <= 0);
+    final distanceDue = nextOdometer <= data.currentOdometer;
+    final timeDue = daysRemaining != null && daysRemaining <= 0;
+    final due = switch (data.reminderBasis) {
+      ReminderBasis.distance => distanceDue,
+      ReminderBasis.time => timeDue,
+      ReminderBasis.whicheverFirst => distanceDue || timeDue,
+    };
     final soon =
         !due &&
-        (nextOdometer - data.currentOdometer <= soonThresholdKm ||
-            (daysRemaining != null && daysRemaining <= soonThresholdDays));
+        switch (data.reminderBasis) {
+          ReminderBasis.distance =>
+            nextOdometer - data.currentOdometer <= soonThresholdKm,
+          ReminderBasis.time =>
+            daysRemaining != null && daysRemaining <= soonThresholdDays,
+          ReminderBasis.whicheverFirst =>
+            nextOdometer - data.currentOdometer <= soonThresholdKm ||
+                (daysRemaining != null && daysRemaining <= soonThresholdDays),
+        };
     return OilSchedule(
       nextOdometer: nextOdometer,
       distanceRemaining: nextOdometer - data.currentOdometer,
-      nextDate: nextDate,
-      daysRemaining: daysRemaining,
+      nextDate: data.reminderBasis == ReminderBasis.distance ? null : nextDate,
+      daysRemaining: data.reminderBasis == ReminderBasis.distance
+          ? null
+          : daysRemaining,
       status: due
           ? OilScheduleStatus.due
           : soon

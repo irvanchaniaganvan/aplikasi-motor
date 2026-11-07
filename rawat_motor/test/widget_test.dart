@@ -1095,6 +1095,38 @@ void main() {
     );
   });
 
+  testWidgets(
+    'pengaturan oli memilih dasar pengingat dan hanya menampilkan interval terkait',
+    (tester) async {
+      final repository = _MemoryMotorDataRepository();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OilReminderPage(
+            loadMotorData: LoadMotorData(repository),
+            saveMotorData: SaveMotorData(repository),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Pengaturan motor').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Dasar pengingat'), findsOneWidget);
+      expect(find.text('Interval jarak'), findsOneWidget);
+      expect(find.text('Interval waktu'), findsOneWidget);
+
+      await tester.tap(find.text('Jarak'));
+      await tester.pumpAndSettle();
+      expect(find.text('Interval jarak'), findsOneWidget);
+      expect(find.text('Interval waktu'), findsNothing);
+
+      await tester.tap(find.text('Waktu'));
+      await tester.pumpAndSettle();
+      expect(find.text('Interval jarak'), findsNothing);
+      expect(find.text('Interval waktu'), findsOneWidget);
+    },
+  );
+
   testWidgets('menolak kilometer servis yang melebihi odometer saat ini', (
     tester,
   ) async {

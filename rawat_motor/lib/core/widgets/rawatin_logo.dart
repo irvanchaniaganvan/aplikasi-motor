@@ -4,12 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
-/// Logo sementara Rawatin: huruf R geometris dengan garis kecepatan.
+/// Simbol Rawatin: monogram R geometris dengan kaki yang membentuk rute.
 ///
 /// Sumber desain ada di `assets/brand/rawatin_logo.svg`. Geometri di
 /// [RawatinLogoPainter] sengaja memakai koordinat 512 yang sama agar logo di
-/// header dan ikon launcher selalu identik. Saat logo final dari Figma siap,
-/// ganti SVG lalu sesuaikan satu painter ini.
+/// header dan ikon launcher selalu identik.
 class RawatinLogo extends StatelessWidget {
   const RawatinLogo({
     super.key,
@@ -61,7 +60,7 @@ class RawatinLogoPainter extends CustomPainter {
     canvas.save();
     canvas.scale(scale);
 
-    final background = Paint()..color = AppPalette.primary;
+    final background = Paint()..color = AppPalette.ink;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         const Rect.fromLTWH(0, 0, viewBox, viewBox),
@@ -70,15 +69,8 @@ class RawatinLogoPainter extends CustomPainter {
       background,
     );
 
-    final speedPaint = Paint()
-      ..color = AppPalette.accent
-      ..style = PaintingStyle.fill;
-    _roundedBar(canvas, speedPaint, 64, 324, 48, 14);
-    _roundedBar(canvas, speedPaint, 64, 360, 34, 14);
-    _roundedBar(canvas, speedPaint, 64, 396, 20, 14);
-
     final white = Paint()
-      ..color = AppPalette.surface
+      ..color = AppPalette.canvas
       ..style = PaintingStyle.fill;
 
     // Kaki R digambar lebih dulu agar menyatu dengan mangkuk huruf.
@@ -89,6 +81,16 @@ class RawatinLogoPainter extends CustomPainter {
       ..lineTo(336, 408)
       ..close();
     canvas.drawPath(leg, white);
+
+    // Aksen brass kecil mengisyaratkan jalur tanpa membuat simbol ramai.
+    canvas.drawLine(
+      const Offset(322, 318),
+      const Offset(379, 402),
+      Paint()
+        ..color = AppPalette.accent
+        ..strokeWidth = 8
+        ..strokeCap = StrokeCap.round,
+    );
 
     // Batang vertikal R.
     canvas.drawRRect(
@@ -119,28 +121,11 @@ class RawatinLogoPainter extends CustomPainter {
     canvas.drawPath(
       hole,
       Paint()
-        ..color = AppPalette.primary
+        ..color = AppPalette.ink
         ..style = PaintingStyle.fill,
     );
 
     canvas.restore();
-  }
-
-  void _roundedBar(
-    Canvas canvas,
-    Paint paint,
-    double x,
-    double y,
-    double width,
-    double height,
-  ) {
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(x, y, width, height),
-        Radius.circular(height / 2),
-      ),
-      paint,
-    );
   }
 
   @override

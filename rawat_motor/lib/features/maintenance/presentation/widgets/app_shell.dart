@@ -40,25 +40,27 @@ class RawatinSidebar extends StatelessWidget {
                     children: [
                       const RawatinBrandMark(),
                       const SizedBox(width: 11),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Rawatin',
-                            style: AppType.cardTitle.copyWith(
-                              color: colors.ink,
-                              fontSize: 21,
-                              letterSpacing: 0.2,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'RAWATIN',
+                              style: AppType.cardTitle.copyWith(
+                                color: colors.ink,
+                                fontSize: 21,
+                                letterSpacing: 1.5,
+                              ),
                             ),
-                          ),
-                          Text(
-                            'PERAWATAN MOTOR',
-                            style: AppType.eyebrow.copyWith(
-                              color: colors.muted,
-                              fontSize: 8,
+                            Text(
+                              'PERAWATAN MOTOR',
+                              style: AppType.eyebrow.copyWith(
+                                color: colors.muted,
+                                fontSize: 8,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),

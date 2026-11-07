@@ -106,7 +106,7 @@ class _LocalAccountPageState extends State<LocalAccountPage> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Perawatan motor, tanpa ribet.',
+                                'Merawat dengan lebih teratur.',
                                 style: TextStyle(
                                   color: colors.muted,
                                   fontSize: 12,

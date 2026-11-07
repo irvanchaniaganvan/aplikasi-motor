@@ -2,6 +2,8 @@ import 'odometer_entry.dart';
 import 'service_record.dart';
 import 'maintenance_component.dart';
 
+enum ReminderBasis { distance, time, whicheverFirst }
+
 class MotorData {
   const MotorData({
     required this.currentOdometer,
@@ -15,6 +17,7 @@ class MotorData {
     this.motorModelId,
     this.transmission,
     this.coolingSystem,
+    this.reminderBasis = ReminderBasis.whicheverFirst,
   });
 
   final int currentOdometer;
@@ -28,6 +31,7 @@ class MotorData {
   final String? motorModelId;
   final String? transmission;
   final String? coolingSystem;
+  final ReminderBasis reminderBasis;
 
   Map<String, Object> toJson() => {
     'currentOdometer': currentOdometer,
@@ -42,6 +46,7 @@ class MotorData {
     'motorModelId': ?motorModelId,
     'transmission': ?transmission,
     'coolingSystem': ?coolingSystem,
+    'reminderBasis': reminderBasis.name,
   };
 
   factory MotorData.fromJson(Map<String, dynamic> json) {
@@ -56,6 +61,12 @@ class MotorData {
     final motorModelId = json['motorModelId'];
     final transmission = json['transmission'];
     final coolingSystem = json['coolingSystem'];
+    final rawReminderBasis = json['reminderBasis'];
+    final reminderBasis =
+        ReminderBasis.values
+            .where((basis) => basis.name == rawReminderBasis)
+            .firstOrNull ??
+        ReminderBasis.whicheverFirst;
     if (current is! int ||
         last is! int ||
         interval is! int ||
@@ -121,6 +132,7 @@ class MotorData {
       motorModelId: motorModelId as String?,
       transmission: transmission as String?,
       coolingSystem: coolingSystem as String?,
+      reminderBasis: reminderBasis,
     );
   }
 
@@ -136,6 +148,7 @@ class MotorData {
     String? motorModelId,
     String? transmission,
     String? coolingSystem,
+    ReminderBasis? reminderBasis,
   }) {
     return MotorData(
       currentOdometer: currentOdometer ?? this.currentOdometer,
@@ -149,6 +162,7 @@ class MotorData {
       motorModelId: motorModelId ?? this.motorModelId,
       transmission: transmission ?? this.transmission,
       coolingSystem: coolingSystem ?? this.coolingSystem,
+      reminderBasis: reminderBasis ?? this.reminderBasis,
     );
   }
 }
