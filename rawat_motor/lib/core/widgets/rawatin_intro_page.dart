@@ -22,41 +22,60 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
   late final Animation<double> _wordmarkOpacity;
   late final Animation<Offset> _wordmarkOffset;
 
+  static const _wordmark = 'RAWATIN';
+
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1250),
+      duration: const Duration(milliseconds: 1650),
     )..forward();
-    final curve = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    );
     _logoOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0, .52, curve: Curves.easeOut),
+        curve: const Interval(0, .36, curve: Curves.easeOut),
       ),
     );
-    _logoScale = Tween<double>(begin: .78, end: 1).animate(curve);
+    _logoScale = Tween<double>(begin: .78, end: 1).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0, .42, curve: Curves.easeOutCubic),
+      ),
+    );
     _wordmarkOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(.38, .82, curve: Curves.easeOut),
+        curve: const Interval(.42, .64, curve: Curves.easeOut),
       ),
     );
     _wordmarkOffset =
         Tween<Offset>(begin: const Offset(0, .12), end: Offset.zero).animate(
           CurvedAnimation(
             parent: _controller,
-            curve: const Interval(.38, .9, curve: Curves.easeOutCubic),
+            curve: const Interval(.42, .68, curve: Curves.easeOutCubic),
           ),
         );
     _controller.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) widget.onFinished();
     });
   }
+
+  String get _typedWordmark {
+    const typingStart = .48;
+    const typingEnd = .82;
+    final progress =
+        ((_controller.value - typingStart) / (typingEnd - typingStart)).clamp(
+          0.0,
+          1.0,
+        );
+    final visibleCharacters = (progress * _wordmark.length).ceil();
+    return _wordmark.substring(0, visibleCharacters);
+  }
+
+  double get _taglineOpacity => Curves.easeOut.transform(
+    ((_controller.value - .78) / .18).clamp(0.0, 1.0),
+  );
 
   @override
   void dispose() {
@@ -83,24 +102,31 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
                 opacity: _wordmarkOpacity,
                 child: SlideTransition(
                   position: _wordmarkOffset,
-                  child: const Column(
+                  child: Column(
                     children: [
-                      Text(
-                        'RAWATIN',
-                        style: TextStyle(
-                          color: AppPalette.canvas,
-                          fontSize: 25,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 4.2,
+                      SizedBox(
+                        width: 190,
+                        child: Text(
+                          _typedWordmark,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppPalette.canvas,
+                            fontSize: 25,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 4.2,
+                          ),
                         ),
                       ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Merawat dengan lebih teratur.',
-                        style: TextStyle(
-                          color: AppPalette.accent,
-                          fontSize: 12,
-                          letterSpacing: .3,
+                      const SizedBox(height: 8),
+                      Opacity(
+                        opacity: _taglineOpacity,
+                        child: const Text(
+                          'Merawat dengan lebih teratur.',
+                          style: TextStyle(
+                            color: AppPalette.accent,
+                            fontSize: 12,
+                            letterSpacing: .3,
+                          ),
                         ),
                       ),
                     ],
