@@ -58,9 +58,14 @@ class MotorModel {
     required this.cooling,
     required this.source,
     this.generation,
+    this.variant,
     this.aliases = const [],
     this.notes,
     this.oilSpec,
+    this.frontBrake,
+    this.rearBrake,
+    this.brakeSystem,
+    this.brakeVerified = false,
   });
 
   final String name;
@@ -68,13 +73,19 @@ class MotorModel {
   final String cooling;
   final String source;
   final String? generation;
+  final String? variant;
   final List<String> aliases;
   final String? notes;
   final OilSpecification? oilSpec;
+  final String? frontBrake;
+  final String? rearBrake;
+  final String? brakeSystem;
+  final bool brakeVerified;
 
   String get searchLabel {
     final details = <String>[
       if (generation != null && generation!.isNotEmpty) generation!,
+      if (variant != null && variant!.isNotEmpty) variant!,
       if (aliases.isNotEmpty) aliases.join(', '),
     ];
     return details.isEmpty ? name : '$name (${details.join('; ')})';
@@ -86,8 +97,13 @@ class MotorModel {
     final cooling = json['pendingin'];
     final source = json['sumber'];
     final generation = json['generasi'];
+    final variant = json['varian'];
     final aliases = json['alias'] ?? const <dynamic>[];
     final notes = json['catatan'];
+    final frontBrake = json['rem_depan'];
+    final rearBrake = json['rem_belakang'];
+    final brakeSystem = json['sistem_rem'];
+    final brakeVerified = json['rem_terverifikasi'] ?? false;
     OilSpecification? oilSpec;
     final rawOil = json['spesifikasi_oli'] ?? json['oil_spec'];
     if (rawOil is Map<String, dynamic>) {
@@ -102,7 +118,16 @@ class MotorModel {
         (!const {'udara', 'oli', 'cair', 'TODO_VERIFY'}.contains(cooling)) ||
         source is! String ||
         (generation != null && generation is! String) ||
+        (variant != null && variant is! String) ||
         (notes != null && notes is! String) ||
+        (frontBrake != null &&
+            (frontBrake is! String ||
+                !const {'cakram', 'tromol'}.contains(frontBrake))) ||
+        (rearBrake != null &&
+            (rearBrake is! String ||
+                !const {'cakram', 'tromol'}.contains(rearBrake))) ||
+        (brakeSystem != null && brakeSystem is! String) ||
+        brakeVerified is! bool ||
         aliases is! List ||
         aliases.any((alias) => alias is! String)) {
       throw const FormatException(
@@ -115,9 +140,14 @@ class MotorModel {
       cooling: cooling,
       source: source,
       generation: generation as String?,
+      variant: variant as String?,
       aliases: aliases.cast<String>(),
       notes: notes as String?,
       oilSpec: oilSpec,
+      frontBrake: frontBrake as String?,
+      rearBrake: rearBrake as String?,
+      brakeSystem: brakeSystem as String?,
+      brakeVerified: brakeVerified,
     );
   }
 }

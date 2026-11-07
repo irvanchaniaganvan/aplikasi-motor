@@ -39,6 +39,8 @@ Future<void> _selectDropdown(
     _ => throw ArgumentError('Dropdown tidak dikenal: $hint'),
   };
   final dropdown = find.byType(DropdownButtonFormField<String>).at(index);
+  tester.testTextInput.hide();
+  await tester.pumpAndSettle();
   await tester.ensureVisible(dropdown);
   await tester.pumpAndSettle();
   await tester.tap(dropdown);
@@ -533,7 +535,11 @@ void main() {
     ) as Map<String, dynamic>;
     final honda = MotorModelCatalog.fromJson(json).brands
         .singleWhere((brand) => brand.name == 'Honda');
-    expect(honda.models, hasLength(23));
+    expect(honda.models, hasLength(24));
+    expect(
+      honda.models.where((model) => model.name.startsWith('Vario 160')),
+      hasLength(2),
+    );
     final vario = honda.models.singleWhere(
       (model) => model.name == 'Vario 125',
     );
@@ -576,6 +582,26 @@ void main() {
     final model = catalog.brands.single.models.single;
     expect(model.searchLabel, contains('KZR'));
     expect(model.searchLabel, contains('Techno / FI 2012-2015'));
+  });
+
+  test('katalog memisahkan varian Vario 160 dan konfigurasi remnya', () {
+    final json = jsonDecode(
+      File('data/model_motor.json').readAsStringSync(),
+    ) as Map<String, dynamic>;
+    final models = MotorModelCatalog.fromJson(json).brands
+        .singleWhere((brand) => brand.name == 'Honda')
+        .models;
+    final cbs = models.singleWhere((model) => model.name == 'Vario 160 CBS');
+    final abs = models.singleWhere((model) => model.name == 'Vario 160 ABS');
+
+    expect(cbs.frontBrake, 'cakram');
+    expect(cbs.rearBrake, 'tromol');
+    expect(cbs.brakeSystem, 'CBS');
+    expect(cbs.brakeVerified, isTrue);
+    expect(abs.frontBrake, 'cakram');
+    expect(abs.rearBrake, 'cakram');
+    expect(abs.brakeSystem, 'ABS');
+    expect(abs.brakeVerified, isFalse);
   });
 
   testWidgets('pencarian model menemukan alias KZR', (tester) async {
@@ -629,6 +655,10 @@ void main() {
               motorType: 'matic',
               cooling: 'udara',
               source: 'uji',
+              frontBrake: 'cakram',
+              rearBrake: 'tromol',
+              brakeSystem: 'UBS',
+              brakeVerified: true,
             ),
           ],
         ),
@@ -653,7 +683,6 @@ void main() {
     expect(find.text('Otomatis'), findsNWidgets(2));
     await tester.enterText(find.byType(TextFormField).at(0), 'Irvan');
     await tester.enterText(find.byType(TextFormField).at(1), '2024');
-    await _selectDropdown(tester, 'Pilih rem depan', 'Cakram');
     await tester.ensureVisible(find.text('Simpan dan lanjutkan'));
     await tester.tap(find.text('Simpan dan lanjutkan'));
     await tester.pump();
@@ -662,7 +691,48 @@ void main() {
     expect(saved?.model, 'Gear 125');
     expect(saved?.motorType, 'matic');
     expect(saved?.cooling, 'udara');
+    expect(saved?.frontBrake, 'cakram');
+    expect(saved?.rearBrake, 'tromol');
+    expect(saved?.brakeSystem, 'UBS');
   });
+
+  testWidgets(
+    'edit profil mempertahankan motor tersimpan tanpa memilih ulang',
+    (tester) async {
+      DriverMotorProfile? saved;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ProfileSetupPage(
+            initialProfile: const DriverMotorProfile(
+              id: 'motor-1',
+              driverName: 'Irvan',
+              brand: 'Yamaha',
+              model: 'Gear 125',
+              year: 2024,
+              motorType: 'matic',
+              cooling: 'udara',
+              frontBrake: 'cakram',
+              rearBrake: 'tromol',
+              brakeSystem: 'UBS',
+            ),
+            onSave: (profile) async => saved = profile,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Yamaha'), findsOneWidget);
+      expect(find.text('Gear 125'), findsOneWidget);
+      await tester.ensureVisible(find.text('Simpan dan lanjutkan'));
+      await tester.tap(find.text('Simpan dan lanjutkan'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(saved?.brand, 'Yamaha');
+      expect(saved?.model, 'Gear 125');
+      expect(saved?.rearBrake, 'tromol');
+      expect(saved?.brakeSystem, 'UBS');
+    },
+  );
 
   testWidgets('koreksi manual mengalahkan nilai otomatis untuk profil', (
     tester,

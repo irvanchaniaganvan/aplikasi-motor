@@ -26,7 +26,7 @@ class LocalProfileRepository {
       }
     }
     final legacy = await load();
-    if (legacy == null) return const [];
+    if (legacy == null) return <DriverMotorProfile>[];
     final migrated = _withId(
       legacy,
       legacy.id.isEmpty ? 'vehicle-1' : legacy.id,
@@ -49,7 +49,7 @@ class LocalProfileRepository {
       );
 
   Future<void> saveVehicle(DriverMotorProfile profile) async {
-    final vehicles = await loadAll();
+    final vehicles = List<DriverMotorProfile>.from(await loadAll());
     final normalized = _withId(
       profile,
       profile.id.isEmpty
@@ -118,6 +118,9 @@ class LocalProfileRepository {
     await _preferences.remove('profile.motor_type');
     await _preferences.remove('profile.cooling');
     await _preferences.remove('profile.front_brake');
+    await _preferences.remove('profile.nickname');
+    await _preferences.remove('profile.photo_path');
+    await _preferences.remove('profile.purchase_date');
   }
 
   Future<void> clearAccount() async {
@@ -134,6 +137,12 @@ class LocalProfileRepository {
     if (name == null || brand == null || model == null || year == null) {
       return null;
     }
+    final purchaseDateRaw = await _preferences.getString(
+      'profile.purchase_date',
+    );
+    final purchaseDate = purchaseDateRaw != null
+        ? DateTime.tryParse(purchaseDateRaw)
+        : null;
     return DriverMotorProfile(
       driverName: name,
       brand: brand,
@@ -142,11 +151,16 @@ class LocalProfileRepository {
       motorType: await _preferences.getString('profile.motor_type'),
       cooling: await _preferences.getString('profile.cooling'),
       frontBrake: await _preferences.getString('profile.front_brake'),
+      rearBrake: await _preferences.getString('profile.rear_brake'),
+      brakeSystem: await _preferences.getString('profile.brake_system'),
+      motorVariant: await _preferences.getString('profile.motor_variant'),
+      nickname: await _preferences.getString('profile.nickname'),
+      photoPath: await _preferences.getString('profile.photo_path'),
+      purchaseDate: purchaseDate,
     );
   }
 
   Future<void> save(DriverMotorProfile profile) async {
-    await _saveLegacyProfile(profile);
     await saveVehicle(profile);
   }
 
@@ -158,6 +172,15 @@ class LocalProfileRepository {
     await _saveOptional('profile.motor_type', profile.motorType);
     await _saveOptional('profile.cooling', profile.cooling);
     await _saveOptional('profile.front_brake', profile.frontBrake);
+    await _saveOptional('profile.rear_brake', profile.rearBrake);
+    await _saveOptional('profile.brake_system', profile.brakeSystem);
+    await _saveOptional('profile.motor_variant', profile.motorVariant);
+    await _saveOptional('profile.nickname', profile.nickname);
+    await _saveOptional('profile.photo_path', profile.photoPath);
+    await _saveOptional(
+      'profile.purchase_date',
+      profile.purchaseDate?.toIso8601String(),
+    );
   }
 
   Future<void> _saveOptional(String key, String? value) async {
@@ -178,8 +201,14 @@ class LocalProfileRepository {
         motorType: p.motorType,
         cooling: p.cooling,
         frontBrake: p.frontBrake,
+        rearBrake: p.rearBrake,
+        brakeSystem: p.brakeSystem,
+        motorVariant: p.motorVariant,
         maintenanceMotorId: p.maintenanceMotorId,
         transmission: p.transmission,
+        nickname: p.nickname,
+        photoPath: p.photoPath,
+        purchaseDate: p.purchaseDate,
       );
 
   Map<String, Object?> _profileToJson(DriverMotorProfile p) => {
@@ -191,21 +220,38 @@ class LocalProfileRepository {
     'motorType': p.motorType,
     'cooling': p.cooling,
     'frontBrake': p.frontBrake,
+    'rearBrake': p.rearBrake,
+    'brakeSystem': p.brakeSystem,
+    'motorVariant': p.motorVariant,
     'maintenanceMotorId': p.maintenanceMotorId,
     'transmission': p.transmission,
+    'nickname': p.nickname,
+    'photoPath': p.photoPath,
+    'purchaseDate': p.purchaseDate?.toIso8601String(),
   };
 
-  DriverMotorProfile _profileFromJson(Map<String, dynamic> json) =>
-      DriverMotorProfile(
-        id: json['id'] as String? ?? '',
-        driverName: json['driverName'] as String,
-        brand: json['brand'] as String,
-        model: json['model'] as String,
-        year: json['year'] as int,
-        motorType: json['motorType'] as String?,
-        cooling: json['cooling'] as String?,
-        frontBrake: json['frontBrake'] as String?,
-        maintenanceMotorId: json['maintenanceMotorId'] as String?,
-        transmission: json['transmission'] as String?,
-      );
+  DriverMotorProfile _profileFromJson(Map<String, dynamic> json) {
+    final purchaseDateRaw = json['purchaseDate'];
+    final purchaseDate = purchaseDateRaw is String
+        ? DateTime.tryParse(purchaseDateRaw)
+        : null;
+    return DriverMotorProfile(
+      id: json['id'] as String? ?? '',
+      driverName: json['driverName'] as String,
+      brand: json['brand'] as String,
+      model: json['model'] as String,
+      year: json['year'] as int,
+      motorType: json['motorType'] as String?,
+      cooling: json['cooling'] as String?,
+      frontBrake: json['frontBrake'] as String?,
+      rearBrake: json['rearBrake'] as String?,
+      brakeSystem: json['brakeSystem'] as String?,
+      motorVariant: json['motorVariant'] as String?,
+      maintenanceMotorId: json['maintenanceMotorId'] as String?,
+      transmission: json['transmission'] as String?,
+      nickname: json['nickname'] as String?,
+      photoPath: json['photoPath'] as String?,
+      purchaseDate: purchaseDate,
+    );
+  }
 }

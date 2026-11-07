@@ -9,14 +9,22 @@
           "name": "Fazzio",
           "jenis": "matic",
           "pendingin": "udara",
-          "sumber": "media otomotif; cek situs resmi pabrikan"
+          "sumber": "spesifikasi Yamaha Indonesia; data konfigurasi rem dari pengguna",
+          "rem_depan": "cakram",
+          "rem_belakang": "tromol",
+          "sistem_rem": "UBS",
+          "rem_terverifikasi": true
         },
         {
           "name": "Gear 125",
           "alias": ["Mio Gear"],
           "jenis": "matic",
           "pendingin": "udara",
-          "sumber": "media otomotif; cek situs resmi pabrikan"
+          "sumber": "brosur Yamaha Gear 125; data konfigurasi rem dari pengguna",
+          "rem_depan": "cakram",
+          "rem_belakang": "tromol",
+          "sistem_rem": null,
+          "rem_terverifikasi": true
         },
         {"name":"Gear Ultima","jenis":"matic","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan"},
         {"name":"FreeGo 125","jenis":"matic","pendingin":"udara","sumber":"media otomotif; cek situs resmi pabrikan"},
@@ -55,9 +63,14 @@
       "models": [
         {
           "name": "BeAT",
+          "generasi": "K0J 2020-2024",
           "jenis": "matic",
           "pendingin": "udara",
-          "sumber": "media otomotif; cek situs resmi Honda"
+          "sumber": "brosur New Honda BeAT 2021; data konfigurasi rem dari pengguna",
+          "rem_depan": "cakram",
+          "rem_belakang": "tromol",
+          "sistem_rem": "CBS",
+          "rem_terverifikasi": true
         },
         {
           "name": "Genio",
@@ -75,15 +88,37 @@
           "name": "Vario 125",
           "generasi": "Techno / FI 2012-2015",
           "alias": ["KZR", "Vario Techno 125"],
+          "varian": "Non-CBS / CBS",
           "jenis": "matic",
           "pendingin": "cair",
-          "sumber": "media otomotif; cek situs resmi Honda"
+          "sumber": "katalog suku cadang Honda KZR; data konfigurasi rem dari pengguna",
+          "rem_depan": "cakram",
+          "rem_belakang": "tromol",
+          "rem_terverifikasi": true
         },
         {
-          "name": "Vario 160",
+          "name": "Vario 160 CBS",
+          "generasi": "2022-sekarang / K2S",
+          "varian": "CBS",
           "jenis": "matic",
           "pendingin": "cair",
-          "sumber": "media otomotif; cek situs resmi Honda"
+          "sumber": "data konfigurasi rem dari pengguna; sumber ABS perlu diverifikasi ulang",
+          "rem_depan": "cakram",
+          "rem_belakang": "tromol",
+          "sistem_rem": "CBS",
+          "rem_terverifikasi": true
+        },
+        {
+          "name": "Vario 160 ABS",
+          "generasi": "2022-sekarang / K2S",
+          "varian": "ABS",
+          "jenis": "matic",
+          "pendingin": "cair",
+          "sumber": "data konfigurasi rem dari pengguna; sumber ABS perlu diverifikasi ulang",
+          "rem_depan": "cakram",
+          "rem_belakang": "cakram",
+          "sistem_rem": "ABS",
+          "rem_terverifikasi": false
         },
         {
           "name": "Vario Evo 160",

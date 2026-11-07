@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/date_labels.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/utils/vehicle_age.dart';
 import '../../data/repositories/default_interval_repository.dart';
 import '../../domain/entities/maintenance_component.dart';
 import '../../domain/entities/maintenance_catalog.dart';
@@ -18,6 +19,7 @@ import '../../domain/services/oil_schedule_calculator.dart';
 import '../../domain/use_cases/load_motor_data.dart';
 import '../../domain/use_cases/save_motor_data.dart';
 import '../../../profile/domain/entities/driver_motor_profile.dart';
+import '../../../profile/presentation/widgets/vehicle_avatar.dart';
 import 'history_view.dart';
 import 'oil_guide_page.dart';
 import '../widgets/common_widgets.dart';
@@ -1589,6 +1591,15 @@ class _OilReminderPageState extends State<OilReminderPage> {
     if (profile == null) return const SizedBox.shrink();
     final colors = RawatinColors.of(context);
     final typeLabel = _motorTypeLabel;
+    final hasNickname = profile.nickname?.trim().isNotEmpty == true;
+    final displayName = hasNickname
+        ? profile.nickname!.trim()
+        : '${profile.brand} ${profile.model}';
+    final ageText = formatVehicleAge(profile.purchaseDate);
+    final vehicleDetails = hasNickname
+        ? '${profile.brand} ${profile.model} · ${profile.year}'
+        : '${profile.year}';
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -1598,11 +1609,14 @@ class _OilReminderPageState extends State<OilReminderPage> {
       ),
       child: Row(
         children: [
-          RawatinIconTile(
-            icon: AppIcons.vehicle,
-            color: colors.primaryDark,
-            soft: colors.primarySoft,
-            size: 44,
+          VehicleAvatar(
+            photoPath: profile.photoPath,
+            size: 48,
+            useNeutralPlaceholder: true,
+            onTap: widget.onEditProfile,
+            semanticLabel: profile.photoPath == null
+                ? 'Tambahkan foto motor'
+                : 'Foto motor',
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
@@ -1610,7 +1624,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  profile.driverName,
+                  displayName,
                   style: AppType.cardTitle.copyWith(
                     color: colors.ink,
                     fontSize: 16,
@@ -1618,12 +1632,49 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${profile.brand} ${profile.model} · ${profile.year}'
-                  '${typeLabel == null ? '' : ' · $typeLabel'}',
+                  '$vehicleDetails${typeLabel == null ? '' : ' · $typeLabel'}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: colors.muted, fontSize: 12.5),
                 ),
+                if (ageText != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    ageText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colors.primaryDark,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+                if (profile.photoPath == null) ...[
+                  const SizedBox(height: 2),
+                  if (widget.onEditProfile != null)
+                    InkWell(
+                      onTap: widget.onEditProfile,
+                      child: Text(
+                        'Tambahkan foto motor di profil',
+                        style: TextStyle(
+                          color: colors.primaryDark,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    )
+                  else
+                    Text(
+                      'Tambahkan foto motor di profil',
+                      style: TextStyle(
+                        color: colors.muted,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
               ],
             ),
           ),

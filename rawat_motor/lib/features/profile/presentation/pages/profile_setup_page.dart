@@ -1,12 +1,16 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../../../core/services/vehicle_photo_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/vehicle_age.dart';
 import '../../../../core/widgets/rawatin_logo.dart';
 import '../../domain/entities/driver_motor_profile.dart';
 import '../../domain/entities/motor_model_catalog.dart';
+import '../widgets/vehicle_avatar.dart';
 import '../../../maintenance/domain/entities/maintenance_motor_catalog.dart';
 import '../../../maintenance/data/repositories/default_interval_repository.dart';
 
@@ -15,11 +19,13 @@ class ProfileSetupPage extends StatefulWidget {
     required this.onSave,
     this.initialProfile,
     this.catalog,
+    this.photoService,
     super.key,
   });
   final Future<void> Function(DriverMotorProfile profile) onSave;
   final DriverMotorProfile? initialProfile;
   final MotorModelCatalog? catalog;
+  final VehiclePhotoService? photoService;
 
   @override
   State<ProfileSetupPage> createState() => _ProfileSetupPageState();
@@ -31,9 +37,16 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   final _brand = TextEditingController();
   final _model = TextEditingController();
   final _year = TextEditingController(text: DateTime.now().year.toString());
+  final _nickname = TextEditingController();
   String? _motorType;
   String? _cooling;
   String? _frontBrake;
+  String? _rearBrake;
+  String? _brakeSystem;
+  String? _motorVariant;
+  String? _photoPath;
+  DateTime? _purchaseDate;
+  late final VehiclePhotoService _photoService;
   late String _profileId;
   MotorModelCatalog _catalog = const MotorModelCatalog(brands: []);
   MotorBrand? _selectedBrand;
@@ -44,10 +57,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   bool _typeEdited = false;
   bool _coolingEdited = false;
   bool _saving = false;
+  bool get _isEditing => widget.initialProfile != null;
 
   @override
   void initState() {
     super.initState();
+    _photoService = widget.photoService ?? VehiclePhotoService();
     _loadCatalog();
     _loadMaintenanceMotors();
     final profile = widget.initialProfile;
@@ -62,6 +77,12 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       _motorType = profile.motorType;
       _cooling = profile.cooling;
       _frontBrake = profile.frontBrake;
+      _rearBrake = profile.rearBrake;
+      _brakeSystem = profile.brakeSystem;
+      _motorVariant = profile.motorVariant;
+      _nickname.text = profile.nickname ?? '';
+      _photoPath = profile.photoPath;
+      _purchaseDate = profile.purchaseDate;
       _manualMotor = true;
     }
   }
@@ -74,10 +95,54 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
             jsonDecode(await rootBundle.loadString('data/model_motor.json'))
                 as Map<String, dynamic>,
           );
-      if (mounted) setState(() => _catalog = catalog);
+      if (mounted) {
+        setState(() {
+          _catalog = catalog;
+          _restoreCatalogSelection();
+        });
+      }
     } catch (_) {
       // Form manual tetap dapat digunakan jika asset katalog belum terbaca.
     }
+  }
+
+  void _restoreCatalogSelection() {
+    if (!_isEditing) return;
+    final brand = _catalog.brands
+        .where(
+          (item) => item.name.toLowerCase() == _brand.text.trim().toLowerCase(),
+        )
+        .firstOrNull;
+    final model = brand?.models
+        .where(
+          (item) => item.name.toLowerCase() == _model.text.trim().toLowerCase(),
+        )
+        .firstOrNull;
+    if (brand != null && model != null) {
+      _selectedBrand = brand;
+      _selectedModel = model;
+      _manualMotor = false;
+      _applyCatalogModel(model, preserveExisting: true);
+    } else {
+      // Model yang tidak ada di katalog tetap dipertahankan sebagai isian manual.
+      _manualMotor = true;
+    }
+  }
+
+  void _applyCatalogModel(MotorModel model, {bool preserveExisting = false}) {
+    _selectedMaintenanceMotor = _findMaintenanceMotor(model.name);
+    _motorType = model.motorType;
+    _cooling = model.cooling;
+    _frontBrake = model.frontBrake ?? (preserveExisting ? _frontBrake : null);
+    _rearBrake = model.rearBrake ?? (preserveExisting ? _rearBrake : null);
+    _brakeSystem =
+        model.brakeSystem ?? (preserveExisting ? _brakeSystem : null);
+    _motorVariant = model.variant ?? (preserveExisting ? _motorVariant : null);
+    if (_selectedMaintenanceMotor != null) {
+      _cooling = _selectedMaintenanceMotor!.cooling;
+    }
+    _typeEdited = false;
+    _coolingEdited = false;
   }
 
   Future<void> _loadMaintenanceMotors() async {
@@ -93,6 +158,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     _brand.dispose();
     _model.dispose();
     _year.dispose();
+    _nickname.dispose();
     super.dispose();
   }
 
@@ -110,8 +176,16 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           motorType: _motorType,
           cooling: _cooling,
           frontBrake: _frontBrake,
+          rearBrake: _rearBrake,
+          brakeSystem: _brakeSystem,
+          motorVariant: _motorVariant,
           maintenanceMotorId: _selectedMaintenanceMotor?.id,
           transmission: _selectedMaintenanceMotor?.transmission,
+          nickname: _nickname.text.trim().isEmpty
+              ? null
+              : _nickname.text.trim(),
+          photoPath: _photoPath,
+          purchaseDate: _purchaseDate,
         ),
       );
     } catch (_) {
@@ -290,18 +364,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                 setState(() {
                                   _selectedModel = model;
                                   _manualMotor = model == null;
-                                  _selectedMaintenanceMotor =
-                                      _findMaintenanceMotor(model?.name ?? '');
                                   if (model != null) {
                                     _model.text = model.name;
-                                    _motorType = model.motorType;
-                                    _cooling = model.cooling;
-                                    if (_selectedMaintenanceMotor != null) {
-                                      _cooling =
-                                          _selectedMaintenanceMotor!.cooling;
-                                    }
-                                    _typeEdited = false;
-                                    _coolingEdited = false;
+                                    _applyCatalogModel(model);
                                   }
                                 });
                               },
@@ -397,9 +462,143 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                           hint: 'Pilih rem depan',
                           icon: Icons.disc_full_rounded,
                           items: const {'cakram': 'Cakram', 'tromol': 'Tromol'},
+                          requiredField: false,
                           onChanged: (value) =>
                               setState(() => _frontBrake = value),
                         ),
+                        const SizedBox(height: 14),
+                        _dropdown(
+                          value: _rearBrake,
+                          label: 'Rem belakang',
+                          hint: 'Pilih rem belakang',
+                          icon: Icons.disc_full_rounded,
+                          items: const {'cakram': 'Cakram', 'tromol': 'Tromol'},
+                          requiredField: false,
+                          onChanged: (value) =>
+                              setState(() => _rearBrake = value),
+                        ),
+                        const SizedBox(height: 14),
+                        _dropdown(
+                          value: _brakeSystem,
+                          label: 'Sistem pengereman',
+                          hint: 'Pilih sistem pengereman',
+                          icon: Icons.security_rounded,
+                          items: const {
+                            'CBS': 'CBS',
+                            'ABS': 'ABS',
+                            'UBS': 'UBS',
+                          },
+                          requiredField: false,
+                          onChanged: (value) =>
+                              setState(() => _brakeSystem = value),
+                        ),
+                        if (_selectedModel != null &&
+                            (_selectedModel!.frontBrake != null ||
+                                _selectedModel!.rearBrake != null) &&
+                            !_selectedModel!.brakeVerified) ...[
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Data rem varian ini belum terverifikasi. Cocokkan dengan buku manual motor kamu.',
+                            style: TextStyle(color: muted, fontSize: 12),
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                        const Divider(height: 1),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Container(
+                              width: 27,
+                              height: 27,
+                              alignment: Alignment.center,
+                              decoration: const BoxDecoration(
+                                color: sage,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.two_wheeler_rounded,
+                                size: 16,
+                                color: green,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              'Kendaraanku',
+                              style: TextStyle(
+                                color: ink,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Foto, nama panggilan, dan tanggal beli motor (opsional).',
+                          style: TextStyle(color: muted, fontSize: 13),
+                        ),
+                        const SizedBox(height: 18),
+                        Center(
+                          child: VehicleAvatar(
+                            photoPath: _photoPath,
+                            size: 96,
+                            showEditBadge: true,
+                            onTap: _showPhotoOptions,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Center(
+                          child: Text(
+                            'Ketuk foto untuk ganti atau hapus',
+                            style: TextStyle(color: muted, fontSize: 12),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _field(
+                          _nickname,
+                          'Nama panggilan motor',
+                          'Contoh: Si Merah',
+                          icon: Icons.badge_outlined,
+                          isRequired: false,
+                          maxLength: 40,
+                          validator: (value) {
+                            if (value != null && value.trim().length > 40) {
+                              return 'Nama panggilan maksimal 40 karakter.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 6),
+                        Builder(
+                          builder: (context) {
+                            final modelName = _model.text.trim().isNotEmpty
+                                ? _model.text.trim()
+                                : (_selectedModel?.name ?? '');
+                            final brandName = _brand.text.trim().isNotEmpty
+                                ? _brand.text.trim()
+                                : (_selectedBrand?.name ?? '');
+                            final fullModel = [
+                              brandName,
+                              modelName,
+                            ].where((s) => s.isNotEmpty).join(' ');
+                            return Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Text(
+                                'Model: ${fullModel.isNotEmpty ? fullModel : 'Belum dipilih'}',
+                                style: const TextStyle(
+                                  color: muted,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 14),
+                        _datePickerField(),
+                        if (_purchaseDate != null) ...[
+                          const SizedBox(height: 10),
+                          _buildAgeBadge()!,
+                        ],
                         const SizedBox(height: 22),
                         FilledButton.icon(
                           onPressed: _saving ? null : _submit,
@@ -451,35 +650,304 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     ),
   );
 
+  Future<void> _showPhotoOptions() async {
+    final colors = RawatinColors.of(context);
+    await showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bottomSheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: colors.line,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Foto Kendaraan',
+                style: AppType.cardTitle.copyWith(
+                  color: colors.ink,
+                  fontSize: 17,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Pilih foto dari galeri atau kamera',
+                style: TextStyle(color: colors.muted, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: colors.primarySoft,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.photo_library_rounded,
+                    color: colors.primaryDark,
+                  ),
+                ),
+                title: const Text('Pilih dari galeri'),
+                subtitle: const Text(
+                  'Buka galeri perangkat untuk memilih foto',
+                ),
+                onTap: () {
+                  Navigator.of(bottomSheetContext).pop();
+                  _pickPhoto(ImageSource.gallery);
+                },
+              ),
+              if (_photoService.isCameraSupported)
+                ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: colors.primarySoft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.camera_alt_rounded,
+                      color: colors.primaryDark,
+                    ),
+                  ),
+                  title: const Text('Ambil dengan kamera'),
+                  subtitle: const Text(
+                    'Gunakan kamera untuk memotret langsung',
+                  ),
+                  onTap: () {
+                    Navigator.of(bottomSheetContext).pop();
+                    _pickPhoto(ImageSource.camera);
+                  },
+                ),
+              if (_photoPath != null)
+                ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: colors.dueSoft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.delete_outline_rounded,
+                      color: colors.due,
+                    ),
+                  ),
+                  title: Text(
+                    'Hapus foto',
+                    style: TextStyle(
+                      color: colors.due,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: () async {
+                    Navigator.of(bottomSheetContext).pop();
+                    await _photoService.deletePhoto(_photoPath);
+                    if (mounted) {
+                      setState(() => _photoPath = null);
+                    }
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    try {
+      final newPath = await _photoService.pickAndSavePhoto(
+        source: source,
+        profileId: _profileId,
+        oldPhotoPath: _photoPath,
+      );
+      if (newPath != null && mounted) {
+        setState(() => _photoPath = newPath);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(VehiclePhotoService.resolveErrorMessage(e)),
+            action: SnackBarAction(label: 'Tutup', onPressed: () {}),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _selectPurchaseDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _purchaseDate ?? now,
+      firstDate: DateTime(1970),
+      lastDate: now,
+      helpText: 'PILIH TANGGAL BELI MOTOR',
+      cancelText: 'BATAL',
+      confirmText: 'PILIH',
+    );
+    if (picked != null && mounted) {
+      setState(() => _purchaseDate = picked);
+    }
+  }
+
+  String _indonesianMonth(int month) {
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+    if (month >= 1 && month <= 12) {
+      return months[month - 1];
+    }
+    return '';
+  }
+
+  Widget _datePickerField() {
+    final dateText = _purchaseDate != null
+        ? '${_purchaseDate!.day} ${_indonesianMonth(_purchaseDate!.month)} ${_purchaseDate!.year}'
+        : 'Pilih tanggal beli';
+
+    return InkWell(
+      onTap: _selectPurchaseDate,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          border: Border.all(color: line),
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_month_outlined, color: muted, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Tanggal beli motor (opsional)',
+                    style: TextStyle(color: muted, fontSize: 12),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    dateText,
+                    style: TextStyle(
+                      color: _purchaseDate != null ? ink : muted,
+                      fontSize: 14,
+                      fontWeight: _purchaseDate != null
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (_purchaseDate != null)
+              IconButton(
+                tooltip: 'Hapus tanggal beli',
+                icon: const Icon(Icons.clear_rounded, size: 18, color: muted),
+                onPressed: () => setState(() => _purchaseDate = null),
+              )
+            else
+              const Icon(Icons.arrow_drop_down_rounded, color: muted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget? _buildAgeBadge() {
+    if (_purchaseDate == null) return null;
+    final ageText = formatVehicleAge(_purchaseDate);
+    if (ageText == null) return null;
+
+    final colors = RawatinColors.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.primarySoft,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.schedule_rounded, size: 18, color: colors.primaryDark),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              ageText,
+              style: TextStyle(
+                color: colors.primaryDark,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _field(
     TextEditingController controller,
     String label,
     String hint, {
     bool digitsOnly = false,
     IconData? icon,
+    bool isRequired = true,
+    int? maxLength,
+    String? Function(String?)? validator,
   }) => TextFormField(
     controller: controller,
     keyboardType: digitsOnly ? TextInputType.number : TextInputType.text,
-    inputFormatters: digitsOnly
-        ? [FilteringTextInputFormatter.digitsOnly]
-        : null,
+    inputFormatters: [
+      if (digitsOnly) FilteringTextInputFormatter.digitsOnly,
+      if (maxLength != null) LengthLimitingTextInputFormatter(maxLength),
+    ],
     decoration: InputDecoration(
       labelText: label,
       hintText: hint,
       prefixIcon: icon == null ? null : Icon(icon, color: muted, size: 20),
+      counterText: '',
     ),
-    validator: (value) {
-      if (value == null || value.trim().isEmpty) {
-        return 'Bagian ini perlu diisi.';
-      }
-      if (digitsOnly) {
-        final year = int.tryParse(value);
-        if (year == null || year < 1950 || year > DateTime.now().year + 1) {
-          return 'Masukkan tahun motor yang valid.';
-        }
-      }
-      return null;
-    },
+    validator:
+        validator ??
+        (value) {
+          if (isRequired && (value == null || value.trim().isEmpty)) {
+            return 'Bagian ini perlu diisi.';
+          }
+          if (digitsOnly) {
+            final year = int.tryParse(value ?? '');
+            if (year == null || year < 1950 || year > DateTime.now().year + 1) {
+              return 'Masukkan tahun motor yang valid.';
+            }
+          }
+          return null;
+        },
   );
 
   Widget _dropdown({
@@ -488,6 +956,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     required String hint,
     required IconData icon,
     required Map<String, String> items,
+    bool requiredField = true,
     required ValueChanged<String?> onChanged,
   }) => DropdownButtonFormField<String>(
     initialValue: value,
@@ -503,7 +972,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     ],
     onChanged: onChanged,
     validator: (selected) =>
-        selected == null ? 'Bagian ini perlu diisi.' : null,
+        requiredField && selected == null ? 'Bagian ini perlu diisi.' : null,
   );
 
   Widget _searchDropdown({
