@@ -13,9 +13,11 @@ void main() {
     );
 
     expect(find.text('Merawat dengan lebih teratur.'), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 900));
     expect(find.text('RAWATIN'), findsNothing);
-    await tester.pump(const Duration(milliseconds: 1050));
+    await tester.pump(const Duration(milliseconds: 1000));
+    expect(find.text('RAWATIN'), findsNothing);
+    await tester.pump(const Duration(milliseconds: 700));
     expect(find.text('RAWATIN'), findsOneWidget);
     expect(finished, isTrue);
   });

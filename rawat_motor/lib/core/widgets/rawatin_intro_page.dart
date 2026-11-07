@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'rawatin_logo.dart';
 
-/// Intro singkat setelah Flutter siap, melengkapi native splash tanpa membuat
-/// pengguna menunggu terlalu lama.
+/// Intro singkat setelah Flutter siap, melengkapi native splash dengan ritme
+/// tenang tanpa membuat pengguna menunggu terlalu lama.
 class RawatinIntroPage extends StatefulWidget {
   const RawatinIntroPage({required this.onFinished, super.key});
 
@@ -29,31 +29,31 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1650),
+      duration: const Duration(milliseconds: 2500),
     )..forward();
     _logoOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0, .36, curve: Curves.easeOut),
+        curve: const Interval(0, .30, curve: Curves.easeOut),
       ),
     );
     _logoScale = Tween<double>(begin: .78, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0, .42, curve: Curves.easeOutCubic),
+        curve: const Interval(0, .34, curve: Curves.easeOutCubic),
       ),
     );
     _wordmarkOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(.42, .64, curve: Curves.easeOut),
+        curve: const Interval(.38, .50, curve: Curves.easeOut),
       ),
     );
     _wordmarkOffset =
         Tween<Offset>(begin: const Offset(0, .12), end: Offset.zero).animate(
           CurvedAnimation(
             parent: _controller,
-            curve: const Interval(.42, .68, curve: Curves.easeOutCubic),
+            curve: const Interval(.38, .53, curve: Curves.easeOutCubic),
           ),
         );
     _controller.addStatusListener((status) {
@@ -63,7 +63,7 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
 
   String get _typedWordmark {
     const typingStart = .48;
-    const typingEnd = .82;
+    const typingEnd = .84;
     final progress =
         ((_controller.value - typingStart) / (typingEnd - typingStart)).clamp(
           0.0,
@@ -74,7 +74,7 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
   }
 
   double get _taglineOpacity => Curves.easeOut.transform(
-    ((_controller.value - .78) / .18).clamp(0.0, 1.0),
+    ((_controller.value - .86) / .10).clamp(0.0, 1.0),
   );
 
   @override
