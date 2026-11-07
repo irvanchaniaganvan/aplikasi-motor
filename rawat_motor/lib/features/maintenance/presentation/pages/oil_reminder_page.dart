@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/rawatin_page_transition.dart';
 import '../../../../core/utils/date_labels.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/utils/vehicle_age.dart';
@@ -303,15 +304,18 @@ class _OilReminderPageState extends State<OilReminderPage> {
                         onOpenSettings: _showOilReminderSettings,
                       ),
                       Expanded(
-                        child: switch (_selectedSection) {
-                          0 => _buildDashboard(),
-                          1 => HistoryView(
-                            data: _motorData,
-                            vehicleId: widget.profile?.id ?? 'vehicle-1',
-                          ),
-                          2 => _buildTripsPage(),
-                          _ => _buildPartsPage(),
-                        },
+                        child: RawatinPageTransition(
+                          key: ValueKey(_selectedSection),
+                          child: switch (_selectedSection) {
+                            0 => _buildDashboard(),
+                            1 => HistoryView(
+                              data: _motorData,
+                              vehicleId: widget.profile?.id ?? 'vehicle-1',
+                            ),
+                            2 => _buildTripsPage(),
+                            _ => _buildPartsPage(),
+                          },
+                        ),
                       ),
                     ],
                   ),

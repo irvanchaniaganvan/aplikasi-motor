@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/theme/app_theme.dart';
+import 'core/widgets/rawatin_intro_page.dart';
+import 'core/widgets/rawatin_page_transition.dart';
 import 'features/maintenance/data/repositories/local_motor_data_repository.dart';
 import 'features/maintenance/domain/use_cases/load_motor_data.dart';
 import 'features/maintenance/domain/use_cases/save_motor_data.dart';
@@ -30,61 +32,94 @@ class RawatinApp extends StatelessWidget {
       title: 'Rawatin',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      home: FutureBuilder<List<Object?>>(
-        future: Future.wait<Object?>([
-          profileRepository.loadAll(),
-          profileRepository.loadAccountEmail(),
-          profileRepository.isSignedIn(),
-          profileRepository.loadSelectedProfileId(),
-        ]),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-          if (snapshot.hasError) {
-            return const Scaffold(
-              body: Center(child: Text('Data akun gagal dimuat.')),
-            );
-          }
-          final profiles = snapshot.data![0] as List<DriverMotorProfile>;
-          final selectedId = snapshot.data!.length > 3
-              ? snapshot.data![3] as String?
-              : null;
-          final profile = profiles.isEmpty
-              ? null
-              : profiles.where((item) => item.id == selectedId).firstOrNull ??
-                    profiles.first;
-          final email = snapshot.data![1] as String?;
-          final signedIn = snapshot.data![2] as bool;
-
-          if (!signedIn || email == null) {
-            return _buildAccountPage(
-              context: context,
-              profileRepository: profileRepository,
-              motorDataRepository: motorDataRepository,
-              accountEmail: email,
-            );
-          }
-          if (profile == null) {
-            return _buildProfileSetupPage(
-              context: context,
-              profileRepository: profileRepository,
-              motorDataRepository: motorDataRepository,
-            );
-          }
-          return _buildDashboard(
-            context: context,
-            profileRepository: profileRepository,
-            motorDataRepository: motorDataRepository,
-            profile: profile,
-            vehicles: profiles,
-          );
-        },
+      home: RawatinStartup(
+        builder: (_) => _buildStartupPage(
+          profileRepository: profileRepository,
+          motorDataRepository: motorDataRepository,
+        ),
       ),
     );
   }
+}
+
+class RawatinStartup extends StatefulWidget {
+  const RawatinStartup({required this.builder, super.key});
+
+  final WidgetBuilder builder;
+
+  @override
+  State<RawatinStartup> createState() => _RawatinStartupState();
+}
+
+class _RawatinStartupState extends State<RawatinStartup> {
+  bool _showIntro = true;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_showIntro) {
+      return RawatinIntroPage(
+        onFinished: () => setState(() => _showIntro = false),
+      );
+    }
+    return RawatinPageTransition(child: widget.builder(context));
+  }
+}
+
+Widget _buildStartupPage({
+  required LocalProfileRepository profileRepository,
+  required LocalMotorDataRepository motorDataRepository,
+}) {
+  return FutureBuilder<List<Object?>>(
+    future: Future.wait<Object?>([
+      profileRepository.loadAll(),
+      profileRepository.loadAccountEmail(),
+      profileRepository.isSignedIn(),
+      profileRepository.loadSelectedProfileId(),
+    ]),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      if (snapshot.hasError) {
+        return const Scaffold(
+          body: Center(child: Text('Data akun gagal dimuat.')),
+        );
+      }
+      final profiles = snapshot.data![0] as List<DriverMotorProfile>;
+      final selectedId = snapshot.data!.length > 3
+          ? snapshot.data![3] as String?
+          : null;
+      final profile = profiles.isEmpty
+          ? null
+          : profiles.where((item) => item.id == selectedId).firstOrNull ??
+                profiles.first;
+      final email = snapshot.data![1] as String?;
+      final signedIn = snapshot.data![2] as bool;
+
+      if (!signedIn || email == null) {
+        return _buildAccountPage(
+          context: context,
+          profileRepository: profileRepository,
+          motorDataRepository: motorDataRepository,
+          accountEmail: email,
+        );
+      }
+      if (profile == null) {
+        return _buildProfileSetupPage(
+          context: context,
+          profileRepository: profileRepository,
+          motorDataRepository: motorDataRepository,
+        );
+      }
+      return _buildDashboard(
+        context: context,
+        profileRepository: profileRepository,
+        motorDataRepository: motorDataRepository,
+        profile: profile,
+        vehicles: profiles,
+      );
+    },
+  );
 }
 
 Widget _buildAccountPage({
