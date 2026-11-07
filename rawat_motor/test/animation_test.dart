@@ -17,8 +17,11 @@ void main() {
     expect(find.text('RAWATIN'), findsNothing);
     await tester.pump(const Duration(milliseconds: 1000));
     expect(find.text('RAWATIN'), findsNothing);
-    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 800));
     expect(find.text('RAWATIN'), findsOneWidget);
+    expect(finished, isFalse);
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump();
     expect(finished, isTrue);
   });
 
