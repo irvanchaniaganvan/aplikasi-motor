@@ -1,6 +1,6 @@
 # Status proyek Rawatin
 
-Terakhir diperbarui: 5 November 2026
+Terakhir diperbarui: 7 November 2026
 
 ## Tujuan dan keputusan
 
@@ -44,6 +44,15 @@ Terakhir diperbarui: 5 November 2026
 - Asisten AI memiliki input maksimal 500 karakter dengan penghitung, tiga chip pertanyaan contoh, jawaban berbentuk gelembung berlabel "Dijawab AI, bisa keliru. Cek buku manual.", tombol "Mulai ulang", serta penanganan memuat, galat jaringan dengan "Coba lagi", rate limit, dan kondisi AI belum dikonfigurasi ("Segera hadir").
 - Persetujuan AI disimpan lokal lewat `LocalAiConsentStorage`; tanpa persetujuan tidak ada permintaan jaringan. `install_id` berupa UUID v4 acak perangkat. Riwayat chat hanya di memori sesi layar. Spesifikasi motor hanya dikirim ke backend jika `verified: true`, selain itu `oil_spec: null`.
 - Kontrak backend serverless dan system prompt didokumentasikan di `docs/ai-contract.md`, mencakup skema request/response, kode galat `too_long`/`rate_limited`/`server_error`, serta aturan privasi.
+- Refactor modularisasi arsitektur UI (7 November 2026): file monolit `oil_reminder_page.dart` (sebelumnya 3.758 baris) dan `oil_guide_page.dart` (sebelumnya 878 baris) dipecah secara bertahap tanpa perubahan perilaku, teks, maupun tampilan:
+  - `lib/core/utils/date_labels.dart`: memusatkan format tanggal pendek (`formatShortDate`, `shortMonthName`) untuk digunakan bersama lintas halaman dan state.
+  - `lib/features/maintenance/presentation/widgets/common_widgets.dart` (467 baris): komponen UI bersama (`RawatinCard`, `RawatinStatusBadge`, `RawatinIconTile`, `RawatinInfoChip`, `RawatinSourceChip`, `RawatinSectionHeading`, `RawatinOdometerField`, `RawatinSafetyNote`, `RawatinSummaryRow`, `RawatinScreenIntro`, `RawatinSpeedStripe`, `RawatinEmptyState`, `RawatinSheetHeading`).
+  - `lib/features/maintenance/presentation/widgets/part_widgets.dart` (456 baris): komponen kartu part dan progres (`PartCard`, `PartRecordButton`, `CollapsiblePartGroup`, `CompactPartRow`, `SegmentedGauge`, `SegmentedGaugePainter`, `SlimProgressIndicator`).
+  - `lib/features/maintenance/presentation/widgets/app_shell.dart` (425 baris): shell navigasi aplikasi (`RawatinSidebar`, `RawatinBrandMark`, `RawatinTopBar`, `RawatinAccountMenu`).
+  - `lib/features/maintenance/presentation/widgets/dashboard_widgets.dart` (201 baris): komponen beranda/dashboard (`DashboardHeader`, `CountUpOdometer`, `HeroStat`, `FinishBanner`, `HeroBackdropPainter`).
+  - `lib/features/maintenance/presentation/pages/history_view.dart` (192 baris): halaman riwayat servis dan pembaruan kilometer dalam satu linimasa bulanan terpisah (`HistoryView`).
+  - `lib/features/maintenance/presentation/widgets/oil_guide_widgets.dart` (309 baris): komponen edukasi statis panduan oli (`OilGuideDisclaimer`, `OilGuideMotorSpec`, `OilGuideAccordion`).
+  - `oil_reminder_page.dart` terpangkas dari 3.758 menjadi 1.937 baris (hanya memegang state, builder halaman utama, dan form/sheet), sedangkan `oil_guide_page.dart` terpangkas dari 878 menjadi 605 baris.
 - Tes memeriksa jadwal oli dan multi-part (km/bulan, status awal, filter part, migrasi oli, reset part terpilih, serta log odometer), pemuatan katalog, pemilihan model, penyimpanan lokal, alur utama profil/akun, navigasi Panduan Oli dari kartu oli, tampilan spesifikasi terverifikasi vs belum, kompatibilitas data lama, perilaku `FakeAiService`, batas 500 karakter, dan penegakan persetujuan AI.
 - Saat sesi terputus atau konteks percakapan hilang, gunakan file ini sebagai ringkasan pemulihan. Baca juga `AGENTS.md`, lalu periksa status Git dan file terkait sebelum melanjutkan. Jangan menimpa perubahan lokal yang belum dikomit.
 - Pada pembaruan dokumentasi 5 November 2026, working tree memiliki perubahan lokal belum dikomit di dokumentasi dan beberapa berkas Flutter/data/tes. Jangan menganggap perubahan tersebut telah masuk commit; mulai dengan `git status --short` dan `git diff` untuk melihat kondisi terbaru.
@@ -64,7 +73,7 @@ Terakhir diperbarui: 5 November 2026
 
 ## Pemeriksaan terakhir
 
-- Pemeriksaan terakhir setelah implementasi Panduan Oli dan Tanya Panduan Oli: `flutter analyze` bersih dan `flutter test` lulus (62 tes: 32 tes lama + 30 tes baru di `test/oil_guide_test.dart`).
+- Pemeriksaan terakhir setelah modularisasi arsitektur UI (7 November 2026): `flutter analyze` bersih (0 isu), `flutter test` lulus 100% (62 tes: 32 tes di `widget_test.dart` + 30 tes di `oil_guide_test.dart`).
 - Build Windows debug berhasil setelah memperbaiki typo variabel ID profil terpilih di `rawat_motor/lib/main.dart`.
 - `flutter doctor`: Flutter 3.47.8 terdeteksi; Android SDK belum tersedia; iOS build tidak dapat dilakukan dari Windows.
 - Build Windows debug berhasil: `build/windows/x64/runner/Debug/rawatin.exe`.

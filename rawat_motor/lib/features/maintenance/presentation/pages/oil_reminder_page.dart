@@ -1,10 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/rawatin_logo.dart';
+import '../../../../core/utils/date_labels.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../data/repositories/default_interval_repository.dart';
 import '../../domain/entities/maintenance_component.dart';
@@ -20,7 +18,12 @@ import '../../domain/services/oil_schedule_calculator.dart';
 import '../../domain/use_cases/load_motor_data.dart';
 import '../../domain/use_cases/save_motor_data.dart';
 import '../../../profile/domain/entities/driver_motor_profile.dart';
+import 'history_view.dart';
 import 'oil_guide_page.dart';
+import '../widgets/common_widgets.dart';
+import '../widgets/part_widgets.dart';
+import '../widgets/app_shell.dart';
+import '../widgets/dashboard_widgets.dart';
 
 class OilReminderPage extends StatefulWidget {
   const OilReminderPage({
@@ -267,7 +270,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
             child: Row(
               children: [
                 if (wide)
-                  _AppSidebar(
+                  RawatinSidebar(
                     selected: _selectedSection,
                     onSelect: _selectSection,
                     profile: widget.profile,
@@ -276,7 +279,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 Expanded(
                   child: Column(
                     children: [
-                      _AppTopBar(
+                      RawatinTopBar(
                         title: _sectionTitle,
                         profile: widget.profile,
                         onEditProfile: widget.onEditProfile,
@@ -291,8 +294,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
                       Expanded(
                         child: switch (_selectedSection) {
                           0 => _buildDashboard(),
-                          1 => _buildHistoryPage(),
-                          2 => _buildHistoryPage(),
+                          1 => HistoryView(data: _motorData),
+                          2 => HistoryView(data: _motorData),
                           _ => _buildPartsPage(),
                         },
                       ),
@@ -377,7 +380,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
         children: [
           Positioned.fill(
             child: CustomPaint(
-              painter: _HeroBackdropPainter(
+              painter: HeroBackdropPainter(
                 stripe: colors.primary,
                 accent: colors.accent,
               ),
@@ -421,7 +424,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Flexible(
-                        child: _CountUpOdometer(
+                        child: CountUpOdometer(
                           value: km,
                           style: AppType.km.copyWith(
                             fontSize: 60,
@@ -446,21 +449,21 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     spacing: AppSpacing.sm,
                     runSpacing: AppSpacing.sm,
                     children: [
-                      _HeroStat(
+                      HeroStat(
                         label: 'Waktunya',
                         value: due,
                         color: colors.due,
                         soft: colors.dueSoft,
                         icon: AppIcons.due,
                       ),
-                      _HeroStat(
+                      HeroStat(
                         label: 'Segera',
                         value: soon,
                         color: colors.soon,
                         soft: colors.soonSoft,
                         icon: AppIcons.soon,
                       ),
-                      _HeroStat(
+                      HeroStat(
                         label: 'Aman',
                         value: safe,
                         color: colors.safe,
@@ -502,7 +505,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 ),
                 if (allSafe) ...[
                   const SizedBox(height: 12),
-                  const _FinishBanner(
+                  const FinishBanner(
                     title: 'Semua aman',
                     subtitle:
                         'Gas terus! Cek lagi setelah kilometer bertambah.',
@@ -529,7 +532,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _PageHeader(profile: widget.profile),
+            DashboardHeader(profile: widget.profile),
             const SizedBox(height: AppSpacing.lg),
             _buildProfileCard(),
             const SizedBox(height: AppSpacing.lg),
@@ -539,7 +542,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 const Expanded(
-                  child: _SectionHeading(
+                  child: RawatinSectionHeading(
                     eyebrow: 'JADWAL MOTOR',
                     title: 'Jadwal motormu',
                   ),
@@ -554,130 +557,12 @@ class _OilReminderPageState extends State<OilReminderPage> {
             const SizedBox(height: AppSpacing.md),
             _buildDashboardMaintenanceSummary(),
             const SizedBox(height: AppSpacing.xl),
-            const _SafetyNote(),
+            const RawatinSafetyNote(),
           ],
         ),
       ),
     ),
   );
-
-  Widget _buildHistoryPage() {
-    final data = _motorData;
-    final entries = <({DateTime date, Widget tile})>[];
-    for (final record in data?.serviceHistory ?? const <ServiceRecord>[]) {
-      entries.add((
-        date: record.date,
-        tile: _historyTile(
-          icon: AppIcons.wrench,
-          title: record.item,
-          subtitle: 'Servis - ${_formatDate(record.date)}',
-          trailing: formatKm(record.odometer),
-          chip: record.workshop.isEmpty ? null : record.workshop,
-        ),
-      ));
-    }
-    for (final entry in data?.odometerLogs ?? const <OdometerEntry>[]) {
-      entries.add((
-        date: entry.date,
-        tile: _historyTile(
-          icon: AppIcons.speed,
-          title: 'Kilometer diperbarui',
-          subtitle: _formatDate(entry.date),
-          trailing: formatKm(entry.kilometers),
-          chip: _sourceLabel(entry.source),
-        ),
-      ));
-    }
-    entries.sort((a, b) => b.date.compareTo(a.date));
-    final grouped = <Widget>[];
-    String? currentMonth;
-    for (final entry in entries) {
-      final month = _monthKey(entry.date);
-      if (month != currentMonth) {
-        currentMonth = month;
-        grouped.add(
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 14, 4, 6),
-            child: Text(
-              _monthLabel(entry.date).toUpperCase(),
-              style: AppType.eyebrow.copyWith(
-                color: RawatinColors.of(context).primaryDark,
-                fontSize: 10,
-              ),
-            ),
-          ),
-        );
-      }
-      grouped.add(entry.tile);
-      grouped.add(const Divider(height: 1));
-    }
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.xxl,
-        AppSpacing.lg,
-        AppSpacing.xxxl,
-      ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 920),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const _ScreenIntro(
-                eyebrow: 'CATATAN PERAWATAN',
-                title: 'Riwayat',
-                description: 'Catatan servis dan perubahan kilometer motormu, rapi dalam satu garis waktu.',
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              _CardShell(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.lg,
-                  vertical: AppSpacing.xs,
-                ),
-                child: grouped.isEmpty
-                    ? const _EmptyState(
-                        icon: AppIcons.history,
-                        title: 'Belum ada riwayat',
-                        message: 'Catat servis atau perbarui KM dari Beranda untuk melihatnya di sini.',
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: grouped,
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _monthKey(DateTime date) =>
-      '${date.year}-${date.month.toString().padLeft(2, '0')}';
-
-  String _monthLabel(DateTime date) => '${_monthName(date.month)} ${date.year}';
-
-  String _monthName(int month) => const [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'Mei',
-    'Jun',
-    'Jul',
-    'Agu',
-    'Sep',
-    'Okt',
-    'Nov',
-    'Des',
-  ][month - 1];
-
-  String _sourceLabel(String source) => switch (source.toLowerCase()) {
-    'manual' => 'Manual',
-    'servis' => 'Servis',
-    _ => source,
-  };
 
   Future<void> _updateOdometer() async {
     final data = _motorData;
@@ -702,7 +587,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const _SheetHeading(
+                  const RawatinSheetHeading(
                     eyebrow: 'ODOMETER',
                     title: 'Update KM',
                     icon: AppIcons.speed,
@@ -785,84 +670,6 @@ class _OilReminderPageState extends State<OilReminderPage> {
     }
   }
 
-  Widget _historyTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    String? trailing,
-    String? detail,
-    String? chip,
-  }) {
-    final colors = RawatinColors.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: colors.primarySoft,
-              borderRadius: BorderRadius.circular(AppRadii.md),
-            ),
-            child: Icon(icon, color: colors.primaryDark, size: 19),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: colors.ink,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    if (chip != null) ...[
-                      const SizedBox(width: 6),
-                      _SourceChip(label: chip),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(color: colors.muted, fontSize: 11.5),
-                ),
-                if (detail != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    detail,
-                    style: TextStyle(
-                      color: colors.primaryDark,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          if (trailing != null) ...[
-            const SizedBox(width: AppSpacing.sm),
-            Text(
-              trailing,
-              style: AppType.metric.copyWith(color: colors.ink, fontSize: 14),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildPartsPage() {
     final data = _motorData;
     final visibleComponents = _visibleParts()
@@ -883,7 +690,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const _ScreenIntro(
+              const RawatinScreenIntro(
                 eyebrow: 'KOMPONEN & PERAWATAN',
                 title: 'Jadwal perawatan',
                 description: 'Interval adalah perkiraan umum, bukan spesifikasi resmi. Ikuti buku manual atau saran bengkel.',
@@ -894,21 +701,21 @@ class _OilReminderPageState extends State<OilReminderPage> {
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.sm,
                   children: [
-                    _InfoChip(
+                    RawatinInfoChip(
                       icon: AppIcons.vehicle,
                       label:
                           '${widget.profile!.brand} ${widget.profile!.model}',
                     ),
                     if (_motorTypeLabel != null)
-                      _InfoChip(
+                      RawatinInfoChip(
                         icon: AppIcons.category,
                         label: _motorTypeLabel!,
                       ),
                     if (_coolingLabel != null)
-                      _InfoChip(icon: AppIcons.cooling, label: _coolingLabel!),
+                      RawatinInfoChip(icon: AppIcons.cooling, label: _coolingLabel!),
                     if (_frontBrakeLabel != null)
-                      _InfoChip(icon: AppIcons.brake, label: _frontBrakeLabel!),
-                    _InfoChip(
+                      RawatinInfoChip(icon: AppIcons.brake, label: _frontBrakeLabel!),
+                    RawatinInfoChip(
                       icon: AppIcons.grid,
                       label: '${visibleComponents.length} komponen',
                     ),
@@ -917,11 +724,11 @@ class _OilReminderPageState extends State<OilReminderPage> {
               ],
               const SizedBox(height: AppSpacing.xl),
               if (data == null) ...[
-                _CardShell(
+                RawatinCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const _SectionHeading(
+                      const RawatinSectionHeading(
                         eyebrow: 'LANGKAH PERTAMA',
                         title: 'Mulai dari odometer',
                       ),
@@ -943,7 +750,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                   ),
                 ),
               ] else if (_components.isEmpty) ...[
-                _CardShell(
+                RawatinCard(
                   child: _catalogFailed
                       ? Text(
                           'Data interval perawatan tidak dapat dimuat. Periksa file data default.',
@@ -954,7 +761,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                       : const Center(child: CircularProgressIndicator()),
                 ),
               ] else if (visibleComponents.isEmpty) ...[
-                _CardShell(
+                RawatinCard(
                   child: Text(
                     'Belum ada komponen yang cocok dengan profil motor.',
                     style: TextStyle(color: RawatinColors.of(context).muted),
@@ -1151,7 +958,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
               '${formatKm(remainingKm)} lagi'
               '${schedule.daysRemaining == null ? '' : ' atau ${schedule.daysRemaining} hari'}';
 
-    return _PartCard(
+    return PartCard(
       name: component.name,
       icon: _componentIcon(component),
       statusLabel: statusText,
@@ -1304,7 +1111,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                           ),
                         ),
                         subtitle: Text(
-                          _formatDate(record.date),
+                          formatShortDate(record.date),
                           style: const TextStyle(color: muted, fontSize: 12),
                         ),
                       );
@@ -1680,18 +1487,18 @@ class _OilReminderPageState extends State<OilReminderPage> {
   }
 
   Widget _buildFormCard() {
-    return _CardShell(
+    return RawatinCard(
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const _SectionHeading(
+            const RawatinSectionHeading(
               eyebrow: 'PENGATURAN MOTOR',
               title: 'Data awal dan interval',
             ),
             const SizedBox(height: 22),
-            _OdometerField(
+            RawatinOdometerField(
               controller: _currentController,
               label: 'Kilometer saat ini',
               hint: 'Contoh: 12500',
@@ -1700,7 +1507,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                   requiredNumber(value, 'Isi kilometer saat ini.'),
             ),
             const SizedBox(height: 16),
-            _OdometerField(
+            RawatinOdometerField(
               controller: _lastOilController,
               label: 'Ganti oli terakhir di kilometer',
               hint: 'Contoh: 10000',
@@ -1720,7 +1527,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
               },
             ),
             const SizedBox(height: 16),
-            _OdometerField(
+            RawatinOdometerField(
               controller: _intervalController,
               label: 'Pengingat setiap',
               hint: '3000',
@@ -1735,7 +1542,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
               },
             ),
             const SizedBox(height: 16),
-            _OdometerField(
+            RawatinOdometerField(
               controller: _monthsController,
               label: 'Pengingat setiap berapa bulan',
               hint: '3',
@@ -1791,7 +1598,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
       ),
       child: Row(
         children: [
-          _IconTile(
+          RawatinIconTile(
             icon: AppIcons.vehicle,
             color: colors.primaryDark,
             soft: colors.primarySoft,
@@ -1821,7 +1628,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
-          _StatusBadge(
+          RawatinStatusBadge(
             label: 'Aktif',
             icon: AppIcons.verified,
             color: colors.safe,
@@ -1891,7 +1698,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
           const SizedBox(height: AppSpacing.md),
         ],
         if (needsCheck.isNotEmpty) ...[
-          _CollapsiblePartGroup(
+          CollapsiblePartGroup(
             storageKey: 'needs-check',
             title: 'Belum ada data (${needsCheck.length})',
             subtitle: 'Lengkapi catatan servis agar jadwal lebih akurat.',
@@ -1913,7 +1720,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
           const SizedBox(height: AppSpacing.md),
         ],
         if (safe.isNotEmpty) ...[
-          _CollapsiblePartGroup(
+          CollapsiblePartGroup(
             storageKey: 'safe-parts',
             title: 'Aman (${safe.length})',
             subtitle: safeSubtitle,
@@ -1934,7 +1741,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
           ),
           const SizedBox(height: AppSpacing.md),
         ],
-        _CardShell(
+        RawatinCard(
           padding: EdgeInsets.zero,
           child: Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -1949,7 +1756,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 AppSpacing.lg,
                 AppSpacing.md,
               ),
-              leading: _IconTile(
+              leading: RawatinIconTile(
                 icon: AppIcons.tip,
                 color: colors.primaryDark,
                 soft: colors.primarySoft,
@@ -2025,7 +1832,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
               .clamp(0.0, 1.0)
               .toDouble();
 
-    return _CardShell(
+    return RawatinCard(
       color: colors.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2034,12 +1841,12 @@ class _OilReminderPageState extends State<OilReminderPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Expanded(
-                child: _SectionHeading(
+                child: RawatinSectionHeading(
                   eyebrow: 'JADWAL OLI',
                   title: 'Ganti oli berikutnya',
                 ),
               ),
-              _IconTile(
+              RawatinIconTile(
                 icon: AppIcons.oil,
                 color: statusColor,
                 soft: statusBackground,
@@ -2049,7 +1856,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
           const SizedBox(height: AppSpacing.lg),
           Align(
             alignment: Alignment.centerLeft,
-            child: _StatusBadge(
+            child: RawatinStatusBadge(
               label: statusLabel,
               icon: statusIcon,
               color: statusColor,
@@ -2074,7 +1881,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
           ),
           if (data != null && schedule != null) ...[
             const SizedBox(height: AppSpacing.lg),
-            _SlimProgressIndicator(
+            SlimProgressIndicator(
               value: progress,
               color: statusColor,
               label: '${(progress * 100).round()}% interval terpakai',
@@ -2083,35 +1890,35 @@ class _OilReminderPageState extends State<OilReminderPage> {
           const SizedBox(height: AppSpacing.xl),
           Divider(color: colors.line),
           const SizedBox(height: AppSpacing.lg),
-          _SummaryRow(
+          RawatinSummaryRow(
             label: 'Odometer sekarang',
             value: data == null ? '—' : formatKm(data.currentOdometer),
           ),
           const SizedBox(height: 12),
-          _SummaryRow(
+          RawatinSummaryRow(
             label: 'Ganti oli terakhir',
             value: data == null ? '—' : formatKm(data.lastOilOdometer),
           ),
           const SizedBox(height: 12),
-          _SummaryRow(
+          RawatinSummaryRow(
             label: 'Tanggal servis',
             value: data?.lastOilChangeDate == null
                 ? 'Belum dicatat'
-                : _formatDate(data!.lastOilChangeDate!),
+                : formatShortDate(data!.lastOilChangeDate!),
           ),
           const SizedBox(height: 12),
-          _SummaryRow(
+          RawatinSummaryRow(
             label: 'Target berikutnya',
             value: schedule == null ? '—' : formatKm(schedule.nextOdometer),
           ),
           if (schedule?.nextDate != null) ...[
             const SizedBox(height: 12),
-            _SummaryRow(
+            RawatinSummaryRow(
               label: 'Target berdasarkan waktu',
-              value: _formatDate(schedule!.nextDate!),
+              value: formatShortDate(schedule!.nextDate!),
             ),
             const SizedBox(height: 12),
-            _SummaryRow(
+            RawatinSummaryRow(
               label: 'Sisa waktu',
               value: schedule.daysRemaining! <= 0
                   ? 'Jatuh tempo'
@@ -2126,11 +1933,11 @@ class _OilReminderPageState extends State<OilReminderPage> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _InfoChip(
+                RawatinInfoChip(
                   icon: AppIcons.speed,
                   label: '${data.odometerLogs.length} log odometer',
                 ),
-                _InfoChip(
+                RawatinInfoChip(
                   icon: AppIcons.wrench,
                   label: '${data.serviceHistory.length} catatan servis',
                 ),
@@ -2177,1582 +1984,4 @@ class _OilReminderPageState extends State<OilReminderPage> {
     'tromol' => 'Rem tromol',
     _ => null,
   };
-
-  String _formatDate(DateTime date) =>
-      '${date.day} ${_monthName(date.month)} ${date.year}';
-}
-
-class _PageHeader extends StatelessWidget {
-  const _PageHeader({this.profile});
-  final DriverMotorProfile? profile;
-
-  @override
-  Widget build(BuildContext context) => _ScreenIntro(
-    eyebrow: 'RINGKASAN PERAWATAN',
-    title: profile == null ? 'Kondisi motormu' : 'Hai, ${profile!.driverName}!',
-    description: 'Jadwal dan catatan perawatan dalam satu tempat.',
-  );
-}
-
-class _AppSidebar extends StatelessWidget {
-  const _AppSidebar({
-    required this.selected,
-    required this.onSelect,
-    this.profile,
-    this.onOpenSettings,
-  });
-  final int selected;
-  final ValueChanged<int> onSelect;
-  final DriverMotorProfile? profile;
-  final VoidCallback? onOpenSettings;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Container(
-      width: 252,
-      decoration: BoxDecoration(
-        color: colors.surfaceSoft,
-        border: Border(right: BorderSide(color: colors.line)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 22, 16, 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Row(
-                    children: [
-                      const _BrandMark(),
-                      const SizedBox(width: 11),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Rawatin',
-                            style: AppType.cardTitle.copyWith(
-                              color: colors.ink,
-                              fontSize: 21,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                          Text(
-                            'PERAWATAN MOTOR',
-                            style: AppType.eyebrow.copyWith(
-                              color: colors.muted,
-                              fontSize: 8,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 30),
-                Padding(
-                  padding: const EdgeInsets.only(left: 12, bottom: 8),
-                  child: Text(
-                    'NAVIGASI',
-                    style: AppType.eyebrow.copyWith(
-                      color: colors.muted,
-                      fontSize: 9,
-                    ),
-                  ),
-                ),
-                _navItem(0, AppIcons.home, 'Beranda', colors),
-                _navItem(1, AppIcons.history, 'Riwayat', colors),
-                _actionItem(
-                  AppIcons.settings,
-                  'Pengaturan motor',
-                  onOpenSettings,
-                  colors,
-                ),
-              ],
-            ),
-          ),
-          const Spacer(),
-          if (profile != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
-              child: Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: BorderRadius.circular(AppRadii.lg),
-                  border: Border.all(color: colors.line),
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundColor: colors.primarySoft,
-                      foregroundColor: colors.primaryDark,
-                      child: Text(
-                        profile!.driverName.isEmpty
-                            ? '?'
-                            : profile!.driverName[0].toUpperCase(),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            profile!.driverName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: colors.ink,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                          Text(
-                            '${profile!.brand} ${profile!.model}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: colors.muted, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem(
-    int index,
-    IconData icon,
-    String label,
-    RawatinColors colors,
-  ) {
-    final active = selected == index;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Material(
-        color: Colors.transparent,
-        child: ListTile(
-          selected: active,
-          selectedTileColor: colors.primarySoft,
-          selectedColor: colors.primaryDark,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          minLeadingWidth: 22,
-          leading: Icon(
-            icon,
-            color: active ? colors.primaryDark : colors.muted,
-            size: 20,
-          ),
-          title: Text(
-            label,
-            style: TextStyle(
-              color: active ? colors.primaryDark : colors.inkSoft,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-              fontSize: 13,
-            ),
-          ),
-          onTap: () => onSelect(index),
-          dense: true,
-        ),
-      ),
-    );
-  }
-
-  Widget _actionItem(
-    IconData icon,
-    String label,
-    VoidCallback? onTap,
-    RawatinColors colors,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Material(
-        color: Colors.transparent,
-        child: ListTile(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadii.md),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-          minLeadingWidth: 22,
-          leading: Icon(icon, color: colors.muted, size: 20),
-          title: Text(
-            label,
-            style: TextStyle(
-              color: colors.inkSoft,
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
-            ),
-          ),
-          onTap: onTap,
-          dense: true,
-        ),
-      ),
-    );
-  }
-}
-
-class _BrandMark extends StatelessWidget {
-  const _BrandMark();
-
-  @override
-  Widget build(BuildContext context) => const RawatinLogo(size: 38);
-}
-
-class _AppTopBar extends StatelessWidget {
-  const _AppTopBar({
-    required this.title,
-    this.profile,
-    this.onEditProfile,
-    this.onSignOut,
-    this.vehicleCount = 1,
-    this.onSelectVehicle,
-    this.onAddVehicle,
-    this.onManageVehicles,
-    this.vehicles = const [],
-    this.onOpenSettings,
-  });
-  final String title;
-  final DriverMotorProfile? profile;
-  final VoidCallback? onEditProfile;
-  final VoidCallback? onSignOut;
-  final int vehicleCount;
-  final ValueChanged<DriverMotorProfile>? onSelectVehicle;
-  final VoidCallback? onAddVehicle;
-  final VoidCallback? onManageVehicles;
-  final List<DriverMotorProfile> vehicles;
-  final VoidCallback? onOpenSettings;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    final compact = MediaQuery.sizeOf(context).width < 560;
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(bottom: BorderSide(color: colors.line)),
-      ),
-      child: SizedBox(
-        height: 64,
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 16),
-          child: Row(
-            children: [
-              if (compact) ...[
-                const RawatinLogo(size: 28, showShadow: false),
-                const SizedBox(width: 9),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'RAWATIN',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: false,
-                      style: AppType.eyebrow.copyWith(
-                        color: colors.primary,
-                        fontSize: 9.5,
-                        letterSpacing: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppType.cardTitle.copyWith(
-                        color: colors.ink,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                tooltip: 'Pengaturan motor',
-                onPressed: onOpenSettings,
-                icon: Icon(AppIcons.settings, color: colors.inkSoft),
-              ),
-              if (profile != null) ...[
-                PopupMenuButton<String>(
-                  tooltip: 'Pilih kendaraan',
-                  onSelected: (value) {
-                    if (value == '__add__') {
-                      onAddVehicle?.call();
-                    } else if (value == '__manage__') {
-                      onManageVehicles?.call();
-                    } else if (value == profile!.id) {
-                      return;
-                    } else {
-                      onSelectVehicle?.call(
-                        vehicles.firstWhere((item) => item.id == value),
-                      );
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    for (final vehicle in vehicles)
-                      PopupMenuItem(
-                        value: vehicle.id,
-                        child: Text('${vehicle.brand} ${vehicle.model}'),
-                      ),
-                    if (onManageVehicles != null)
-                      const PopupMenuItem(
-                        value: '__manage__',
-                        child: Text('Kelola kendaraan'),
-                      ),
-                    if (onAddVehicle != null)
-                      const PopupMenuItem(
-                        value: '__add__',
-                        child: Text('Tambah kendaraan'),
-                      ),
-                  ],
-                  child: compact
-                      ? Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: Icon(
-                            AppIcons.vehicle,
-                            size: 22,
-                            color: colors.inkSoft,
-                          ),
-                        )
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 130),
-                              child: Text(
-                                '${profile!.brand} ${profile!.model}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: colors.ink,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            Icon(AppIcons.chevronDown, color: colors.muted),
-                          ],
-                        ),
-                ),
-                if (!compact) ...[
-                  const SizedBox(width: AppSpacing.sm),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 120),
-                    child: Text(
-                      profile!.driverName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: colors.muted, fontSize: 13),
-                    ),
-                  ),
-                ],
-                const SizedBox(width: 2),
-                _AccountMenu(
-                  profile: profile!,
-                  onEditProfile: onEditProfile,
-                  onSignOut: onSignOut,
-                ),
-              ] else
-                _AccountMenu(
-                  profile: null,
-                  onEditProfile: onEditProfile,
-                  onSignOut: onSignOut,
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AccountMenu extends StatelessWidget {
-  const _AccountMenu({
-    required this.profile,
-    this.onEditProfile,
-    this.onSignOut,
-  });
-
-  final DriverMotorProfile? profile;
-  final VoidCallback? onEditProfile;
-  final VoidCallback? onSignOut;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return PopupMenuButton<String>(
-      tooltip: 'Menu akun',
-      icon: CircleAvatar(
-        radius: 18,
-        backgroundColor: colors.primarySoft,
-        foregroundColor: colors.primaryDark,
-        child: Text(
-          profile?.driverName.isNotEmpty == true
-              ? profile!.driverName[0].toUpperCase()
-              : 'U',
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-      ),
-      onSelected: (value) {
-        if (value == 'edit') onEditProfile?.call();
-        if (value == 'signout') onSignOut?.call();
-      },
-      itemBuilder: (context) => [
-        if (onEditProfile != null)
-          const PopupMenuItem(value: 'edit', child: Text('Edit profil')),
-        if (onSignOut != null)
-          const PopupMenuItem(value: 'signout', child: Text('Keluar')),
-      ],
-    );
-  }
-}
-
-class _CardShell extends StatelessWidget {
-  const _CardShell({
-    required this.child,
-    this.color,
-    this.padding = const EdgeInsets.all(AppSpacing.xl),
-  });
-
-  final Widget child;
-  final Color? color;
-  final EdgeInsetsGeometry padding;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: color ?? colors.surface,
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        border: Border.all(color: colors.line),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow,
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      // Material transparan memberi ListTile/ExpansionTile permukaan untuk
-      // menggambar latar dan ripple di dalam card berwarna.
-      child: Material(type: MaterialType.transparency, child: child),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.background,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color color;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
-      color: background,
-      borderRadius: BorderRadius.circular(AppRadii.pill),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 13),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppType.eyebrow.copyWith(
-              color: color,
-              fontSize: 10,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _IconTile extends StatelessWidget {
-  const _IconTile({
-    required this.icon,
-    required this.color,
-    required this.soft,
-    this.size = 40,
-  });
-
-  final IconData icon;
-  final Color color;
-  final Color soft;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      color: soft,
-      borderRadius: BorderRadius.circular(size * .29),
-    ),
-    child: Icon(icon, color: color, size: size * .5),
-  );
-}
-
-class _PartCard extends StatelessWidget {
-  const _PartCard({
-    required this.name,
-    required this.icon,
-    required this.statusLabel,
-    required this.statusColor,
-    required this.statusSoft,
-    required this.statusIcon,
-    required this.description,
-    required this.meta,
-    required this.onOpen,
-    required this.onRecord,
-    this.progress,
-    this.prominent = false,
-    this.inspection = false,
-  });
-
-  final String name;
-  final IconData icon;
-  final String statusLabel;
-  final Color statusColor;
-  final Color statusSoft;
-  final IconData statusIcon;
-  final String description;
-  final String meta;
-  final VoidCallback onOpen;
-  final VoidCallback onRecord;
-  final double? progress;
-  final bool prominent;
-  final bool inspection;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Material(
-      color: colors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.lg),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        onTap: onOpen,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.lg),
-            border: Border.all(
-              color: prominent
-                  ? statusColor.withValues(alpha: 0.5)
-                  : colors.line,
-              width: prominent ? 1.4 : 1,
-            ),
-            boxShadow: prominent
-                ? [
-                    BoxShadow(
-                      color: statusColor.withValues(alpha: 0.08),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  _IconTile(icon: icon, color: statusColor, soft: statusSoft),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppType.cardTitle.copyWith(
-                        color: colors.ink,
-                        fontSize: 17,
-                      ),
-                    ),
-                  ),
-                  if (inspection) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    _InfoChip(icon: AppIcons.search, label: 'Pemeriksaan'),
-                  ],
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  Flexible(
-                    child: _StatusBadge(
-                      label: statusLabel,
-                      icon: statusIcon,
-                      color: statusColor,
-                      background: statusSoft,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      meta,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: colors.muted, fontSize: 11.5),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                description,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: prominent ? statusColor : colors.inkSoft,
-                  fontSize: 12.5,
-                  fontWeight: prominent ? FontWeight.w600 : FontWeight.w500,
-                ),
-              ),
-              if (progress != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                _SegmentedGauge(
-                  value: progress!,
-                  color: statusColor,
-                  height: 8,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      'Interval terpakai',
-                      style: TextStyle(color: colors.muted, fontSize: 10),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '${(progress! * 100).round()}%',
-                      style: AppType.eyebrow.copyWith(
-                        color: statusColor,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 6),
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.xs,
-                children: [
-                  TextButton(
-                    onPressed: onOpen,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xs,
-                      ),
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      textStyle: AppType.button.copyWith(fontSize: 12),
-                    ),
-                    child: const Text('Detail · Atur interval'),
-                  ),
-                  _RecordButton(prominent: prominent, onPressed: onRecord),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RecordButton extends StatelessWidget {
-  const _RecordButton({required this.onPressed, this.prominent = false});
-
-  final VoidCallback onPressed;
-  final bool prominent;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return FilledButton.icon(
-      onPressed: onPressed,
-      icon: const Icon(AppIcons.record, size: 15),
-      label: const Text('Catat ganti'),
-      style: FilledButton.styleFrom(
-        minimumSize: const Size(0, 34),
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        backgroundColor: prominent ? colors.primary : colors.primarySoft,
-        foregroundColor: prominent ? colors.white : colors.primaryDark,
-        textStyle: AppType.button.copyWith(fontSize: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadii.sm),
-        ),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-    );
-  }
-}
-
-class _CollapsiblePartGroup extends StatelessWidget {
-  const _CollapsiblePartGroup({
-    required this.storageKey,
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.soft,
-    required this.statusLabel,
-    required this.statusColor,
-    required this.statusSoft,
-    required this.statusIcon,
-    required this.parts,
-    required this.iconFor,
-    required this.onOpen,
-    required this.onRecord,
-  });
-
-  final String storageKey;
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final Color soft;
-  final String statusLabel;
-  final Color statusColor;
-  final Color statusSoft;
-  final IconData statusIcon;
-  final List<MaintenanceComponent> parts;
-  final IconData Function(MaintenanceComponent) iconFor;
-  final ValueChanged<MaintenanceComponent> onOpen;
-  final ValueChanged<MaintenanceComponent> onRecord;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return _CardShell(
-      padding: EdgeInsets.zero,
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          key: PageStorageKey(storageKey),
-          tilePadding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: 2,
-          ),
-          childrenPadding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            0,
-            AppSpacing.lg,
-            AppSpacing.sm,
-          ),
-          leading: _IconTile(icon: icon, color: color, soft: soft),
-          title: Text(
-            title,
-            style: AppType.cardTitle.copyWith(color: colors.ink, fontSize: 16),
-          ),
-          subtitle: Text(
-            subtitle,
-            style: TextStyle(color: colors.muted, fontSize: 11.5),
-          ),
-          iconColor: colors.primary,
-          collapsedIconColor: colors.muted,
-          children: [
-            Divider(color: colors.line),
-            for (var index = 0; index < parts.length; index++) ...[
-              _CompactPartRow(
-                part: parts[index],
-                icon: iconFor(parts[index]),
-                statusLabel: statusLabel,
-                statusColor: statusColor,
-                statusSoft: statusSoft,
-                statusIcon: statusIcon,
-                onOpen: () => onOpen(parts[index]),
-                onRecord: () => onRecord(parts[index]),
-              ),
-              if (index != parts.length - 1) Divider(color: colors.line),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CompactPartRow extends StatelessWidget {
-  const _CompactPartRow({
-    required this.part,
-    required this.icon,
-    required this.statusLabel,
-    required this.statusColor,
-    required this.statusSoft,
-    required this.statusIcon,
-    required this.onOpen,
-    required this.onRecord,
-  });
-
-  final MaintenanceComponent part;
-  final IconData icon;
-  final String statusLabel;
-  final Color statusColor;
-  final Color statusSoft;
-  final IconData statusIcon;
-  final VoidCallback onOpen;
-  final VoidCallback onRecord;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onOpen,
-        borderRadius: BorderRadius.circular(AppRadii.sm),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-            children: [
-              Icon(icon, color: colors.inkSoft, size: 20),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Text(
-                  part.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: colors.ink,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              _StatusBadge(
-                label: statusLabel,
-                icon: statusIcon,
-                color: statusColor,
-                background: statusSoft,
-              ),
-              IconButton(
-                tooltip: 'Catat ganti',
-                onPressed: onRecord,
-                visualDensity: VisualDensity.compact,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                padding: EdgeInsets.zero,
-                icon: Icon(AppIcons.record, size: 19, color: colors.primary),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SegmentedGauge extends StatelessWidget {
-  const _SegmentedGauge({
-    required this.value,
-    required this.color,
-    this.height = 8,
-    this.segments = 14,
-  });
-
-  final double value;
-  final Color color;
-  final double height;
-  final int segments;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: value.clamp(0.0, 1.0).toDouble()),
-      duration: reduceMotion ? Duration.zero : AppMotion.normal,
-      curve: Curves.easeOutCubic,
-      builder: (context, animated, child) => SizedBox(
-        height: height,
-        width: double.infinity,
-        child: CustomPaint(
-          painter: _SegmentedGaugePainter(
-            value: animated,
-            color: color,
-            track: colors.line,
-            segments: segments,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SegmentedGaugePainter extends CustomPainter {
-  const _SegmentedGaugePainter({
-    required this.value,
-    required this.color,
-    required this.track,
-    required this.segments,
-  });
-
-  final double value;
-  final Color color;
-  final Color track;
-  final int segments;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0) return;
-    final gap = math.min(3.0, size.width / (segments * 4));
-    final segmentWidth = (size.width - gap * (segments - 1)) / segments;
-    if (segmentWidth <= 0) return;
-    final filled = (value.clamp(0.0, 1.0) * segments).round();
-    final paint = Paint()..isAntiAlias = true;
-    for (var index = 0; index < segments; index++) {
-      paint.color = index < filled ? color : track;
-      final rect = Rect.fromLTWH(
-        index * (segmentWidth + gap),
-        0,
-        segmentWidth,
-        size.height,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, Radius.circular(size.height / 2)),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _SegmentedGaugePainter oldDelegate) =>
-      oldDelegate.value != value ||
-      oldDelegate.color != color ||
-      oldDelegate.track != track ||
-      oldDelegate.segments != segments;
-}
-
-class _SlimProgressIndicator extends StatelessWidget {
-  const _SlimProgressIndicator({
-    required this.value,
-    required this.color,
-    required this.label,
-  });
-
-  final double value;
-  final Color color;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      _SegmentedGauge(value: value, color: color, height: 8, segments: 16),
-      const SizedBox(height: 5),
-      Align(
-        alignment: Alignment.centerRight,
-        child: Text(
-          label,
-          style: AppType.eyebrow.copyWith(color: color, fontSize: 10),
-        ),
-      ),
-    ],
-  );
-}
-
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: colors.surfaceSoft,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-        border: Border.all(color: colors.line),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: colors.primaryDark, size: 14),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: colors.inkSoft,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SourceChip extends StatelessWidget {
-  const _SourceChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: colors.surfaceSoft,
-        borderRadius: BorderRadius.circular(AppRadii.pill),
-      ),
-      child: Text(
-        label.toUpperCase(),
-        style: AppType.eyebrow.copyWith(
-          color: colors.muted,
-          fontSize: 8,
-          letterSpacing: 0.5,
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionHeading extends StatelessWidget {
-  const _SectionHeading({required this.eyebrow, required this.title});
-  final String eyebrow;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _SpeedStripe(color: colors.primary),
-            const SizedBox(width: AppSpacing.sm),
-            Flexible(
-              child: Text(
-                eyebrow,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppType.eyebrow.copyWith(
-                  color: colors.primaryDark,
-                  fontSize: 9.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          title,
-          style: AppType.cardTitle.copyWith(
-            color: colors.ink,
-            fontSize: 20,
-            height: 1.15,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _OdometerField extends StatelessWidget {
-  const _OdometerField({
-    required this.controller,
-    required this.label,
-    required this.hint,
-    required this.textInputAction,
-    required this.validator,
-    this.suffixText = 'km',
-  });
-
-  final TextEditingController controller;
-  final String label;
-  final String hint;
-  final TextInputAction textInputAction;
-  final String? Function(String?) validator;
-  final String suffixText;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: colors.ink,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 7),
-        TextFormField(
-          controller: controller,
-          validator: validator,
-          keyboardType: TextInputType.number,
-          textInputAction: textInputAction,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          style: AppType.metric.copyWith(
-            color: colors.ink,
-            fontSize: 16,
-            fontFeatures: const [],
-          ),
-          decoration: InputDecoration(
-            hintText: hint,
-            suffixText: suffixText,
-            prefixIcon: Icon(AppIcons.speed, color: colors.muted, size: 19),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SafetyNote extends StatelessWidget {
-  const _SafetyNote();
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: colors.surfaceSoft,
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(color: colors.line),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(AppIcons.infoOutline, color: colors.muted, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Pengingat ini membantu mencatat jadwal. Ikuti juga rekomendasi buku manual motormu.',
-              style: TextStyle(color: colors.muted, fontSize: 12, height: 1.45),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(color: colors.muted, fontSize: 12.5),
-          ),
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: AppType.metric.copyWith(
-              color: colors.ink,
-              fontSize: 13,
-              fontFeatures: const [],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ScreenIntro extends StatelessWidget {
-  const _ScreenIntro({
-    required this.eyebrow,
-    required this.title,
-    required this.description,
-  });
-
-  final String eyebrow;
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            _SpeedStripe(color: colors.primary),
-            const SizedBox(width: AppSpacing.sm),
-            Flexible(
-              child: Text(
-                eyebrow,
-                style: AppType.eyebrow.copyWith(
-                  color: colors.primaryDark,
-                  fontSize: 9.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          title,
-          style: AppType.km.copyWith(
-            color: colors.ink,
-            fontSize: 34,
-            height: 1.02,
-            letterSpacing: 0.2,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          description,
-          style: TextStyle(color: colors.muted, height: 1.45, fontSize: 13.5),
-        ),
-      ],
-    );
-  }
-}
-
-class _SpeedStripe extends StatelessWidget {
-  const _SpeedStripe({required this.color});
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 3.5,
-    height: 12,
-    decoration: BoxDecoration(
-      color: color,
-      borderRadius: BorderRadius.circular(2),
-    ),
-  );
-}
-
-class _CountUpOdometer extends StatelessWidget {
-  const _CountUpOdometer({required this.value, required this.style});
-  final int value;
-  final TextStyle style;
-
-  @override
-  Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: value.toDouble()),
-      duration: reduceMotion ? Duration.zero : AppMotion.odometer,
-      curve: Curves.easeOutCubic,
-      builder: (context, animated, child) => Text(
-        formatNumber(animated.round()),
-        maxLines: 1,
-        overflow: TextOverflow.fade,
-        softWrap: false,
-        style: style,
-      ),
-    );
-  }
-}
-
-class _HeroStat extends StatelessWidget {
-  const _HeroStat({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.soft,
-    required this.icon,
-  });
-
-  final String label;
-  final int value;
-  final Color color;
-  final Color soft;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(AppRadii.sm),
-      border: Border.all(color: color.withValues(alpha: 0.32), width: 1),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: color),
-        const SizedBox(width: 5),
-        Text(
-          '$value',
-          style: AppType.metric.copyWith(
-            color: Colors.white,
-            fontSize: 14,
-            fontFeatures: const [],
-          ),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 10.5,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _FinishBanner extends StatelessWidget {
-  const _FinishBanner({required this.title, required this.subtitle});
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: colors.safe.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadii.md),
-        border: Border.all(
-          color: colors.safe.withValues(alpha: 0.28),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: colors.safe.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(AppIcons.checkCircle, color: colors.safeSoft, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: colors.white,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: colors.white.withValues(alpha: 0.75),
-                    fontSize: 11.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-      child: Column(
-        children: [
-          _IconTile(
-            icon: icon,
-            color: colors.primaryDark,
-            soft: colors.primarySoft,
-            size: 50,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            title,
-            style: AppType.cardTitle.copyWith(color: colors.ink, fontSize: 17),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: colors.muted, height: 1.45, fontSize: 13),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SheetHeading extends StatelessWidget {
-  const _SheetHeading({
-    required this.eyebrow,
-    required this.title,
-    required this.icon,
-  });
-
-  final String eyebrow;
-  final String title;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = RawatinColors.of(context);
-    return Row(
-      children: [
-        _IconTile(
-          icon: icon,
-          color: colors.primaryDark,
-          soft: colors.primarySoft,
-        ),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                eyebrow,
-                style: AppType.eyebrow.copyWith(
-                  color: colors.primaryDark,
-                  fontSize: 9,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                title,
-                style: AppType.cardTitle.copyWith(
-                  color: colors.ink,
-                  fontSize: 21,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeroBackdropPainter extends CustomPainter {
-  const _HeroBackdropPainter({required this.stripe, required this.accent});
-  final Color stripe;
-  final Color accent;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.clipRect(Offset.zero & size);
-
-    // 1. Garis aksen presisi telemetry di tepi atas instrumen cluster (3px)
-    final topBarPaint = Paint()
-      ..shader = LinearGradient(
-        colors: [stripe, accent.withValues(alpha: 0.8), Colors.transparent],
-        stops: const [0.0, 0.45, 0.85],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, 3));
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, 3), topBarPaint);
-
-    // 2. Ambient radial glow halus di sudut kanan atas
-    final glowCenter = Offset(size.width * 0.9, size.height * 0.2);
-    final glowRadius = size.width * 0.65;
-    final glowPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          stripe.withValues(alpha: 0.14),
-          stripe.withValues(alpha: 0.03),
-          Colors.transparent,
-        ],
-        stops: const [0.0, 0.5, 1.0],
-      ).createShader(Rect.fromCircle(center: glowCenter, radius: glowRadius));
-    canvas.drawCircle(glowCenter, glowRadius, glowPaint);
-
-    // 3. Lengkung takometer/spedometer digital yang bersih dan presisi
-    final gaugeCenter = Offset(size.width * 0.88, size.height * 0.2);
-    final outerRing = Paint()
-      ..color = Colors.white.withValues(alpha: 0.04)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-    canvas.drawCircle(gaugeCenter, 115, outerRing);
-    canvas.drawCircle(gaugeCenter, 132, outerRing);
-
-    final telemetryArc = Paint()
-      ..color = accent.withValues(alpha: 0.3)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round;
-    canvas.drawArc(
-      Rect.fromCircle(center: gaugeCenter, radius: 124),
-      math.pi * 0.65,
-      math.pi * 0.45,
-      false,
-      telemetryArc,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _HeroBackdropPainter oldDelegate) =>
-      oldDelegate.stripe != stripe || oldDelegate.accent != accent;
 }
