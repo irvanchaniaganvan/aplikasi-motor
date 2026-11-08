@@ -19,7 +19,6 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
   late final AnimationController _controller;
   late final Animation<double> _logoOpacity;
   late final Animation<double> _logoScale;
-  late final Animation<double> _wordmarkOpacity;
   late final Animation<Offset> _wordmarkOffset;
   late final Animation<double> _taglineOpacity;
   late final Animation<Offset> _taglineOffset;
@@ -31,7 +30,7 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3200),
+      duration: const Duration(milliseconds: 3600),
     )..forward();
     _logoOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
@@ -45,30 +44,24 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
         curve: const Interval(0, .34, curve: Curves.easeOutCubic),
       ),
     );
-    _wordmarkOpacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(.38, .50, curve: Curves.easeOut),
-      ),
-    );
     _wordmarkOffset =
         Tween<Offset>(begin: const Offset(0, .12), end: Offset.zero).animate(
           CurvedAnimation(
             parent: _controller,
-            curve: const Interval(.38, .53, curve: Curves.easeOutCubic),
+            curve: const Interval(.30, .43, curve: Curves.easeOutCubic),
           ),
         );
     _taglineOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(.72, .93, curve: Curves.easeOutCubic),
+        curve: const Interval(.77, .95, curve: Curves.easeOutCubic),
       ),
     );
     _taglineOffset =
         Tween<Offset>(begin: const Offset(0, .18), end: Offset.zero).animate(
           CurvedAnimation(
             parent: _controller,
-            curve: const Interval(.72, .94, curve: Curves.easeOutCubic),
+            curve: const Interval(.77, .96, curve: Curves.easeOutCubic),
           ),
         );
     _controller.addStatusListener((status) {
@@ -76,16 +69,50 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
     });
   }
 
-  String get _typedWordmark {
-    const typingStart = .48;
-    const typingEnd = .84;
-    final progress =
-        ((_controller.value - typingStart) / (typingEnd - typingStart)).clamp(
-          0.0,
-          1.0,
-        );
-    final visibleCharacters = (progress * _wordmark.length).ceil();
-    return _wordmark.substring(0, visibleCharacters);
+  double _characterProgress(int index) {
+    const typingStart = .34;
+    const characterStep = .052;
+    const characterDuration = .065;
+    final start = typingStart + index * characterStep;
+    final progress = ((_controller.value - start) / characterDuration).clamp(
+      0.0,
+      1.0,
+    );
+    return Curves.easeOutCubic.transform(progress);
+  }
+
+  Widget _buildSmoothWordmark() {
+    return SizedBox(
+      width: 190,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (var index = 0; index < _wordmark.length; index++) ...[
+            if (index > 0) const SizedBox(width: 2),
+            _buildWordmarkCharacter(index),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWordmarkCharacter(int index) {
+    final progress = _characterProgress(index);
+    return Opacity(
+      opacity: progress,
+      child: Transform.translate(
+        offset: Offset(0, 5 * (1 - progress)),
+        child: Text(
+          _wordmark[index],
+          style: const TextStyle(
+            color: AppPalette.canvas,
+            fontSize: 25,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -109,42 +136,27 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
                 child: ScaleTransition(scale: _logoScale, child: child),
               ),
               const SizedBox(height: 22),
-              FadeTransition(
-                opacity: _wordmarkOpacity,
-                child: SlideTransition(
-                  position: _wordmarkOffset,
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        width: 190,
-                        child: Text(
-                          _typedWordmark,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppPalette.canvas,
-                            fontSize: 25,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 4.2,
+              SlideTransition(
+                position: _wordmarkOffset,
+                child: Column(
+                  children: [
+                    _buildSmoothWordmark(),
+                    const SizedBox(height: 8),
+                    FadeTransition(
+                      opacity: _taglineOpacity,
+                      child: SlideTransition(
+                        position: _taglineOffset,
+                        child: const Text(
+                          'Kamu yang gas, Rawatin yang ingat.',
+                          style: TextStyle(
+                            color: AppPalette.accent,
+                            fontSize: 12,
+                            letterSpacing: .3,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      FadeTransition(
-                        opacity: _taglineOpacity,
-                        child: SlideTransition(
-                          position: _taglineOffset,
-                          child: const Text(
-                            'Merawat dengan lebih teratur.',
-                            style: TextStyle(
-                              color: AppPalette.accent,
-                              fontSize: 12,
-                              letterSpacing: .3,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ],
