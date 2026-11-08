@@ -11,6 +11,8 @@ import '../../../../core/widgets/rawatin_logo.dart';
 import '../../domain/entities/driver_motor_profile.dart';
 import '../../domain/entities/motor_model_catalog.dart';
 import '../widgets/vehicle_avatar.dart';
+import '../widgets/vehicle_photo_crop_page.dart';
+import '../widgets/vehicle_photo_viewer.dart';
 import '../../../maintenance/domain/entities/maintenance_motor_catalog.dart';
 import '../../../maintenance/data/repositories/default_interval_repository.dart';
 
@@ -45,6 +47,9 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   String? _brakeSystem;
   String? _motorVariant;
   String? _photoPath;
+  String? _savedPhotoPath;
+  final Set<String> _photoPathsPendingDeletion = <String>{};
+  final Set<String> _photoPathsCreatedDuringEdit = <String>{};
   DateTime? _purchaseDate;
   late final VehiclePhotoService _photoService;
   late String _profileId;
@@ -82,6 +87,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       _motorVariant = profile.motorVariant;
       _nickname.text = profile.nickname ?? '';
       _photoPath = profile.photoPath;
+      _savedPhotoPath = profile.photoPath;
       _purchaseDate = profile.purchaseDate;
       _manualMotor = true;
     }
@@ -188,9 +194,23 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
           purchaseDate: _purchaseDate,
         ),
       );
+      for (final path in _photoPathsPendingDeletion) {
+        await _photoService.deletePhoto(path);
+      }
+      _photoPathsPendingDeletion.clear();
+      _photoPathsCreatedDuringEdit.clear();
+      _savedPhotoPath = _photoPath;
     } catch (_) {
+      for (final path in _photoPathsCreatedDuringEdit) {
+        await _photoService.deletePhoto(path);
+      }
+      _photoPathsCreatedDuringEdit.clear();
+      _photoPathsPendingDeletion.clear();
       if (mounted) {
-        setState(() => _saving = false);
+        setState(() {
+          _photoPath = _savedPhotoPath;
+          _saving = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profil gagal disimpan. Coba lagi.')),
         );
@@ -549,7 +569,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                         const SizedBox(height: 8),
                         const Center(
                           child: Text(
-                            'Ketuk foto untuk ganti atau hapus',
+                            'Ketuk foto untuk lihat, ganti, atau hapus',
                             style: TextStyle(color: muted, fontSize: 12),
                           ),
                         ),
@@ -681,10 +701,35 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Pilih foto dari galeri atau kamera',
+                _photoPath == null
+                    ? 'Pilih foto dari galeri atau kamera'
+                    : 'Lihat, ganti, atau hapus foto kendaraan',
                 style: TextStyle(color: colors.muted, fontSize: 13),
               ),
               const SizedBox(height: 16),
+              if (_photoPath != null)
+                ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: colors.primarySoft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.visibility_rounded,
+                      color: colors.primaryDark,
+                    ),
+                  ),
+                  title: const Text('Lihat foto'),
+                  subtitle: const Text(
+                    'Buka foto besar dan perbesar detailnya',
+                  ),
+                  onTap: () {
+                    Navigator.of(bottomSheetContext).pop();
+                    VehiclePhotoViewer.show(context, _photoPath);
+                  },
+                ),
               ListTile(
                 leading: Container(
                   width: 40,
@@ -753,10 +798,10 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                   ),
                   onTap: () async {
                     Navigator.of(bottomSheetContext).pop();
-                    await _photoService.deletePhoto(_photoPath);
-                    if (mounted) {
-                      setState(() => _photoPath = null);
-                    }
+                    final confirmed = await _confirmDeletePhoto();
+                    if (!confirmed || !mounted) return;
+                    _queuePhotoForDeletion(_photoPath);
+                    setState(() => _photoPath = null);
                   },
                 ),
             ],
@@ -768,12 +813,22 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 
   Future<void> _pickPhoto(ImageSource source) async {
     try {
-      final newPath = await _photoService.pickAndSavePhoto(
-        source: source,
-        profileId: _profileId,
-        oldPhotoPath: _photoPath,
+      final selection = await _photoService.pickPhoto(source: source);
+      if (selection == null || !mounted) return;
+      final croppedBytes = await Navigator.of(context).push<Uint8List>(
+        MaterialPageRoute(
+          builder: (_) => VehiclePhotoCropPage(bytes: selection.bytes),
+        ),
       );
-      if (newPath != null && mounted) {
+      if (croppedBytes == null || !mounted) return;
+      final newPath = await _photoService.savePhotoBytes(
+        bytes: croppedBytes,
+        extension: 'png',
+        profileId: _profileId,
+      );
+      if (mounted) {
+        _queuePhotoForDeletion(_photoPath);
+        _photoPathsCreatedDuringEdit.add(newPath);
         setState(() => _photoPath = newPath);
       }
     } catch (e) {
@@ -786,6 +841,35 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
         );
       }
     }
+  }
+
+  void _queuePhotoForDeletion(String? path) {
+    if (path != null && path.isNotEmpty) {
+      _photoPathsPendingDeletion.add(path);
+    }
+  }
+
+  Future<bool> _confirmDeletePhoto() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Hapus foto kendaraan?'),
+        content: const Text(
+          'Foto akan dihapus setelah profil berhasil disimpan.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   Future<void> _selectPurchaseDate() async {

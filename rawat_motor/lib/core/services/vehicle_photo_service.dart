@@ -9,6 +9,13 @@ import 'package:path_provider/path_provider.dart';
 
 enum VehiclePhotoErrorKind { permission, picker, unreadable, save }
 
+class VehiclePhotoSelection {
+  const VehiclePhotoSelection({required this.bytes, required this.extension});
+
+  final Uint8List bytes;
+  final String extension;
+}
+
 class VehiclePhotoException implements Exception {
   const VehiclePhotoException(this.kind, [this.cause]);
 
@@ -47,14 +54,13 @@ class VehiclePhotoService {
     return result?.files.firstOrNull;
   }
 
-  /// Memilih foto dari galeri atau kamera, memperkecil ke maks 1280px (bawaan picker),
-  /// lalu menyalin ke folder dokumen lokal aplikasi.
+  /// Memilih foto dari galeri atau kamera.
   ///
-  /// Mengembalikan path absolut baru, atau `null` jika dibatalkan.
-  Future<String?> pickAndSavePhoto({
+  /// Bytes dikembalikan ke layar crop, jadi belum ada file aplikasi yang
+  /// dibuat pada tahap ini. Pembatalan crop dengan demikian tidak menyentuh
+  /// foto lama.
+  Future<VehiclePhotoSelection?> pickPhoto({
     required ImageSource source,
-    required String profileId,
-    String? oldPhotoPath,
   }) async {
     Uint8List bytes;
     String originalName;
@@ -113,13 +119,42 @@ class VehiclePhotoService {
     if (!const {'jpg', 'jpeg', 'png', 'webp'}.contains(extension)) {
       throw const VehiclePhotoException(VehiclePhotoErrorKind.unreadable);
     }
-    try {
-      final codec = await ui.instantiateImageCodec(bytes);
-      codec.dispose();
-    } catch (error) {
-      throw VehiclePhotoException(VehiclePhotoErrorKind.unreadable, error);
-    }
+    await _validateImage(bytes);
+    return VehiclePhotoSelection(bytes: bytes, extension: extension);
+  }
 
+  /// Memilih lalu langsung menyimpan foto tanpa crop.
+  ///
+  /// Dipertahankan sebagai API umum untuk pemanggil lama. Alur profil memakai
+  /// [pickPhoto] dan [savePhotoBytes] agar crop terjadi sebelum penyimpanan.
+  ///
+  /// Mengembalikan path absolut baru, atau `null` jika dibatalkan.
+  Future<String?> pickAndSavePhoto({
+    required ImageSource source,
+    required String profileId,
+    String? oldPhotoPath,
+  }) async {
+    final selection = await pickPhoto(source: source);
+    if (selection == null) return null;
+    return savePhotoBytes(
+      bytes: selection.bytes,
+      extension: selection.extension,
+      profileId: profileId,
+      oldPhotoPath: oldPhotoPath,
+    );
+  }
+
+  /// Menulis hasil crop sebagai file baru, lalu membersihkan foto lama.
+  ///
+  /// Penulisan dilakukan lebih dulu. Jika validasi atau penulisan gagal,
+  /// [oldPhotoPath] tidak disentuh.
+  Future<String> savePhotoBytes({
+    required Uint8List bytes,
+    required String profileId,
+    String extension = 'png',
+    String? oldPhotoPath,
+  }) async {
+    await _validateImage(bytes);
     final Directory appDocDir;
     try {
       appDocDir = await _getDocumentsDirectory();
@@ -134,7 +169,7 @@ class VehiclePhotoService {
       }
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       targetPath =
-          '${vehiclePhotosDir.path}/vehicle_${profileId}_$timestamp.$extension';
+          '${vehiclePhotosDir.path}/vehicle_${profileId}_$timestamp.${_safeExtension(extension)}';
       final targetFile = File(targetPath);
       await targetFile.writeAsBytes(bytes, flush: true);
     } catch (error) {
@@ -148,6 +183,22 @@ class VehiclePhotoService {
     }
 
     return targetPath;
+  }
+
+  Future<void> _validateImage(Uint8List bytes) async {
+    try {
+      final codec = await ui.instantiateImageCodec(bytes);
+      codec.dispose();
+    } catch (error) {
+      throw VehiclePhotoException(VehiclePhotoErrorKind.unreadable, error);
+    }
+  }
+
+  String _safeExtension(String extension) {
+    final normalized = extension.toLowerCase().replaceFirst('.', '');
+    return const {'jpg', 'jpeg', 'png', 'webp'}.contains(normalized)
+        ? normalized
+        : 'png';
   }
 
   /// Menghapus file foto lama dari disk jika ada.

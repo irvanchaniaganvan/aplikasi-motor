@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rawatin/core/services/vehicle_photo_service.dart';
 import 'package:rawatin/core/theme/app_theme.dart';
@@ -14,6 +17,8 @@ import 'package:rawatin/features/profile/domain/entities/driver_motor_profile.da
 import 'package:rawatin/features/profile/domain/entities/motor_model_catalog.dart';
 import 'package:rawatin/features/profile/presentation/pages/profile_setup_page.dart';
 import 'package:rawatin/features/profile/presentation/widgets/vehicle_avatar.dart';
+import 'package:rawatin/features/profile/presentation/widgets/vehicle_photo_crop_page.dart';
+import 'package:rawatin/features/profile/presentation/widgets/vehicle_photo_viewer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
@@ -320,6 +325,58 @@ void main() {
 
       await tester.tap(find.byType(VehicleAvatar));
       expect(tapped, isTrue);
+    });
+  });
+
+  group('Widget foto kendaraan', () {
+    testWidgets('editor crop menampilkan kontrol sesuaikan dan simpan', (
+      tester,
+    ) async {
+      Uint8List? savedBytes;
+      final imageBytes = (await rootBundle.load(
+        'assets/brand/rawatin_icon.png',
+      )).buffer.asUint8List();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: ElevatedButton(
+                onPressed: () async {
+                  savedBytes = await Navigator.of(context).push<Uint8List>(
+                    MaterialPageRoute(
+                      builder: (_) => VehiclePhotoCropPage(bytes: imageBytes),
+                    ),
+                  );
+                },
+                child: const Text('Buka editor'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Buka editor'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('Sesuaikan foto'), findsOneWidget);
+      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
+      expect(savedBytes, isNull);
+    });
+
+    testWidgets('viewer fullscreen menyediakan zoom dan fallback file gagal', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: VehiclePhotoViewer(photoPath: '/file/tidak-ada.jpg'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      expect(find.text('Foto kendaraan'), findsOneWidget);
+      expect(find.text('Foto tidak dapat dibuka.'), findsOneWidget);
     });
   });
 
