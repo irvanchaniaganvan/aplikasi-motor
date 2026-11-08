@@ -19,6 +19,7 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
   late final AnimationController _controller;
   late final Animation<double> _logoOpacity;
   late final Animation<double> _logoScale;
+  late final Animation<double> _logoProgress;
   late final Animation<Offset> _wordmarkOffset;
   late final Animation<double> _taglineOpacity;
   late final Animation<Offset> _taglineOffset;
@@ -35,14 +36,18 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
     _logoOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0, .30, curve: Curves.easeOut),
+        curve: const Interval(0, .08, curve: Curves.easeOut),
       ),
     );
     _logoScale = Tween<double>(begin: .78, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0, .34, curve: Curves.easeOutCubic),
+        curve: const Interval(0, .25, curve: Curves.easeOutCubic),
       ),
+    );
+    _logoProgress = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0, .30, curve: Curves.easeInOutCubic),
     );
     _wordmarkOffset =
         Tween<Offset>(begin: const Offset(0, .12), end: Offset.zero).animate(
@@ -133,7 +138,14 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
             children: [
               FadeTransition(
                 opacity: _logoOpacity,
-                child: ScaleTransition(scale: _logoScale, child: child),
+                child: ScaleTransition(
+                  scale: _logoScale,
+                  child: RawatinLogo(
+                    size: 112,
+                    showShadow: false,
+                    animationProgress: _logoProgress.value,
+                  ),
+                ),
               ),
               const SizedBox(height: 22),
               SlideTransition(
