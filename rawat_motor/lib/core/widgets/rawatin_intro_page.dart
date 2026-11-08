@@ -30,7 +30,7 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3600),
+      duration: const Duration(milliseconds: 4500),
     )..forward();
     _logoOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
@@ -54,14 +54,14 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
     _taglineOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(.77, .95, curve: Curves.easeOutCubic),
+        curve: const Interval(.70, .84, curve: Curves.easeOutCubic),
       ),
     );
     _taglineOffset =
         Tween<Offset>(begin: const Offset(0, .18), end: Offset.zero).animate(
           CurvedAnimation(
             parent: _controller,
-            curve: const Interval(.77, .96, curve: Curves.easeOutCubic),
+            curve: const Interval(.70, .85, curve: Curves.easeOutCubic),
           ),
         );
     _controller.addStatusListener((status) {

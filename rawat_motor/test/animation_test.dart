@@ -20,7 +20,9 @@ void main() {
     expect(finished, isFalse);
     await tester.pump(const Duration(milliseconds: 1300));
     expect(finished, isFalse);
-    await tester.pump(const Duration(milliseconds: 1000));
+    await tester.pump(const Duration(milliseconds: 700));
+    expect(finished, isFalse);
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
     expect(finished, isTrue);
   });
