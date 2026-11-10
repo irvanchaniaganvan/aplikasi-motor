@@ -53,7 +53,6 @@ class FakeAiService implements AiService {
 
     final query = request.question.trim();
 
-    // 1. Validasi batas panjang input
     if (query.length > 500) {
       throw const AiServiceException(
         code: 'too_long',
@@ -61,7 +60,6 @@ class FakeAiService implements AiService {
       );
     }
 
-    // 2. Simulasi pengujian untuk galat
     if (query.contains('__test_rate_limit__')) {
       throw const AiServiceException(
         code: 'rate_limited',
@@ -84,22 +82,22 @@ class FakeAiService implements AiService {
 
     final lower = query.toLowerCase();
 
-    // 3. Sapaan dan ucapan terima kasih tidak boleh dianggap di luar topik
     final normalized = _normalize(query);
     if (_greetings.contains(normalized)) {
       return const AiOilResponse(
-        answer: 'Halo! Aku Asisten Panduan Rawatin. Aku bisa bantu soal oli mesin, oli gardan, jadwal ganti, atau arti SAE/JASO. Mau mulai dari topik apa?',
+        answer:
+            'Halo! Aku Asisten Perawatan Motor Rawatin. Aku bisa bantu soal oli, rem, ban, CVT, aki, dan perawatan motor lain. Mau mulai dari topik apa?',
         refused: false,
       );
     }
     if (_thanks.contains(normalized)) {
       return const AiOilResponse(
-        answer: 'Sama-sama! Kalau ada pertanyaan lain soal oli atau perawatan motor, tanyakan saja.',
+        answer:
+            'Sama-sama! Kalau ada pertanyaan lain seputar perawatan motor, tanyakan saja.',
         refused: false,
       );
     }
 
-    // 4. Deteksi keluhan berisiko keselamatan
     final isRisky =
         lower.contains('lampu oli') ||
         lower.contains('oli bocor') ||
@@ -110,13 +108,13 @@ class FakeAiService implements AiService {
 
     if (isRisky) {
       return const AiOilResponse(
-        answer: 'Kondisi ini berisiko bagi keselamatan dan mesin. Segera menepi di tempat yang aman dan jangan memaksakan motor menyala. Bawa atau konsultasikan ke bengkel resmi terdekat untuk pemeriksaan langsung.',
+        answer:
+            'Kondisi ini berisiko bagi keselamatan dan mesin. Segera menepi di tempat yang aman dan jangan memaksakan motor menyala. Bawa atau konsultasikan ke bengkel resmi terdekat untuk pemeriksaan langsung.',
         refused: false,
       );
     }
 
-    // 5. Deteksi pertanyaan di luar topik perawatan motor/oli
-    final isOilOrMotor =
+    final isMotorCareTopic =
         lower.contains('oli') ||
         lower.contains('sae') ||
         lower.contains('jaso') ||
@@ -137,17 +135,29 @@ class FakeAiService implements AiService {
         lower.contains('level') ||
         lower.contains('10w') ||
         lower.contains('20w') ||
-        lower.contains('5w');
+        lower.contains('5w') ||
+        lower.contains('rem') ||
+        lower.contains('ban') ||
+        lower.contains('cvt') ||
+        lower.contains('aki') ||
+        lower.contains('busi') ||
+        lower.contains('radiator') ||
+        lower.contains('pendingin') ||
+        lower.contains('rantai') ||
+        lower.contains('filter') ||
+        lower.contains('kopling') ||
+        lower.contains('kering') ||
+        lower.contains('basah');
 
-    if (!isOilOrMotor) {
+    if (!isMotorCareTopic) {
       return const AiOilResponse(
-        answer: 'Maaf, aku hanya bisa menjawab seputar oli dan perawatan dasar motor sesuai panduan Rawatin. Ada hal seputar oli motor yang ingin kamu tanyakan?',
+        answer:
+            'Maaf, aku hanya bisa menjawab seputar perawatan motor dan oli. Ada hal lain yang ingin kamu tanyakan?',
         refused: true,
         reason: 'off_topic',
       );
     }
 
-    // 6. Permintaan rekomendasi oli motor pengguna
     if (lower.contains('cocok') ||
         lower.contains('spesifikasi motor') ||
         lower.contains('motorku') ||
@@ -168,44 +178,98 @@ class FakeAiService implements AiService {
       );
     }
 
-    // 7. Pertanyaan perbedaan kode SAE (contoh: 10W-30 vs 10W-40)
     if (lower.contains('10w-30') ||
         lower.contains('10w-40') ||
         lower.contains('sae') ||
         lower.contains('bedanya')) {
       return const AiOilResponse(
-        answer: 'Angka sebelum W menunjukkan kekentalan saat mesin dingin (makin kecil makin encer saat distarter), dan angka setelahnya menunjukkan kekentalan saat suhu kerja mesin panas. Misalnya, 10W-30 lebih encer pada suhu tinggi dibanding 10W-40. Selalu gunakan tingkat kekentalan yang direkomendasikan pabrikan motormu. Cek juga buku manual motormu.',
+        answer:
+            'Angka sebelum W menunjukkan kekentalan saat mesin dingin, dan angka setelahnya menunjukkan kekentalan saat suhu kerja mesin panas. Misalnya, 10W-30 lebih encer pada suhu tinggi dibanding 10W-40. Selalu gunakan tingkat kekentalan yang direkomendasikan pabrikan motormu. Cek juga buku manual motormu.',
       );
     }
 
-    // 8. Pengaruh kondisi macet / pemakaian berat
     if (lower.contains('macet') ||
         lower.contains('panas') ||
         lower.contains('jarak pendek')) {
       return const AiOilResponse(
-        answer: 'Ya, kondisi macet stop-and-go, cuaca panas, dan rute jarak pendek tergolong pemakaian berat (severe). Mesin tetap menyala dan panas walau kilometer berjalan lambat, sehingga kualitas oli menurun lebih cepat. Sebaiknya ganti oli lebih awal dari interval normal. Cek juga buku manual motormu.',
+        answer:
+            'Ya, kondisi macet stop-and-go, cuaca panas, dan rute jarak pendek tergolong pemakaian berat. Mesin tetap menyala dan panas walau kilometer berjalan lambat, sehingga kualitas oli menurun lebih cepat. Sebaiknya ganti oli lebih awal dari interval normal. Cek juga buku manual motormu.',
       );
     }
 
-    // 9. Oli gardan
     if (lower.contains('gardan')) {
       return const AiOilResponse(
-        answer: 'Motor matic memiliki oli gardan (transmisi belakang) yang terpisah dari oli mesin. Oli gardan punya spesifikasi, takaran, dan jadwal penggantian sendiri (biasanya tiap 2-3 kali ganti oli mesin). Jangan sampai tertukar saat pengisian. Cek juga buku manual motormu.',
+        answer:
+            'Motor matic memiliki oli gardan (transmisi belakang) yang terpisah dari oli mesin. Oli gardan punya spesifikasi, takaran, dan jadwal penggantian sendiri (biasanya tiap 2-3 kali ganti oli mesin). Jangan sampai tertukar saat pengisian. Cek juga buku manual motormu.',
       );
     }
 
-    // 10. Cara cek level oli / dipstick
     if (lower.contains('cek') ||
         lower.contains('dipstick') ||
         lower.contains('level')) {
       return const AiOilResponse(
-        answer: 'Parkirkan motor di tempat rata menggunakan standar tengah. Tunggu beberapa menit setelah mesin dimatikan. Buka stik oli (dipstick), lap bersih, lalu masukkan kembali tanpa diputar (atau sesuai petunjuk manual). Ketinggian oli harus berada di antara batas bawah dan batas atas (maksimum). Cek juga buku manual motormu.',
+        answer:
+            'Parkirkan motor di tempat rata menggunakan standar tengah. Tunggu beberapa menit setelah mesin dimatikan. Buka stik oli (dipstick), lap bersih, lalu masukkan kembali tanpa diputar (atau sesuai petunjuk manual). Ketinggian oli harus berada di antara batas bawah dan batas atas (maksimum). Cek juga buku manual motormu.',
       );
     }
 
-    // Jawaban umum berdasarkan panduan
+    if (lower.contains('cvt') ||
+        lower.contains('v-belt') ||
+        lower.contains('roller') ||
+        lower.contains('kopling')) {
+      return const AiOilResponse(
+        answer:
+            'CVT motor matic bekerja melalui v-belt dan roller. Getaran, suara kasar, atau tarikan yang tidak halus bisa menandakan komponen CVT mulai aus atau kotor. Periksa urutan perawatan sesuai buku manual; buang CVT hanya di bengkel yang berwenang.',
+      );
+    }
+
+    if (lower.contains('ban')) {
+      return const AiOilResponse(
+        answer:
+            'Periksa tekanan angin ban sesuai buku manual, termasuk perbedaan tekanan depan dan belakang. Ban botak, retak, benjol, atau banyak tambalan harus diganti. Teruskan cek keausan alur ban secara berkala.',
+      );
+    }
+
+    if (lower.contains('aki') || lower.contains('baterai') || lower.contains('starter')) {
+      return const AiOilResponse(
+        answer:
+            'Aki yang lemah membuat starter berat, lampu redup, atau sistem kelistrikan terganggu. Periksa tegangan, terminal, dan kondisi aki secara berkala; bersihkan terminal yang kotor dengan hati-hati.',
+      );
+    }
+
+    if (lower.contains('busi') || lower.contains('spark')) {
+      return const AiOilResponse(
+        answer:
+            'Busi menghasilkan percikan untuk pembakaran. Busi kotor, aus, atau celahnya salah bisa membuat mesin sulit menyala, brebet, atau boros. Gunakan busi sesuai tipe dan celah buku manual; jangan mengencangkan berlebihan.',
+      );
+    }
+
+    if (lower.contains('radiator') ||
+        lower.contains('pendingin') ||
+        lower.contains('cairan')) {
+      return const AiOilResponse(
+        answer:
+            'Motor berpendingin cair butuh cairan pendingin yang cukup dan radiator yang bersih. Periksa level saat mesin dingin dan gunakan cairan sesuai buku manual; jangan memakai air keran untuk jangka panjang.',
+      );
+    }
+
+    if (lower.contains('rantai') || lower.contains('gir')) {
+      return const AiOilResponse(
+        answer:
+            'Rantai motor perlu kelonggaran dan pelumasan yang tepat. Rantai kering, berkarat, atau bergigi aus perlu diperiksa; bersihkan dan lumasi sesuai petunjuk bengkel.',
+      );
+    }
+
+    if (lower.contains('filter') || lower.contains('udara')) {
+      return const AiOilResponse(
+        answer:
+            'Filter udara menahan kotoran agar tidak masuk ke mesin. Filter kertas beroli umumnya diganti, filter busa bisa dibersihkan lalu diberi oli khusus. Debu dan pasir yang menumpuk perlu dibersihkan.',
+      );
+    }
+
     return const AiOilResponse(
-      answer: 'Oli berfungsi melumasi, mendinginkan, membersihkan, dan mencegah keausan komponen mesin. Ganti oli secara rutin berdasarkan jarak tempuh atau waktu, mana yang tercapai lebih dulu. Cek juga buku manual motormu.',
+      answer:
+          'Oli berfungsi melumasi, mendinginkan, membersihkan, dan mencegah keausan komponen mesin. Ganti oli secara rutin berdasarkan jarak tempuh atau waktu, mana yang tercapai lebih dulu. Cek juga buku manual motormu.',
     );
   }
 }

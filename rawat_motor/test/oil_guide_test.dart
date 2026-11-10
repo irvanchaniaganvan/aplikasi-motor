@@ -13,7 +13,6 @@ import 'package:rawatin/features/maintenance/domain/use_cases/load_motor_data.da
 import 'package:rawatin/features/maintenance/domain/use_cases/save_motor_data.dart';
 import 'package:rawatin/features/maintenance/domain/services/ai_service.dart';
 import 'package:rawatin/features/maintenance/data/services/fake_ai_service.dart';
-import 'package:rawatin/features/maintenance/data/services/ai_consent_storage.dart';
 import 'package:rawatin/features/maintenance/data/services/http_oil_specification_service.dart';
 import 'package:rawatin/features/maintenance/domain/services/oil_specification_service.dart';
 import 'package:rawatin/features/maintenance/presentation/pages/oil_guide_page.dart';
@@ -37,72 +36,12 @@ class _MemoryMotorDataRepository implements MotorDataRepository {
   Future<void> save(MotorData value) async => data = value;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: consent yang langsung menyetujui tanpa dialog (untuk tes UI)
-// ─────────────────────────────────────────────────────────────────────────────
-class _AutoConsentStorage implements AiConsentStorage {
-  @override
-  Future<bool> hasConsent() async => true;
-
-  @override
-  Future<void> setConsent(bool consent) async {}
-
-  @override
-  Future<String> getOrCreateInstallId() async => 'test-install-id';
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: consent yang belum pernah menyetujui
-// ─────────────────────────────────────────────────────────────────────────────
-class _NoConsentStorage implements AiConsentStorage {
-  @override
-  Future<bool> hasConsent() async => false;
-
-  @override
-  Future<void> setConsent(bool consent) async {}
-
-  @override
-  Future<String> getOrCreateInstallId() async => 'test-install-id';
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: AI service yang merekam apakah dipanggil
-// ─────────────────────────────────────────────────────────────────────────────
-class _SpyAiService implements AiService {
-  int callCount = 0;
-
-  @override
-  Future<AiOilResponse> askOilGuide(AiOilRequest request) async {
-    callCount++;
-    return const AiOilResponse(answer: 'Jawaban spy AI.');
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Helper: AI service yang selalu melempar galat dengan kode tertentu
-// ─────────────────────────────────────────────────────────────────────────────
-class _ThrowingAiService implements AiService {
-  const _ThrowingAiService(this.code, this.message);
-
-  final String code;
-  final String message;
-
-  @override
-  Future<AiOilResponse> askOilGuide(AiOilRequest request) async {
-    throw AiServiceException(code: code, message: message);
-  }
-}
-
 Widget _buildPage({
   MaintenanceMotor? motor,
-  AiService? aiService,
-  AiConsentStorage? consentStorage,
   VoidCallback? onRecord,
 }) => MaterialApp(
   home: OilGuidePage(
     motor: motor,
-    aiService: aiService ?? const FakeAiService(),
-    consentStorage: consentStorage ?? _AutoConsentStorage(),
     onRecordOilService: onRecord,
   ),
 );
@@ -295,7 +234,6 @@ void main() {
         motorName: 'Honda Vario 160',
         year: 2024,
       );
-
       expect(result.sourceType, OilSpecificationSourceType.online);
       expect(result.specification?.sae, '10W-30');
       expect(result.specification?.source, 'Buku pedoman resmi');
@@ -325,7 +263,6 @@ void main() {
         motorName: 'Honda Beat',
         year: 2024,
       );
-
       expect(first.sourceType, OilSpecificationSourceType.online);
       expect(cached.sourceType, OilSpecificationSourceType.cache);
       expect(cached.specification?.sae, '10W-40');
@@ -344,7 +281,6 @@ void main() {
         year: 2024,
         localSpecification: local,
       );
-
       expect(result.sourceType, OilSpecificationSourceType.local);
       expect(result.specification, local);
     });
@@ -504,143 +440,7 @@ void main() {
     });
   });
 
-  // ─── 5. UI Widget AI ─────────────────────────────────────────────────────
-
-  group('OilGuidePage – UI asisten AI', () {
-    testWidgets('menampilkan header asisten AI', (tester) async {
-      await tester.pumpWidget(_buildPage());
-      await tester.pumpAndSettle();
-
-      // Cari dengan descendant finder agar tidak ambigu dengan banyak scrollable
-      expect(find.text('TANYA PANDUAN OLI'), findsOneWidget);
-    });
-
-    testWidgets('menampilkan chip pertanyaan contoh', (tester) async {
-      await tester.pumpWidget(_buildPage());
-      await tester.pumpAndSettle();
-
-      expect(find.text('Bedanya 10W-30 dan 10W-40?'), findsOneWidget);
-      expect(
-        find.text('Kalau tiap hari macet, oli lebih cepat diganti?'),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('tanpa persetujuan tidak ada panggilan layanan AI', (
-      tester,
-    ) async {
-      final spyService = _SpyAiService();
-
-      await tester.pumpWidget(
-        _buildPage(aiService: spyService, consentStorage: _NoConsentStorage()),
-      );
-      await tester.pumpAndSettle();
-
-      // Ketik di input paling bawah (satu-satunya TextField)
-      final inputField = find.byType(TextField);
-      expect(inputField, findsOneWidget);
-
-      await tester.enterText(inputField, 'tanya sesuatu?');
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byTooltip('Kirim pertanyaan'));
-      await tester.pumpAndSettle();
-
-      // Dialog consent muncul; AI belum dipanggil
-      expect(spyService.callCount, 0);
-    });
-
-    testWidgets('jawaban muncul setelah pertanyaan dikirim', (tester) async {
-      await tester.pumpWidget(_buildPage());
-      await tester.pumpAndSettle();
-
-      final inputField = find.byType(TextField);
-      expect(inputField, findsOneWidget);
-
-      await tester.enterText(inputField, 'kapan ganti oli?');
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byTooltip('Kirim pertanyaan'));
-      await tester.pumpAndSettle();
-
-      // Pertanyaan pengguna tampil di chat history
-      expect(find.text('kapan ganti oli?'), findsOneWidget);
-    });
-
-    testWidgets('pesan rate limit tampil dengan tombol Coba lagi', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        _buildPage(
-          aiService: const _ThrowingAiService(
-            'rate_limited',
-            'Terlalu banyak pertanyaan. Mohon tunggu sebentar.',
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.enterText(find.byType(TextField), 'kapan ganti oli?');
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Kirim pertanyaan'));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text('Terlalu banyak pertanyaan. Mohon tunggu sebentar.'),
-        findsOneWidget,
-      );
-      expect(find.text('Coba lagi'), findsOneWidget);
-    });
-
-    testWidgets('pesan galat jaringan tampil dengan tombol Coba lagi', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        _buildPage(
-          aiService: const _ThrowingAiService(
-            'network_error',
-            'Tidak dapat terhubung ke server. Periksa koneksi internet.',
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.enterText(find.byType(TextField), 'kapan ganti oli?');
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Kirim pertanyaan'));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.text('Tidak dapat terhubung ke server. Periksa koneksi internet.'),
-        findsOneWidget,
-      );
-      expect(find.text('Coba lagi'), findsOneWidget);
-    });
-
-    testWidgets('AI belum dikonfigurasi menampilkan Segera hadir', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        _buildPage(
-          aiService: const _ThrowingAiService(
-            'ai_unconfigured',
-            'Layanan AI belum dikonfigurasi.',
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.enterText(find.byType(TextField), 'kapan ganti oli?');
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Kirim pertanyaan'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Segera hadir'), findsOneWidget);
-      expect(find.text('TANYA PANDUAN OLI'), findsOneWidget);
-    });
-  });
-
-  // ─── 6. Navigasi dari kartu Oli mesin & Oli gardan ───────────────────────
+  // ─── 5. Navigasi dari kartu Oli mesin & Oli gardan ───────────────────────
 
   group('OilReminderPage – pintu masuk Panduan oli', () {
     Widget buildReminderPage({
@@ -683,25 +483,20 @@ void main() {
           ),
         ],
       );
-
       await tester.pumpWidget(buildReminderPage(catalog: catalog, data: data));
       await tester.pumpAndSettle();
-
       // Tap judul kartu Oli mesin untuk membuka detail
       await tester.ensureVisible(find.text('Oli mesin').first);
       await tester.tap(find.text('Oli mesin').first);
       await tester.pumpAndSettle();
-
       final sheetGuideButton = find.widgetWithText(
         OutlinedButton,
         'Panduan oli',
       );
       expect(sheetGuideButton, findsOneWidget);
-
       await tester.tap(sheetGuideButton);
       await tester.pumpAndSettle();
-
-      expect(find.text('TANYA PANDUAN OLI'), findsOneWidget);
+      expect(find.text('PANDUAN OLI'), findsOneWidget);
       expect(find.text('Catat ganti oli'), findsOneWidget);
     });
 
@@ -731,19 +526,15 @@ void main() {
           ),
         ],
       );
-
       await tester.pumpWidget(buildReminderPage(catalog: catalog, data: data));
       await tester.pumpAndSettle();
-
       expect(find.text('Panduan oli (contoh)'), findsNothing);
-
       final guideCard = find.text('Panduan oli');
       await tester.ensureVisible(guideCard);
       await tester.pumpAndSettle();
       await tester.tap(guideCard);
       await tester.pumpAndSettle();
-
-      expect(find.text('TANYA PANDUAN OLI'), findsOneWidget);
+      expect(find.text('PANDUAN OLI'), findsOneWidget);
       expect(find.text('Catat ganti oli'), findsOneWidget);
     });
 
@@ -773,24 +564,19 @@ void main() {
           ),
         ],
       );
-
       await tester.pumpWidget(buildReminderPage(catalog: catalog, data: data));
       await tester.pumpAndSettle();
-
       await tester.ensureVisible(find.text('Oli gardan').first);
       await tester.tap(find.text('Oli gardan').first);
       await tester.pumpAndSettle();
-
       final sheetGuideButton = find.widgetWithText(
         OutlinedButton,
         'Panduan oli',
       );
       expect(sheetGuideButton, findsOneWidget);
-
       await tester.tap(sheetGuideButton);
       await tester.pumpAndSettle();
-
-      expect(find.text('TANYA PANDUAN OLI'), findsOneWidget);
+      expect(find.text('PANDUAN OLI'), findsOneWidget);
       expect(find.text('Catat ganti oli'), findsOneWidget);
     });
 
@@ -818,14 +604,11 @@ void main() {
           ),
         ],
       );
-
       await tester.pumpWidget(buildReminderPage(catalog: catalog, data: data));
       await tester.pumpAndSettle();
-
       await tester.ensureVisible(find.text('Busi').first);
       await tester.tap(find.text('Busi').first);
       await tester.pumpAndSettle();
-
       expect(find.widgetWithText(OutlinedButton, 'Panduan oli'), findsNothing);
       expect(find.text('Panduan oli'), findsOneWidget);
     });

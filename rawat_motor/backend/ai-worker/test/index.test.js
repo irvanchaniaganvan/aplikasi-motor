@@ -190,7 +190,7 @@ test('permintaan valid memanggil Gemini dan mengembalikan answer', async () => {
   const providerBody = JSON.parse(capturedInit.body);
   assert.match(
     providerBody.system_instruction.parts[0].text,
-    /Asisten Panduan Oli Rawatin/,
+    /Asisten Perawatan Motor Rawatin/,
   );
   assert.equal(providerBody.generationConfig.responseMimeType, 'application/json');
   assert.equal(providerBody.generationConfig.maxOutputTokens, 800);

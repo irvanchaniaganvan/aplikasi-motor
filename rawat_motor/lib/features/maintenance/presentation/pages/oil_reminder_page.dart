@@ -29,6 +29,9 @@ import '../../../trips/data/repositories/local_trip_repository.dart';
 import '../../../trips/presentation/pages/trip_record_page.dart';
 import 'history_view.dart';
 import 'oil_guide_page.dart';
+import './ai_assistant_page.dart';
+import '../../data/services/ai_service_factory.dart';
+import '../widgets/ai_assistant_card.dart';
 import '../widgets/common_widgets.dart';
 import '../widgets/part_widgets.dart';
 import '../widgets/app_shell.dart';
@@ -708,7 +711,12 @@ class _OilReminderPageState extends State<OilReminderPage> {
             _buildProfileCard(),
             const SizedBox(height: AppSpacing.lg),
             _buildOdometerHero(),
-            const SizedBox(height: AppSpacing.xxl),
+            const SizedBox(height: AppSpacing.lg),
+            if (AiServiceFactory.featureEnabled)
+              AiAssistantCard(
+                onTap: _openAiAssistant,
+              ),
+            const SizedBox(height: AppSpacing.xl),
             const RawatinSectionHeading(
               eyebrow: 'JADWAL MOTOR',
               title: 'Jadwal motormu',
@@ -1307,6 +1315,18 @@ class _OilReminderPageState extends State<OilReminderPage> {
           motor: motor,
           profile: widget.profile,
           onRecordOilService: _openOilChangeForm,
+        ),
+      ),
+    );
+  }
+
+  void _openAiAssistant() {
+    final motor = _selectedMaintenanceMotor;
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => AiAssistantPage(
+          motor: motor,
+          profile: widget.profile,
         ),
       ),
     );
