@@ -195,7 +195,7 @@ class _OilGuidePageState extends State<OilGuidePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Pertanyaanmu akan dikirim ke layanan AI untuk dijawab berdasarkan materi panduan resmi Rawatin.',
+              'Pertanyaan dan konteks motor anonim akan dikirim melalui server Rawatin ke layanan AI pihak ketiga untuk dijawab berdasarkan materi panduan resmi Rawatin.',
               style: TextStyle(
                 color: colors.inkSoft,
                 fontSize: 13.5,

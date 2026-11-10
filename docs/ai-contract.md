@@ -121,8 +121,10 @@ PEDOMAN UTAMA:
    - SEGERA sarankan untuk menepi di tempat aman, matikan mesin, dan bawa motor ke bengkel profesional.
    - JANGAN memberikan instruksi perbaikan darurat mandiri yang berisiko memperparah kerusakan atau membahayakan pengendara.
 
-4. BATASAN TOPIK:
-   - Tolak secara sopan pertanyaan di luar topik oli motor dan perawatan dasar mesin motor.
+4. SAPAAN DAN BATASAN TOPIK:
+   - Balas sapaan singkat seperti "halo", "hai", atau "selamat pagi" dengan hangat, lalu tawarkan topik oli. Jangan menolak sapaan sebagai pertanyaan di luar topik.
+   - Jika pertanyaan terlalu pendek atau ambigu, minta klarifikasi dengan ramah.
+   - Tolak secara sopan hanya pertanyaan yang jelas di luar topik oli motor dan perawatan dasar mesin motor.
 
 5. GAYA DAN FORMAT JAWABAN:
    - Gunakan Bahasa Indonesia yang ringkas, hangat, bersahabat, dan mudah dipahami pemula.
@@ -137,3 +139,61 @@ PEDOMAN UTAMA:
 1. Aplikasi klien Rawatin **tidak pernah** mengirimkan data pribadi pengendara (nama, email, nomor plat, foto), riwayat servis, maupun odometer saat ini.
 2. Identifikasi perangkat menggunakan `install_id` (UUID acak perangkat lokal) untuk keperluan penegakan *rate-limiting* di backend tanpa melacak identitas orang.
 3. Pertanyaan hanya dikirim setelah pengguna menyetujui modal persetujuan (*consent*) di dalam aplikasi.
+
+---
+
+## 7. Implementasi Cloudflare Worker
+
+Backend contoh untuk kontrak ini tersedia di `rawat_motor/backend/ai-worker/`.
+Worker memakai Gemini API dan menyimpan API key sebagai secret Cloudflare.
+
+### Menyiapkan namespace rate limit
+
+```powershell
+cd rawat_motor\backend\ai-worker
+npm.cmd install
+npx.cmd wrangler kv namespace create AI_RATE_LIMIT
+```
+
+Salin ID namespace yang dicetak Wrangler ke `wrangler.jsonc` pada bagian
+`kv_namespaces[0].id`. Tanpa binding KV, backend tetap berjalan tetapi rate
+limit tidak aktif.
+
+### Menguji lokal
+
+```powershell
+Copy-Item .dev.vars.example .dev.vars
+# Edit .dev.vars dan isi GEMINI_API_KEY milikmu.
+npx.cmd wrangler dev
+```
+
+Tes otomatis tidak membutuhkan API key karena panggilan Gemini disimulasikan:
+
+```powershell
+npm.cmd test
+```
+
+### Deploy
+
+```powershell
+npx.cmd wrangler secret put GEMINI_API_KEY
+npx.cmd wrangler deploy
+```
+
+Saat `secret put` meminta input, tempel API key Gemini. Jangan menaruh key di
+`wrangler.jsonc`, source code, atau Git.
+
+Setelah deploy, URL Worker berbentuk
+`https://rawatin-ai.<subdomain>.workers.dev`. Jalankan aplikasi dengan:
+
+```powershell
+flutter run -d windows --dart-define=AI_BACKEND_URL=https://rawatin-ai.<subdomain>.workers.dev
+```
+
+### Perilaku tambahan
+
+- Sapaan dan ucapan terima kasih dijawab langsung oleh Worker tanpa memanggil
+  Gemini agar hemat kuota dan konsisten.
+- `GEMINI_MODEL` dapat diubah di `wrangler.jsonc` atau lewat environment
+  variable Wrangler.
+- `ALLOWED_ORIGIN` dapat diisi jika aplikasi web membutuhkan CORS terbatas.

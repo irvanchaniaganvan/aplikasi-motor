@@ -9,6 +9,42 @@ class FakeAiService implements AiService {
 
   final Duration simulatedDelay;
 
+  static const _greetings = {
+    'halo',
+    'hai',
+    'hi',
+    'hello',
+    'hey',
+    'pagi',
+    'siang',
+    'sore',
+    'malam',
+    'selamat pagi',
+    'selamat siang',
+    'selamat sore',
+    'selamat malam',
+    'halo pagi',
+    'halo siang',
+    'halo sore',
+    'halo malam',
+  };
+
+  static const _thanks = {
+    'terima kasih',
+    'makasih',
+    'thanks',
+    'thank you',
+    'sip',
+    'oke',
+    'ok',
+  };
+
+  String _normalize(String value) => value
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z\s]'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+
   @override
   Future<AiOilResponse> askOilGuide(AiOilRequest request) async {
     if (simulatedDelay > Duration.zero) {
@@ -48,7 +84,22 @@ class FakeAiService implements AiService {
 
     final lower = query.toLowerCase();
 
-    // 3. Deteksi keluhan berisiko keselamatan
+    // 3. Sapaan dan ucapan terima kasih tidak boleh dianggap di luar topik
+    final normalized = _normalize(query);
+    if (_greetings.contains(normalized)) {
+      return const AiOilResponse(
+        answer: 'Halo! Aku Asisten Panduan Rawatin. Aku bisa bantu soal oli mesin, oli gardan, jadwal ganti, atau arti SAE/JASO. Mau mulai dari topik apa?',
+        refused: false,
+      );
+    }
+    if (_thanks.contains(normalized)) {
+      return const AiOilResponse(
+        answer: 'Sama-sama! Kalau ada pertanyaan lain soal oli atau perawatan motor, tanyakan saja.',
+        refused: false,
+      );
+    }
+
+    // 4. Deteksi keluhan berisiko keselamatan
     final isRisky =
         lower.contains('lampu oli') ||
         lower.contains('oli bocor') ||
@@ -64,7 +115,7 @@ class FakeAiService implements AiService {
       );
     }
 
-    // 4. Deteksi pertanyaan di luar topik perawatan motor/oli
+    // 5. Deteksi pertanyaan di luar topik perawatan motor/oli
     final isOilOrMotor =
         lower.contains('oli') ||
         lower.contains('sae') ||
@@ -96,7 +147,7 @@ class FakeAiService implements AiService {
       );
     }
 
-    // 5. Permintaan rekomendasi oli motor pengguna
+    // 6. Permintaan rekomendasi oli motor pengguna
     if (lower.contains('cocok') ||
         lower.contains('spesifikasi motor') ||
         lower.contains('motorku') ||
@@ -117,7 +168,7 @@ class FakeAiService implements AiService {
       );
     }
 
-    // 6. Pertanyaan perbedaan kode SAE (contoh: 10W-30 vs 10W-40)
+    // 7. Pertanyaan perbedaan kode SAE (contoh: 10W-30 vs 10W-40)
     if (lower.contains('10w-30') ||
         lower.contains('10w-40') ||
         lower.contains('sae') ||
@@ -127,7 +178,7 @@ class FakeAiService implements AiService {
       );
     }
 
-    // 7. Pengaruh kondisi macet / pemakaian berat
+    // 8. Pengaruh kondisi macet / pemakaian berat
     if (lower.contains('macet') ||
         lower.contains('panas') ||
         lower.contains('jarak pendek')) {
@@ -136,14 +187,14 @@ class FakeAiService implements AiService {
       );
     }
 
-    // 8. Oli gardan
+    // 9. Oli gardan
     if (lower.contains('gardan')) {
       return const AiOilResponse(
         answer: 'Motor matic memiliki oli gardan (transmisi belakang) yang terpisah dari oli mesin. Oli gardan punya spesifikasi, takaran, dan jadwal penggantian sendiri (biasanya tiap 2-3 kali ganti oli mesin). Jangan sampai tertukar saat pengisian. Cek juga buku manual motormu.',
       );
     }
 
-    // 9. Cara cek level oli / dipstick
+    // 10. Cara cek level oli / dipstick
     if (lower.contains('cek') ||
         lower.contains('dipstick') ||
         lower.contains('level')) {

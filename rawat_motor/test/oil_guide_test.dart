@@ -367,6 +367,37 @@ void main() {
       expect(response.refused, isFalse);
     });
 
+    test('menjawab sapaan dengan ramah, bukan menolak', () async {
+      const service = FakeAiService();
+      final response = await service.askOilGuide(
+        AiOilRequest(
+          installId: 'test-id',
+          question: 'halo',
+          motor: AiMotorContext(id: 'test', name: 'Motor Test'),
+          reference: OilGuideContent.fullReferenceText,
+        ),
+      );
+
+      expect(response.refused, isFalse);
+      expect(response.answer, contains('Halo!'));
+      expect(response.answer, contains('oli'));
+    });
+
+    test('menjawab ucapan terima kasih dengan ramah', () async {
+      const service = FakeAiService();
+      final response = await service.askOilGuide(
+        AiOilRequest(
+          installId: 'test-id',
+          question: 'terima kasih',
+          motor: AiMotorContext(id: 'test', name: 'Motor Test'),
+          reference: OilGuideContent.fullReferenceText,
+        ),
+      );
+
+      expect(response.refused, isFalse);
+      expect(response.answer, contains('Sama-sama'));
+    });
+
     test('menolak pertanyaan di luar topik dengan refused=true', () async {
       const service = FakeAiService();
       final response = await service.askOilGuide(

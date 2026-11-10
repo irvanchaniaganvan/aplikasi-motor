@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rawatin-ai",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-10",
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "GEMINI_MODEL": "gemini-2.5-flash",
+    "RATE_LIMIT_MAX": "10",
+    "RATE_LIMIT_WINDOW_SECONDS": "60"
+  },
+  // Buat namespace dengan:
+  //   npx.cmd wrangler kv namespace create AI_RATE_LIMIT
+  // lalu ganti nilai id di bawah dengan ID yang dicetak Wrangler.
+  "kv_namespaces": [
+    {
+      "binding": "AI_RATE_LIMIT",
+      "id": "GANTI_DENGAN_ID_KV_NAMESPACE"
+    }
+  ]
+}
