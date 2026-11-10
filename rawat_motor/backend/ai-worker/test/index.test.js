@@ -121,6 +121,27 @@ test('ucapan terima kasih dijawab ramah tanpa memanggil Gemini', async () => {
   assert.equal(called, false);
 });
 
+test('pertanyaan hari atau tanggal saat ini ditolak tanpa memanggil Gemini', async () => {
+  let called = false;
+  const response = await handleRequest(
+    post(payload({ question: 'hari ini hari apa ya? tanggalnya?' })),
+    BASE_ENV,
+    {
+      fetchImpl: async () => {
+        called = true;
+        return geminiResponse('Jawaban provider.');
+      },
+    },
+  );
+
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.refused, true);
+  assert.equal(data.reason, 'off_topic');
+  assert.match(data.answer, /fokus membantu perawatan motor/);
+  assert.equal(called, false);
+});
+
 test('install_id yang bukan UUID v4 ditolak', async () => {
   const response = await handleRequest(
     post(payload({ install_id: 'test-install-id' })),

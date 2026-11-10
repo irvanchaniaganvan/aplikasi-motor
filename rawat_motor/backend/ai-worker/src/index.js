@@ -138,6 +138,11 @@ export async function handleRequest(request, env, dependencies = {}) {
     return jsonResponse(smallTalk, 200, cors);
   }
 
+  const offTopic = offTopicResponse(question);
+  if (offTopic) {
+    return jsonResponse(offTopic, 200, cors);
+  }
+
   if (typeof env.GEMINI_API_KEY !== 'string' || !env.GEMINI_API_KEY.trim()) {
     return errorResponse(
       500,
@@ -280,6 +285,28 @@ function smallTalkResponse(question) {
   }
 
   return null;
+}
+
+function offTopicResponse(question) {
+  const normalized = question
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const asksCurrentDate =
+    /\b(hari ini hari apa|hari apa hari ini|hari apa sekarang|tanggal hari ini|tanggal berapa hari ini|tanggal berapa sekarang)\b/.test(
+      normalized,
+    );
+
+  if (!asksCurrentDate) return null;
+
+  return {
+    answer:
+      'Maaf, aku fokus membantu perawatan motor, jadi tidak bisa memastikan hari atau tanggal saat ini. Kamu bisa cek kalender di perangkatmu. Ada pertanyaan seputar motor yang bisa kubantu?',
+    refused: true,
+    reason: 'off_topic',
+  };
 }
 
 async function checkRateLimit(env, installId, now) {
