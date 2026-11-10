@@ -1,0 +1,20 @@
+# Flutter/Dart
+.build/
+.dart_tool/
+.packages
+*.lock
+
+# Build artifacts
+build/
+
+# IDE
+.vscode/*.code-workspace
+.idea/
+*.iml
+*.ipr
+*.iws
+.vs/
+
+# OS
+.DS_Store
+Thumbs.db
