@@ -2093,39 +2093,49 @@ class _OilReminderPageState extends State<OilReminderPage> {
         ],
         RawatinCard(
           padding: EdgeInsets.zero,
-          child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              tilePadding: const EdgeInsets.symmetric(
+          child: InkWell(
+            onTap: _openOilGuide,
+            borderRadius: BorderRadius.circular(AppRadii.lg),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.lg,
-                vertical: 2,
+                vertical: AppSpacing.md,
               ),
-              childrenPadding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                0,
-                AppSpacing.lg,
-                AppSpacing.md,
+              child: Row(
+                children: [
+                  RawatinIconTile(
+                    icon: AppIcons.oil,
+                    color: colors.primaryDark,
+                    soft: colors.primarySoft,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Panduan oli',
+                          style: AppType.cardTitle.copyWith(
+                            color: colors.ink,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Cek spesifikasi dan takaran oli sesuai motor kamu.',
+                          style: TextStyle(
+                            color: colors.muted,
+                            fontSize: 12.5,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Icon(AppIcons.arrowForward, color: colors.primary, size: 20),
+                ],
               ),
-              leading: RawatinIconTile(
-                icon: AppIcons.tip,
-                color: colors.primaryDark,
-                soft: colors.primarySoft,
-              ),
-              title: Text(
-                'Panduan oli (contoh)',
-                style: AppType.cardTitle.copyWith(
-                  color: colors.ink,
-                  fontSize: 15,
-                ),
-              ),
-              iconColor: colors.primary,
-              collapsedIconColor: colors.muted,
-              children: [
-                Text(
-                  'Gunakan interval sebagai perkiraan umum. Untuk angka yang tepat, ikuti buku manual motor atau saran bengkel.',
-                  style: TextStyle(color: colors.muted, height: 1.5),
-                ),
-              ],
             ),
           ),
         ),

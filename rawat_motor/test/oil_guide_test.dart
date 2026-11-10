@@ -661,9 +661,55 @@ void main() {
       await tester.tap(find.text('Oli mesin').first);
       await tester.pumpAndSettle();
 
-      expect(find.text('Panduan oli'), findsOneWidget);
+      final sheetGuideButton = find.widgetWithText(
+        OutlinedButton,
+        'Panduan oli',
+      );
+      expect(sheetGuideButton, findsOneWidget);
 
-      await tester.tap(find.text('Panduan oli'));
+      await tester.tap(sheetGuideButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('TANYA PANDUAN OLI'), findsOneWidget);
+      expect(find.text('Catat ganti oli'), findsOneWidget);
+    });
+
+    testWidgets('membuka panduan dari kartu ringkasan Beranda', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      const catalog = MaintenanceCatalog(
+        source: 'uji',
+        components: [
+          MaintenanceComponent(
+            name: 'Oli mesin',
+            action: 'ganti',
+            intervalKm: 3000,
+          ),
+        ],
+      );
+      final data = MotorData(
+        currentOdometer: 10000,
+        lastOilOdometer: 6000,
+        oilInterval: 3000,
+        componentStates: [
+          ComponentMaintenanceState(
+            componentName: 'Oli mesin',
+            lastServicedKm: 6000,
+            intervalKmOverride: 3000,
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(buildReminderPage(catalog: catalog, data: data));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Panduan oli (contoh)'), findsNothing);
+
+      final guideCard = find.text('Panduan oli');
+      await tester.ensureVisible(guideCard);
+      await tester.pumpAndSettle();
+      await tester.tap(guideCard);
       await tester.pumpAndSettle();
 
       expect(find.text('TANYA PANDUAN OLI'), findsOneWidget);
@@ -704,16 +750,20 @@ void main() {
       await tester.tap(find.text('Oli gardan').first);
       await tester.pumpAndSettle();
 
-      expect(find.text('Panduan oli'), findsOneWidget);
+      final sheetGuideButton = find.widgetWithText(
+        OutlinedButton,
+        'Panduan oli',
+      );
+      expect(sheetGuideButton, findsOneWidget);
 
-      await tester.tap(find.text('Panduan oli'));
+      await tester.tap(sheetGuideButton);
       await tester.pumpAndSettle();
 
       expect(find.text('TANYA PANDUAN OLI'), findsOneWidget);
       expect(find.text('Catat ganti oli'), findsOneWidget);
     });
 
-    testWidgets('kartu komponen lain tidak menampilkan tautan Panduan oli', (
+    testWidgets('sheet komponen lain tidak menampilkan tautan Panduan oli', (
       tester,
     ) async {
       await tester.binding.setSurfaceSize(const Size(390, 844));
@@ -745,7 +795,8 @@ void main() {
       await tester.tap(find.text('Busi').first);
       await tester.pumpAndSettle();
 
-      expect(find.text('Panduan oli'), findsNothing);
+      expect(find.widgetWithText(OutlinedButton, 'Panduan oli'), findsNothing);
+      expect(find.text('Panduan oli'), findsOneWidget);
     });
   });
 }
