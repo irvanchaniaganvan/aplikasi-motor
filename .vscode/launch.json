@@ -6,8 +6,8 @@
             "request": "launch",
             "type": "flutter",
             "program": "${workspaceFolder}/rawat_motor/lib/main.dart",
-            "deviceId": "local",
-            "args": [
+            "deviceId": "windows",
+            "toolArgs": [
                 "--dart-define=AI_BACKEND_URL=https://rawatin-ai.rawatin-app.workers.dev"
             ]
         }
