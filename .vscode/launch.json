@@ -4,7 +4,7 @@
         {
             "name": "Rawatin Windows",
             "request": "launch",
-            "type": "flutter",
+            "type": "dart",
             "program": "${workspaceFolder}/rawat_motor/lib/main.dart",
             "deviceId": "windows",
             "toolArgs": [
