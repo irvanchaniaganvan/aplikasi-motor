@@ -47,8 +47,9 @@ class TripRecorder {
   }
 
   void addPoint(TripPoint point) {
-    if (_trip == null || _paused || _points.length >= TripThresholds.maxPoints)
+    if (_trip == null || _paused || _points.length >= TripThresholds.maxPoints) {
       return;
+    }
     final previous = _previousSegmentPoint;
     if (!isAcceptablePoint(point, previous)) return;
     if (previous != null) {

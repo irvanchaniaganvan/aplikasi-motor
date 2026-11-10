@@ -109,8 +109,9 @@ class _TripRecordPageState extends State<TripRecordPage> {
           ],
         ),
       );
-      if (openSettings == true && !Platform.isWindows)
+      if (openSettings == true && !Platform.isWindows) {
         await Geolocator.openAppSettings();
+      }
     }
     return allowed;
   }
@@ -123,8 +124,9 @@ class _TripRecordPageState extends State<TripRecordPage> {
     });
     try {
       AndroidTripForegroundService.initialize();
-      if (AndroidTripForegroundService.supported)
+      if (AndroidTripForegroundService.supported) {
         await AndroidTripForegroundService.start();
+      }
       final start = DateTime.now();
       _active = await _recorder.start(
         id: start.microsecondsSinceEpoch.toString(),
@@ -134,8 +136,9 @@ class _TripRecordPageState extends State<TripRecordPage> {
       _started = start;
       _clock?.cancel();
       _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted && _started != null)
+        if (mounted && _started != null) {
           setState(() => _elapsed = DateTime.now().difference(_started!));
+        }
       });
     } catch (error) {
       await AndroidTripForegroundService.stop();
@@ -151,14 +154,16 @@ class _TripRecordPageState extends State<TripRecordPage> {
     if (_active == null) return;
     setState(() => _busy = true);
     if (_recorder.isPaused) {
-      if (AndroidTripForegroundService.supported)
+      if (AndroidTripForegroundService.supported) {
         await AndroidTripForegroundService.start();
+      }
       await _recorder.resume();
       _started = DateTime.now().subtract(_elapsed);
       _clock?.cancel();
       _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted && _started != null)
+        if (mounted && _started != null) {
           setState(() => _elapsed = DateTime.now().difference(_started!));
+        }
       });
     } else {
       await _recorder.pause();
@@ -356,7 +361,7 @@ class _TripRecordPageState extends State<TripRecordPage> {
                             // Callback Update KM menampilkan konfirmasi dan validasi yang sama
                             // dengan alur odometer biasa; jangan meminta konfirmasi dua kali.
                             final added = await widget.onAddOdometer!(km);
-                            if (added && mounted)
+                            if (added && mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
@@ -364,6 +369,7 @@ class _TripRecordPageState extends State<TripRecordPage> {
                                   ),
                                 ),
                               );
+                            }
                           },
                     child: Text(
                       'Tambahkan ${(trip.distanceMeters / 1000).toStringAsFixed(1)} km ke odometer',
@@ -435,8 +441,9 @@ class _TripHistorySectionState extends State<TripHistorySection> {
     future: _trips,
     builder: (context, snapshot) {
       final trips = snapshot.data ?? const <Trip>[];
-      if (snapshot.connectionState != ConnectionState.done)
+      if (snapshot.connectionState != ConnectionState.done) {
         return const Center(child: CircularProgressIndicator());
+      }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

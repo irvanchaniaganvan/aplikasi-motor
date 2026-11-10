@@ -28,8 +28,9 @@ class TripMap extends StatelessWidget {
     final markers = <Marker>[];
     if (route.isNotEmpty) {
       markers.add(_flag(route.first, 'S', AppPalette.accent));
-      if (route.length > 1)
+      if (route.length > 1) {
         markers.add(_flag(route.last, 'F', AppPalette.primaryBright));
+      }
     }
     if (current != null) {
       markers.add(

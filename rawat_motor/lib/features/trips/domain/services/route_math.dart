@@ -79,8 +79,9 @@ double _perpendicularMeters(TripPoint p, TripPoint a, TripPoint b) {
   double y(TripPoint point) => _radians(point.latitude) * 6371000;
   final ax = x(a), ay = y(a), bx = x(b), by = y(b), px = x(p), py = y(p);
   final dx = bx - ax, dy = by - ay;
-  if (dx == 0 && dy == 0)
+  if (dx == 0 && dy == 0) {
     return math.sqrt(math.pow(px - ax, 2) + math.pow(py - ay, 2));
+  }
   final t = (((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)).clamp(
     0.0,
     1.0,

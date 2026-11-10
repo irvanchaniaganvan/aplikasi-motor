@@ -57,8 +57,9 @@ class Trip {
     final status = TripStatus.values
         .where((item) => item.name == statusName)
         .firstOrNull;
-    if (status == null)
+    if (status == null) {
       throw const FormatException('Status perjalanan tidak valid.');
+    }
     return Trip(
       id: json['id'] as String? ?? '',
       vehicleId: json['vehicleId'] as String? ?? '',
