@@ -7,17 +7,16 @@
     "enabled": true
   },
   "vars": {
-    "GEMINI_MODEL": "gemini-2.5-flash",
+    "GEMINI_MODEL": "gemini-3.5-flash-lite",
     "RATE_LIMIT_MAX": "10",
     "RATE_LIMIT_WINDOW_SECONDS": "60"
   },
-  // Buat namespace dengan:
-  //   npx.cmd wrangler kv namespace create AI_RATE_LIMIT
-  // lalu ganti nilai id di bawah dengan ID yang dicetak Wrangler.
+  // Namespace KV untuk rate limit per install_id.
+  // Dibuat dengan: npx.cmd wrangler kv namespace create AI_RATE_LIMIT
   "kv_namespaces": [
     {
       "binding": "AI_RATE_LIMIT",
-      "id": "GANTI_DENGAN_ID_KV_NAMESPACE"
+      "id": "9be11aa2498a4ef9b9a38ff304650597"
     }
   ]
 }

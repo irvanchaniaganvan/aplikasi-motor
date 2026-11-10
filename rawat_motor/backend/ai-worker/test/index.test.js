@@ -193,10 +193,31 @@ test('permintaan valid memanggil Gemini dan mengembalikan answer', async () => {
     /Asisten Panduan Oli Rawatin/,
   );
   assert.equal(providerBody.generationConfig.responseMimeType, 'application/json');
+  assert.equal(providerBody.generationConfig.maxOutputTokens, 800);
+  assert.equal(
+    providerBody.generationConfig.thinkingConfig.thinkingLevel,
+    'low',
+  );
   assert.match(
     providerBody.contents.at(-1).parts[0].text,
     /Kapan sebaiknya ganti oli\?/,
   );
+});
+
+test('model default adalah gemini-3.5-flash-lite', async () => {
+  const env = { ...BASE_ENV };
+  delete env.GEMINI_MODEL;
+
+  let capturedUrl;
+  const response = await handleRequest(post(payload()), env, {
+    fetchImpl: async (url) => {
+      capturedUrl = url;
+      return geminiResponse('Jawaban valid.');
+    },
+  });
+
+  assert.equal(response.status, 200);
+  assert.match(capturedUrl, /gemini-3\.5-flash-lite:generateContent$/);
 });
 
 test('respons Gemini yang bukan JSON valid menjadi server_error', async () => {

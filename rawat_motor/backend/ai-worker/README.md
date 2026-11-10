@@ -73,7 +73,7 @@ flutter run -d windows --dart-define=AI_BACKEND_URL=https://rawatin-ai.<subdomai
 | Nama | Wajib | Keterangan |
 | --- | --- | --- |
 | `GEMINI_API_KEY` | Ya | Secret API key Gemini. |
-| `GEMINI_MODEL` | Tidak | Default `gemini-2.5-flash`. |
+| `GEMINI_MODEL` | Tidak | Default `gemini-3.5-flash-lite`. |
 | `RATE_LIMIT_MAX` | Tidak | Maksimal pertanyaan per jendela waktu. Default `10`. |
 | `RATE_LIMIT_WINDOW_SECONDS` | Tidak | Panjang jendela rate limit. Default `60`. |
 | `ALLOWED_ORIGIN` | Tidak | Batasi CORS untuk aplikasi web. Default `*`. |

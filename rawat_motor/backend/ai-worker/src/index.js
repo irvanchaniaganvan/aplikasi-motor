@@ -2,7 +2,7 @@ const MAX_QUESTION_LENGTH = 500;
 const MAX_REFERENCE_BYTES = 10 * 1024;
 const MAX_HISTORY_ITEMS = 6;
 const MAX_HISTORY_ITEM_LENGTH = 2000;
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const DEFAULT_RATE_LIMIT_MAX = 10;
 const DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60;
 const GEMINI_TIMEOUT_MS = 12000;
@@ -340,9 +340,11 @@ async function askGemini({ question, history, reference, motor }, env, fetchImpl
     contents,
     generationConfig: {
       temperature: 0.3,
-      maxOutputTokens: 500,
+      maxOutputTokens: 800,
       responseMimeType: 'application/json',
       responseSchema: RESPONSE_SCHEMA,
+      // Jawaban panduan oli pendek; thinking rendah menjaga latensi dan biaya.
+      thinkingConfig: { thinkingLevel: 'low' },
     },
   };
 

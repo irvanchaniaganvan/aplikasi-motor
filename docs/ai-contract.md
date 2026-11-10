@@ -195,5 +195,6 @@ flutter run -d windows --dart-define=AI_BACKEND_URL=https://rawatin-ai.<subdomai
 - Sapaan dan ucapan terima kasih dijawab langsung oleh Worker tanpa memanggil
   Gemini agar hemat kuota dan konsisten.
 - `GEMINI_MODEL` dapat diubah di `wrangler.jsonc` atau lewat environment
-  variable Wrangler.
+  variable Wrangler. Default-nya `gemini-3.5-flash-lite`; Worker memakai
+  `thinkingLevel: low` untuk pertanyaan panduan yang singkat.
 - `ALLOWED_ORIGIN` dapat diisi jika aplikasi web membutuhkan CORS terbatas.
