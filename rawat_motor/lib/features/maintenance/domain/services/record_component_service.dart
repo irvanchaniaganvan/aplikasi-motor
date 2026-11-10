@@ -13,6 +13,8 @@ class RecordComponentService {
     required DateTime date,
     int cost = 0,
     String notes = '',
+    String? receiptPath,
+    String workshop = '',
   }) {
     final state = ComponentMaintenanceState(
       componentName: component.name,
@@ -62,6 +64,8 @@ class RecordComponentService {
         item: component.name,
         cost: cost,
         notes: notes,
+        receiptPath: receiptPath,
+        workshop: workshop,
       ),
     ];
     if (component.id == 'oli-mesin' || component.name == 'Oli mesin') {

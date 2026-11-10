@@ -1,6 +1,6 @@
 # Status proyek Rawatin
 
-Terakhir diperbarui: 8 November 2026
+Terakhir diperbarui: 10 November 2026
 
 ## Tujuan dan keputusan
 
@@ -38,6 +38,9 @@ Terakhir diperbarui: 8 November 2026
 - Jadwal multi-part ditambahkan lewat katalog `rawat_motor/data/motor/data/default_interval.json` dengan ID part, interval perkiraan bertanda `TODO_VERIFY`, dan katalog model awal di `maintenance_motor_catalog.json`. Model awal: Fazzio, Mio Gear 2024, Beat K0J, dan Vario 125 KZR; fakta transmisi/pendingin sengaja bernilai `TODO_VERIFY` sampai dicek dari sumber resmi.
 - Mesin jadwal komponen murni Dart sekarang menghitung batas km dan/atau bulan, status awal `Perlu dicek`, dan sisa hari; urutan urgensi adalah Jatuh Tempo, Segera, Perlu dicek, Aman. Filter data menerapkan syarat CVT/manual/coolant tanpa menganggap nilai TODO sebagai fakta.
 - Kartu part memiliki form **Catat ganti** dengan km, tanggal, biaya opsional, dan catatan opsional. Servis hanya memperbarui state part yang dipilih, menambah riwayat, serta menambah log odometer hanya jika km lebih tinggi daripada odometer terkini; km lebih rendah memerlukan konfirmasi.
+- Riwayat servis kini mendukung nama bengkel dan path foto nota lokal melalui field opsional `receiptPath`; data lama tanpa field ini tetap terbaca. Form detail servis dapat memilih foto nota dari galeri, menyimpannya setelah pencatatan berhasil, dan menghapus file jika penyimpanan riwayat gagal. Riwayat menampilkan tombol **Lihat nota** untuk membuka foto fullscreen.
+- Halaman Riwayat kini menampilkan `CostSummaryCard` yang menghitung biaya bulan berjalan, tahun berjalan, dan rincian biaya per komponen langsung dari `ServiceRecord`; format rupiah serta serialisasi biaya diuji.
+- Saat aplikasi membuka dashboard dan menemukan komponen yang sudah jatuh tempo, pengingat in-app tetap ditampilkan sebagai snackbar dan notifikasi lokal langsung dicoba pada Android/iOS. Interval berbasis tanggal juga dijadwalkan memakai `flutter_local_notifications`; permission diminta saat sinkronisasi jadwal. Pada Windows/test environment plugin dinonaktifkan dengan aman sehingga snackbar menjadi fallback.
 - Data oli lama (km servis terakhir, interval, tanggal, riwayat) tetap dipertahankan dan dimigrasikan ke state part `oli-mesin`; skema lama tanpa ID tetap dapat dibaca.
 - Alur UI dirapikan: navigasi mobile kini memakai label **Servis**, **Kilometer**, dan **Jadwal**; Ringkasan menampilkan semua kartu part berurut urgensi dengan tombol pencatatan langsung. Pengguna yang belum mengatur odometer mendapat ajakan langkah pertama yang jelas, dan info interval umum diringkas di bawah jadwal.
 - Tampilan dirapikan menjadi modern motorsport yang proper dan clean: menghapus motif bendera catur (checkered strip) dan stiker garis miring diagonal yang mencolok di header, kartu, dan dialog; mengubah palet kanvas ke slate-white bersih (`#F8FAFC`) dengan kartu putih bergaris tipis modern; menyelaraskan teks antarmuka dengan font Barlow yang rapi dan mudah dibaca; serta mengubah latar odometer hero menjadi instrumen cluster digital modern dengan ambient telemetry glow dan lengkung takometer presisi.
@@ -91,6 +94,7 @@ Terakhir diperbarui: 8 November 2026
 - Pemeriksaan Tahap 1 Perjalanan (7 November 2026): `flutter analyze` bersih; tes khusus perjalanan lulus (5 tes); `flutter test` penuh lulus (94 tes total: 89 tes lama + 5 tes perjalanan).
 - Pemeriksaan dasar pengingat (7 November 2026): `flutter test` penuh lulus (99 tes, termasuk 4 tes kalkulator/kompatibilitas enum dan 1 widget test pilihan mode/tampil-sembunyi interval). `ReminderBasis` memengaruhi kalkulator jadwal dan kartu Oli mesin; komponen lain tetap mengikuti aturan interval masing-masing. `flutter analyze` tidak menemukan error atau warning, tetapi melaporkan 11 info lint `curly_braces_in_flow_control_structures` pada file fitur Perjalanan; perintah mengembalikan kode keluar 1 karena info tersebut.
 - Pemeriksaan animasi aplikasi: `flutter test` penuh lulus (102 tes, termasuk 2 widget test intro/transisi). `flutter analyze` tetap hanya melaporkan 11 info lint lama `curly_braces_in_flow_control_structures` pada fitur Perjalanan; tidak ada error analisis pada perubahan animasi.
+- Roadmap biaya/nota/pengingat (10 November 2026): `flutter test` penuh lulus 100% (107 tes). Tes tambahan mencakup serialisasi `ServiceRecord` dengan biaya, bengkel, dan `receiptPath`, kompatibilitas riwayat lama tanpa nota, serta format ringkasan rupiah. Notifikasi lokal memakai jadwal tanggal inexact dan receiver Android untuk reboot; jadwal berbasis KM tetap diperiksa ketika aplikasi dibuka atau KM diperbarui. `flutter analyze --no-pub` hanya melaporkan 11 info lint lama `curly_braces_in_flow_control_structures` pada fitur Perjalanan, tanpa error dari perubahan roadmap.
 - Perapian Beranda (7 November 2026): `DashboardHeader` hanya menampilkan sapaan pengendara; kartu profil menjadi satu-satunya tempat identitas motor. Jika nickname kosong, judul kartu memakai nama merek dan model, dengan tahun serta jenis motor sebagai keterangan. Tes header dan kedua variasi judul kartu diperbarui.
 - Placeholder foto Beranda (7 November 2026): saat foto belum dipilih, kartu profil kini menampilkan placeholder netral bergambar tambah foto—bukan ikon motor—dan tautan "Tambahkan foto motor di profil" membuka editor profil. Avatar di halaman pengaturan tetap memakai fallback ikon motor.
 - Fitur profil kendaraan ditambahkan:
@@ -108,16 +112,17 @@ Terakhir diperbarui: 8 November 2026
 
 ## Langkah berikutnya
 
-1. Lengkapi handler foreground Android agar location stream tetap aktif dan aman di isolate service; lalu uji notifikasi, minimalkan/layar mati, jeda/lanjut, selesai, izin, dan Android 14+ di perangkat fisik sesuai `docs/maps.md`.
-2. Pasang Android Studio dan Android SDK, lalu ikuti petunjuk lisensi yang dilaporkan `flutter doctor`.
-3. Pasang/konfigurasi Android SDK agar aplikasi dapat diuji di emulator atau perangkat Android.
-4. Tambahkan widget tests untuk halaman Perjalanan, Riwayat, dan alur odometer; uji repository file lokal termasuk skema rusak/tidak kompatibel.
-5. Validasi alur log odometer, jadwal komponen, penyaringan profil, riwayat servis, serta Panduan Oli di emulator/perangkat.
-6. Isi `spesifikasi_oli` hanya untuk model yang sudah dicek dari buku manual resmi, lalu set `verified: true`.
-7. Bangun backend serverless sesuai `docs/ai-contract.md`, lalu jalankan aplikasi dengan `--dart-define=AI_BACKEND_URL=...`.
-8. Tetapkan application/bundle ID resmi dan tile provider produksi sebelum rilis.
-9. Ganti penyimpanan key-value dengan basis data lokal bila model data/riwayat servis bertambah kompleks.
-10. Siapkan build iOS di komputer macOS dengan Xcode.
+1. Lengkapi handler foreground Android agar location stream tetap aktif dan aman di isolate service; lalu uji perekaman saat aplikasi diminimalkan/layar mati, jeda/lanjut, selesai, izin, dan Android 14+ di perangkat fisik sesuai `docs/maps.md`.
+2. Uji notifikasi lokal, izin, jadwal setelah reboot, dan perilaku OEM Android/iOS di perangkat nyata. Jadwal kilometer belum dapat berjalan saat aplikasi benar-benar tertutup karena tidak ada sumber odometer latar belakang.
+3. Pasang Android Studio dan Android SDK, lalu ikuti petunjuk lisensi yang dilaporkan `flutter doctor`.
+4. Pasang/konfigurasi Android SDK agar aplikasi dapat diuji di emulator atau perangkat Android.
+5. Tambahkan widget tests untuk halaman Perjalanan, Riwayat, dan alur odometer; uji repository file lokal termasuk skema rusak/tidak kompatibel.
+6. Validasi alur log odometer, jadwal komponen, penyaringan profil, riwayat servis, serta Panduan Oli di emulator/perangkat.
+7. Isi `spesifikasi_oli` hanya untuk model yang sudah dicek dari buku manual resmi, lalu set `verified: true`.
+8. Bangun backend serverless sesuai `docs/ai-contract.md`, lalu jalankan aplikasi dengan `--dart-define=AI_BACKEND_URL=...`.
+9. Tetapkan application/bundle ID resmi dan tile provider produksi sebelum rilis.
+10. Ganti penyimpanan key-value dengan basis data lokal bila model data/riwayat servis bertambah kompleks.
+11. Siapkan build iOS di komputer macOS dengan Xcode.
 
 ## Catatan pemulihan sesi
 

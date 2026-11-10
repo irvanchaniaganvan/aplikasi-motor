@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rawatin/features/maintenance/domain/entities/maintenance_component.dart';
 import 'package:rawatin/features/maintenance/domain/entities/maintenance_catalog.dart';
 import 'package:rawatin/features/maintenance/domain/entities/motor_data.dart';
+import 'package:rawatin/features/maintenance/domain/entities/service_record.dart';
 import 'package:rawatin/features/maintenance/domain/entities/maintenance_motor_catalog.dart';
 import 'package:rawatin/features/maintenance/domain/services/component_schedule_calculator.dart';
 import 'package:rawatin/features/maintenance/domain/services/component_filter.dart';
@@ -14,6 +15,7 @@ import 'package:rawatin/features/maintenance/domain/repositories/motor_data_repo
 import 'package:rawatin/features/maintenance/data/repositories/default_interval_repository.dart';
 import 'package:rawatin/features/maintenance/domain/services/oil_schedule_calculator.dart';
 import 'package:rawatin/features/maintenance/domain/services/record_component_service.dart';
+import 'package:rawatin/features/maintenance/presentation/widgets/cost_summary_card.dart';
 import 'package:rawatin/features/maintenance/domain/use_cases/load_motor_data.dart';
 import 'package:rawatin/features/maintenance/domain/use_cases/save_motor_data.dart';
 import 'package:rawatin/features/maintenance/presentation/pages/oil_reminder_page.dart';
@@ -990,6 +992,45 @@ void main() {
       expect(restored.serviceHistory, isEmpty);
     },
   );
+
+  test('riwayat servis menyimpan biaya, bengkel, dan path nota', () {
+    final original = ServiceRecord(
+      date: DateTime(2026, 3, 8),
+      odometer: 12500,
+      item: 'Oli mesin',
+      workshop: 'Bengkel Rawatin',
+      cost: 85000,
+      notes: 'Pakai oli sesuai buku manual',
+      receiptPath: r'C:\Rawatin\nota-1.jpg',
+    );
+    final restored = ServiceRecord.fromJson(original.toJson());
+
+    expect(restored.date, original.date);
+    expect(restored.workshop, 'Bengkel Rawatin');
+    expect(restored.cost, 85000);
+    expect(restored.notes, contains('buku manual'));
+    expect(restored.receiptPath, r'C:\Rawatin\nota-1.jpg');
+  });
+
+  test('data riwayat lama tanpa nota tetap kompatibel', () {
+    final restored = ServiceRecord.fromJson({
+      'date': '2026-03-08T00:00:00.000',
+      'odometer': 12500,
+      'item': 'Oli mesin',
+      'workshop': '',
+      'cost': 0,
+      'notes': '',
+    });
+
+    expect(restored.receiptPath, isNull);
+    expect(restored.toJson()['receiptPath'], isNull);
+  });
+
+  test('ringkasan biaya memformat rupiah tanpa desimal', () {
+    expect(formatRupiah(0), 'Rp0');
+    expect(formatRupiah(85000), 'Rp85.000');
+    expect(formatRupiah(1250000), 'Rp1.250.000');
+  });
 
   testWidgets('menghitung jadwal dan mencatat ganti oli', (tester) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));

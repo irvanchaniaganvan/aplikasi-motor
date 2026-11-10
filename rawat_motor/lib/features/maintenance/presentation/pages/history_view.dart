@@ -7,6 +7,7 @@ import '../../domain/entities/motor_data.dart';
 import '../../domain/entities/odometer_entry.dart';
 import '../../domain/entities/service_record.dart';
 import '../widgets/common_widgets.dart';
+import '../widgets/cost_summary_card.dart';
 import '../../../trips/data/repositories/local_trip_repository.dart';
 import '../../../trips/presentation/pages/trip_record_page.dart';
 
@@ -33,6 +34,8 @@ class HistoryView extends StatelessWidget {
           subtitle: 'Servis - ${formatShortDate(record.date)}',
           trailing: formatKm(record.odometer),
           chip: record.workshop.isEmpty ? null : record.workshop,
+          detail: record.notes.isEmpty ? null : record.notes,
+          receiptPath: record.receiptPath,
         ),
       ));
     }
@@ -91,6 +94,8 @@ class HistoryView extends StatelessWidget {
                 description: 'Catatan servis dan perubahan kilometer motormu, rapi dalam satu garis waktu.',
               ),
               const SizedBox(height: AppSpacing.lg),
+              CostSummaryCard(records: data?.serviceHistory ?? const []),
+              const SizedBox(height: AppSpacing.md),
               RawatinCard(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.lg,
@@ -143,6 +148,7 @@ Widget _historyTile(
   String? trailing,
   String? detail,
   String? chip,
+  String? receiptPath,
 }) {
   final colors = RawatinColors.of(context);
   return Padding(
@@ -199,6 +205,8 @@ Widget _historyTile(
                   ),
                 ),
               ],
+              if (receiptPath != null && receiptPath.isNotEmpty)
+                ServiceReceiptButton(path: receiptPath),
             ],
           ),
         ),

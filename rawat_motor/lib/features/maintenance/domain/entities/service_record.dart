@@ -6,6 +6,7 @@ class ServiceRecord {
     this.workshop = '',
     this.cost = 0,
     this.notes = '',
+    this.receiptPath,
   });
 
   final DateTime date;
@@ -14,14 +15,16 @@ class ServiceRecord {
   final String workshop;
   final int cost;
   final String notes;
+  final String? receiptPath;
 
-  Map<String, Object> toJson() => {
+  Map<String, Object?> toJson() => {
     'date': date.toIso8601String(),
     'odometer': odometer,
     'item': item,
     'workshop': workshop,
     'cost': cost,
     'notes': notes,
+    'receiptPath': receiptPath,
   };
 
   factory ServiceRecord.fromJson(Map<String, dynamic> json) {
@@ -32,6 +35,7 @@ class ServiceRecord {
     final workshop = json['workshop'] ?? '';
     final cost = json['cost'] ?? 0;
     final notes = json['notes'] ?? '';
+    final receiptPath = json['receiptPath'];
     if (date == null ||
         odometer is! int ||
         odometer < 0 ||
@@ -39,7 +43,8 @@ class ServiceRecord {
         workshop is! String ||
         cost is! int ||
         cost < 0 ||
-        notes is! String) {
+        notes is! String ||
+        (receiptPath != null && receiptPath is! String)) {
       throw const FormatException('Riwayat servis tidak valid.');
     }
     return ServiceRecord(
@@ -49,6 +54,7 @@ class ServiceRecord {
       workshop: workshop,
       cost: cost,
       notes: notes,
+      receiptPath: receiptPath as String?,
     );
   }
 }

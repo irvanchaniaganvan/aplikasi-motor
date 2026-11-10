@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:image_picker/image_picker.dart';
+
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/rawatin_page_transition.dart';
 import '../../../../core/utils/date_labels.dart';
@@ -15,12 +17,14 @@ import '../../domain/entities/odometer_entry.dart';
 import '../../domain/entities/service_record.dart';
 import '../../domain/services/component_filter.dart';
 import '../../domain/services/component_schedule_calculator.dart';
+import '../../domain/services/maintenance_notification_service.dart';
 import '../../domain/services/record_component_service.dart';
 import '../../domain/services/oil_schedule_calculator.dart';
 import '../../domain/use_cases/load_motor_data.dart';
 import '../../domain/use_cases/save_motor_data.dart';
 import '../../../profile/domain/entities/driver_motor_profile.dart';
 import '../../../profile/presentation/widgets/vehicle_avatar.dart';
+import '../../../../core/services/vehicle_photo_service.dart';
 import '../../../trips/data/repositories/local_trip_repository.dart';
 import '../../../trips/presentation/pages/trip_record_page.dart';
 import 'history_view.dart';
@@ -78,6 +82,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
   List<MaintenanceComponent> _components = const [];
   List<MaintenanceMotor> _maintenanceMotors = const [];
   bool _catalogFailed = false;
+  bool _reminderShown = false;
+  final _notificationService = MaintenanceNotificationService();
 
   @override
   void initState() {
@@ -100,11 +106,31 @@ class _OilReminderPageState extends State<OilReminderPage> {
         _components = catalog.components;
         _maintenanceMotors = motors.motors;
       });
+      _showLocalReminderIfNeeded(_motorData);
+      _syncNotificationSchedules();
     } catch (_) {
       if (!mounted) return;
       setState(() => _catalogFailed = true);
       _showMessage('Data interval perawatan tidak dapat dimuat.');
     }
+  }
+
+  void _showLocalReminderIfNeeded(MotorData? data) {
+    if (_reminderShown || data == null || !mounted) return;
+    final due = _visibleParts()
+        .map((part) => (part: part, schedule: _componentSchedule(part, data)))
+        .where((item) => item.schedule?.status == ComponentScheduleStatus.due)
+        .toList();
+    if (due.isEmpty) return;
+    _reminderShown = true;
+    final names = due.take(2).map((item) => item.part.name).join(' dan ');
+    _notificationService.showDueReminder(due.map((item) => item.part).toList());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _showMessage(
+        'Pengingat Rawatin: $names sudah waktunya diperiksa atau diganti.',
+      );
+    });
   }
 
   Future<void> _loadSavedData() async {
@@ -122,10 +148,27 @@ class _OilReminderPageState extends State<OilReminderPage> {
           _monthsController.text = (data.oilIntervalMonths ?? 3).toString();
         }
       });
+      _showLocalReminderIfNeeded(data);
+      _syncNotificationSchedules();
     } catch (_) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       _showMessage('Data tersimpan tidak dapat dibaca. Coba simpan ulang.');
+    }
+  }
+
+  Future<void> _syncNotificationSchedules() async {
+    final data = _motorData;
+    if (data == null || _components.isEmpty) return;
+    try {
+      await _notificationService.requestPermission();
+      await _notificationService.syncTimeReminders(
+        data: data,
+        components: _visibleParts(),
+      );
+    } catch (_) {
+      // Snackbar tetap menjadi fallback jika izin atau scheduler perangkat
+      // belum tersedia.
     }
   }
 
@@ -179,6 +222,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
       await widget.saveMotorData(data);
       if (!mounted) return false;
       setState(() => _motorData = data);
+      await _syncNotificationSchedules();
+      if (!mounted) return false;
     } catch (_) {
       _showMessage('Data gagal disimpan. Periksa ruang penyimpanan perangkat.');
       return false;
@@ -229,6 +274,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
       _motorData = updated;
       _lastOilController.text = data.currentOdometer.toString();
     });
+    await _syncNotificationSchedules();
     _showMessage('Ganti oli dicatat pada ${formatKm(data.currentOdometer)}.');
   }
 
@@ -647,27 +693,25 @@ class _OilReminderPageState extends State<OilReminderPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            DashboardHeader(profile: widget.profile),
-            const SizedBox(height: AppSpacing.lg),
-            _buildProfileCard(),
-            const SizedBox(height: AppSpacing.lg),
-            _buildOdometerHero(),
-            const SizedBox(height: AppSpacing.xxl),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Expanded(
-                  child: RawatinSectionHeading(
-                    eyebrow: 'JADWAL MOTOR',
-                    title: 'Jadwal motormu',
-                  ),
-                ),
+                Expanded(child: DashboardHeader(profile: widget.profile)),
                 TextButton.icon(
                   onPressed: () => _selectSection(3),
                   icon: const Icon(AppIcons.arrowForward, size: 16),
                   label: const Text('Semua'),
                 ),
               ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            _buildProfileCard(),
+            const SizedBox(height: AppSpacing.lg),
+            _buildOdometerHero(),
+            const SizedBox(height: AppSpacing.xxl),
+            const RawatinSectionHeading(
+              eyebrow: 'JADWAL MOTOR',
+              title: 'Jadwal motormu',
             ),
             const SizedBox(height: AppSpacing.md),
             _buildDashboardMaintenanceSummary(),
@@ -808,7 +852,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
               const RawatinScreenIntro(
                 eyebrow: 'KOMPONEN & PERAWATAN',
                 title: 'Jadwal perawatan',
-                description: 'Interval adalah perkiraan umum, bukan spesifikasi resmi. Ikuti buku manual atau saran bengkel.',
+                description: 'Interval adalah perkiraan umum: bukan spesifikasi resmi. Ikuti buku manual atau saran bengkel.',
               ),
               if (widget.profile != null) ...[
                 const SizedBox(height: AppSpacing.lg),
@@ -1412,8 +1456,12 @@ class _OilReminderPageState extends State<OilReminderPage> {
     );
     final costController = TextEditingController();
     final notesController = TextEditingController();
+    final workshopController = TextEditingController();
     var serviceDate = DateTime.now();
     var showDetails = false;
+    Uint8List? receiptBytes;
+    var receiptExtension = 'png';
+    String? receiptPath;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -1479,9 +1527,53 @@ class _OilReminderPageState extends State<OilReminderPage> {
                   ),
                 ),
                 TextField(
+                  controller: workshopController,
+                  decoration: const InputDecoration(
+                    labelText: 'Nama bengkel (opsional)',
+                  ),
+                ),
+                TextField(
                   controller: notesController,
                   decoration: const InputDecoration(
                     labelText: 'Catatan (opsional)',
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      try {
+                        final selected = await VehiclePhotoService().pickPhoto(
+                          source: ImageSource.gallery,
+                        );
+                        if (selected != null) {
+                          setSheetState(() {
+                            receiptBytes = selected.bytes;
+                            receiptExtension = selected.extension;
+                          });
+                        }
+                      } catch (error) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                VehiclePhotoService.resolveErrorMessage(error),
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    icon: Icon(
+                      receiptBytes == null
+                          ? Icons.add_a_photo_outlined
+                          : Icons.check_circle_outline,
+                    ),
+                    label: Text(
+                      receiptBytes == null
+                          ? 'Tambah foto nota'
+                          : 'Foto nota siap dipakai',
+                    ),
                   ),
                 ),
               ],
@@ -1529,6 +1621,24 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     if (!context.mounted) return;
                     if (confirmed != true) return;
                   }
+                  if (receiptBytes != null) {
+                    try {
+                      receiptPath = await VehiclePhotoService().savePhotoBytes(
+                        bytes: receiptBytes!,
+                        profileId: widget.profile?.id ?? 'vehicle-1',
+                        extension: receiptExtension,
+                      );
+                    } catch (_) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Foto nota belum berhasil disimpan.'),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                  }
                   final updated = const RecordComponentService().record(
                     data: data,
                     component: component,
@@ -1536,6 +1646,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     date: serviceDate,
                     cost: cost,
                     notes: notesController.text.trim(),
+                    receiptPath: receiptPath,
+                    workshop: workshopController.text.trim(),
                   );
                   try {
                     await widget.saveMotorData(updated);
@@ -1544,6 +1656,9 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     Navigator.pop(sheetContext);
                     _showMessage('${component.name} berhasil dicatat.');
                   } catch (_) {
+                    if (receiptPath != null) {
+                      await VehiclePhotoService().deletePhoto(receiptPath);
+                    }
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -1566,12 +1681,16 @@ class _OilReminderPageState extends State<OilReminderPage> {
     kmController.dispose();
     costController.dispose();
     notesController.dispose();
+    workshopController.dispose();
   }
 
   Future<bool> _saveComponentData(MotorData data) async {
     try {
       await widget.saveMotorData(data);
-      if (mounted) setState(() => _motorData = data);
+      if (mounted) {
+        setState(() => _motorData = data);
+        await _syncNotificationSchedules();
+      }
       return true;
     } catch (_) {
       if (mounted) _showMessage('Perubahan komponen gagal disimpan.');

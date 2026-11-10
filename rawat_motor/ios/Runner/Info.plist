@@ -4,6 +4,8 @@
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Rawatin memakai lokasi saat kamu memulai perjalanan untuk menghitung dan menyimpan rute di perangkat. Rute dapat dihapus dari Riwayat.</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>Rawatin mengirim pengingat lokal agar kamu tidak melewatkan jadwal perawatan motor.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
