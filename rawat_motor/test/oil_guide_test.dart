@@ -14,6 +14,8 @@ import 'package:rawatin/features/maintenance/domain/use_cases/save_motor_data.da
 import 'package:rawatin/features/maintenance/domain/services/ai_service.dart';
 import 'package:rawatin/features/maintenance/data/services/fake_ai_service.dart';
 import 'package:rawatin/features/maintenance/data/services/ai_consent_storage.dart';
+import 'package:rawatin/features/maintenance/data/services/http_oil_specification_service.dart';
+import 'package:rawatin/features/maintenance/domain/services/oil_specification_service.dart';
 import 'package:rawatin/features/maintenance/presentation/pages/oil_guide_page.dart';
 import 'package:rawatin/features/maintenance/presentation/pages/oil_reminder_page.dart';
 import 'package:rawatin/features/maintenance/presentation/content/oil_guide_content.dart';
@@ -270,6 +272,81 @@ void main() {
         'verified': false,
       });
       expect(spec.verified, isFalse);
+    });
+  });
+
+  group('HttpOilSpecificationService – online dan cache', () {
+    test('memakai spesifikasi online dan menyimpannya ke cache', () async {
+      final service = HttpOilSpecificationService(
+        baseUrl: 'https://oil.example.test',
+        fetcher: (uri) async => {
+          'oil_spec': {
+            'sae': '10W-30',
+            'jaso': 'JASO MB',
+            'volume': '0.8 L',
+            'verified': true,
+            'source': 'Buku pedoman resmi',
+            'updated_at': '2026-11-10T00:00:00.000Z',
+          },
+        },
+      );
+      final result = await service.load(
+        motorId: 'honda-vario-160',
+        motorName: 'Honda Vario 160',
+        year: 2024,
+      );
+
+      expect(result.sourceType, OilSpecificationSourceType.online);
+      expect(result.specification?.sae, '10W-30');
+      expect(result.specification?.source, 'Buku pedoman resmi');
+    });
+
+    test('memakai cache terakhir ketika endpoint offline', () async {
+      final firstService = HttpOilSpecificationService(
+        baseUrl: 'https://oil.example.test',
+        fetcher: (uri) async => {
+          'sae': '10W-40',
+          'jaso': 'JASO MB',
+          'volume': '0.8 L',
+          'verified': true,
+        },
+      );
+      final first = await firstService.load(
+        motorId: 'honda-beat',
+        motorName: 'Honda Beat',
+        year: 2024,
+      );
+      final cachedService = HttpOilSpecificationService(
+        baseUrl: 'https://oil.example.test',
+        fetcher: (uri) async => null,
+      );
+      final cached = await cachedService.load(
+        motorId: 'honda-beat',
+        motorName: 'Honda Beat',
+        year: 2024,
+      );
+
+      expect(first.sourceType, OilSpecificationSourceType.online);
+      expect(cached.sourceType, OilSpecificationSourceType.cache);
+      expect(cached.specification?.sae, '10W-40');
+    });
+
+    test('fallback ke katalog lokal tanpa URL backend', () async {
+      const local = OilSpecification(
+        sae: '10W-30',
+        jaso: 'JASO MB',
+        volume: '0.8 L',
+        verified: true,
+      );
+      final result = await HttpOilSpecificationService(baseUrl: '').load(
+        motorId: 'honda-beat',
+        motorName: 'Honda Beat',
+        year: 2024,
+        localSpecification: local,
+      );
+
+      expect(result.sourceType, OilSpecificationSourceType.local);
+      expect(result.specification, local);
     });
   });
 

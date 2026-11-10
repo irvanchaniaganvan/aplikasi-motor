@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../profile/domain/entities/driver_motor_profile.dart';
 import '../../domain/entities/maintenance_motor_catalog.dart';
+import '../../domain/entities/oil_specification.dart';
+import '../../domain/services/oil_specification_service.dart';
 import '../content/oil_guide_content.dart';
 
 class OilGuideDisclaimer extends StatelessWidget {
@@ -42,16 +44,24 @@ class OilGuideMotorSpec extends StatelessWidget {
   const OilGuideMotorSpec({
     this.motor,
     this.profile,
+    this.specification,
+    this.sourceType,
+    this.isLoading = false,
+    this.onRefresh,
     super.key,
   });
 
   final MaintenanceMotor? motor;
   final DriverMotorProfile? profile;
+  final OilSpecification? specification;
+  final OilSpecificationSourceType? sourceType;
+  final bool isLoading;
+  final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) {
     final colors = RawatinColors.of(context);
-    final spec = motor?.oilSpec;
+    final spec = specification ?? motor?.oilSpec;
     final isVerified = spec != null && spec.verified;
     final motorName =
         motor?.name ??
@@ -112,6 +122,22 @@ class OilGuideMotorSpec extends StatelessWidget {
                     ],
                   ),
                 ),
+              if (onRefresh != null)
+                IconButton(
+                  onPressed: isLoading ? null : onRefresh,
+                  icon: isLoading
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: colors.primary,
+                          ),
+                        )
+                      : Icon(Icons.refresh_rounded, color: colors.primary),
+                  tooltip: 'Perbarui spesifikasi',
+                  visualDensity: VisualDensity.compact,
+                ),
             ],
           ),
           const SizedBox(height: 8),
@@ -155,6 +181,10 @@ class OilGuideMotorSpec extends StatelessWidget {
                 ],
               ),
             ),
+            if (sourceType != null) ...[
+              const SizedBox(height: 8),
+              _buildSourceStatus(colors, spec),
+            ],
           ] else ...[
             Container(
               padding: const EdgeInsets.all(12),
@@ -183,6 +213,23 @@ class OilGuideMotorSpec extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _buildSourceStatus(RawatinColors colors, OilSpecification spec) {
+    final sourceLabel = switch (sourceType) {
+      OilSpecificationSourceType.online => 'Online',
+      OilSpecificationSourceType.cache => 'Cache lokal',
+      OilSpecificationSourceType.local => 'Katalog aplikasi',
+      OilSpecificationSourceType.unavailable || null => 'Belum tersedia',
+    };
+    final updated = spec.updatedAt;
+    final updatedText = updated == null
+        ? ''
+        : ' · diperbarui ${updated.day}/${updated.month}/${updated.year}';
+    return Text(
+      'Sumber: $sourceLabel${spec.source == null ? '' : ' · ${spec.source}'}$updatedText',
+      style: TextStyle(color: colors.muted, fontSize: 11.5, height: 1.3),
     );
   }
 

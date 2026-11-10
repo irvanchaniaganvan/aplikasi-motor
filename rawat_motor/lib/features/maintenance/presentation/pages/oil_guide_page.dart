@@ -4,8 +4,11 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../profile/domain/entities/driver_motor_profile.dart';
 import '../../data/services/ai_consent_storage.dart';
 import '../../data/services/ai_service_factory.dart';
+import '../../data/services/oil_specification_service_factory.dart';
 import '../../domain/entities/maintenance_motor_catalog.dart';
+import '../../domain/entities/oil_specification.dart';
 import '../../domain/services/ai_service.dart';
+import '../../domain/services/oil_specification_service.dart';
 import '../content/oil_guide_content.dart';
 import '../widgets/oil_guide_widgets.dart';
 
@@ -37,12 +40,16 @@ class _OilGuidePageState extends State<OilGuidePage> {
 
   late final AiService _aiService;
   late final AiConsentStorage _consentStorage;
+  late final OilSpecificationService _oilSpecificationService;
 
   final List<AiChatMessage> _chatHistory = [];
   bool _isLoading = false;
   bool _aiUnavailable = false;
   String? _errorMessage;
   String? _lastFailedQuestion;
+  OilSpecification? _oilSpecification;
+  OilSpecificationSourceType? _oilSpecificationSource;
+  bool _isLoadingOilSpecification = false;
 
   static const _sampleQuestions = [
     'Bedanya 10W-30 dan 10W-40?',
@@ -55,6 +62,11 @@ class _OilGuidePageState extends State<OilGuidePage> {
     super.initState();
     _aiService = widget.aiService ?? AiServiceFactory.createDefault();
     _consentStorage = widget.consentStorage ?? const LocalAiConsentStorage();
+    _oilSpecificationService = OilSpecificationServiceFactory.createDefault();
+    _oilSpecification = widget.motor?.oilSpec;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadOilSpecification();
+    });
   }
 
   @override
@@ -245,6 +257,50 @@ class _OilGuidePageState extends State<OilGuidePage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
+  Future<void> _loadOilSpecification({bool refresh = false}) async {
+    if (_isLoadingOilSpecification || !mounted) return;
+    final motor = widget.motor;
+    final profile = widget.profile;
+    final motorId =
+        motor?.id ??
+        profile?.maintenanceMotorId ??
+        _slug('${profile?.brand ?? ''}-${profile?.model ?? ''}');
+    if (motorId.isEmpty) return;
+    final motorName =
+        motor?.name ??
+        (profile == null
+            ? 'Motor pengguna'
+            : '${profile.brand} ${profile.model}');
+    setState(() {
+      _isLoadingOilSpecification = true;
+      _errorMessage = null;
+    });
+    try {
+      final result = await _oilSpecificationService.load(
+        motorId: motorId,
+        motorName: motorName,
+        year: profile?.year ?? DateTime.now().year,
+        localSpecification: motor?.oilSpec,
+        refresh: refresh,
+      );
+      if (!mounted) return;
+      setState(() {
+        _oilSpecification = result.specification;
+        _oilSpecificationSource = result.sourceType;
+        _isLoadingOilSpecification = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingOilSpecification = false);
+      _showSnackbar('Spesifikasi online belum dapat dimuat.');
+    }
+  }
+
+  String _slug(String value) => value
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+      .replaceAll(RegExp(r'^-+|-+$'), '');
+
   @override
   Widget build(BuildContext context) {
     final colors = RawatinColors.of(context);
@@ -294,6 +350,10 @@ class _OilGuidePageState extends State<OilGuidePage> {
                   OilGuideMotorSpec(
                     motor: widget.motor,
                     profile: widget.profile,
+                    specification: _oilSpecification,
+                    sourceType: _oilSpecificationSource,
+                    isLoading: _isLoadingOilSpecification,
+                    onRefresh: () => _loadOilSpecification(refresh: true),
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   const OilGuideAccordion(),

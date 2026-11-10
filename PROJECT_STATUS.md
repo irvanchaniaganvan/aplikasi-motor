@@ -47,6 +47,7 @@ Terakhir diperbarui: 10 November 2026
 - Fitur **Panduan Oli** ditambahkan sebagai layar edukasi terpisah (`lib/features/maintenance/presentation/pages/oil_guide_page.dart`). Seluruh isi 8 bagian panduan disimpan di `presentation/content/oil_guide_content.dart` agar mudah disunting tanpa menyentuh UI. Layar memakai banner "Panduan umum. Selalu utamakan buku manual motor kamu.", accordion dengan bagian pertama terbuka, dan tombol "Catat ganti oli" yang membuka form pencatatan oli mesin yang sudah ada.
 - Pintu masuk **Panduan oli** tersedia pada bottom sheet detail kartu **Oli mesin** dan **Oli gardan** di `oil_reminder_page.dart`; kartu komponen lain tidak menampilkannya.
 - Model `OilSpecification` (`sae`, `jaso`, `volume`, `verified`) ditambahkan sebagai field opsional di `MotorModel` dan `MaintenanceMotor`. Data lama tanpa field `spesifikasi_oli`/`oil_spec` tetap terbaca dan dianggap belum terverifikasi. UI hanya menampilkan angka SAE/JASO/volume jika `verified: true`; selain itu menampilkan "Spesifikasi belum diverifikasi. Cek buku manual motor kamu."
+- Panduan Oli sekarang mendukung pemuatan spesifikasi online melalui `OIL_SPEC_BACKEND_URL` dan endpoint `/oil-specifications/{motorId}`. Respon valid menyimpan `source`, `source_url`, dan `updated_at`, lalu dicache lokal. Saat offline, aplikasi memakai cache terakhir, kemudian katalog lokal, dan selalu menampilkan label asal data. Kontrak backend ada di `rawat_motor/docs/oil-spec-contract.md`; tanpa URL backend, aplikasi tetap aman memakai katalog lokal.
 - Fitur **Tanya Panduan Oli** memakai interface `AiService` dengan `FakeAiService` sebagai default (tanpa backend) dan `HttpAiService` untuk memanggil `POST /ask-oil` via `--dart-define=AI_BACKEND_URL=...`. Tidak ada API key LLM di aplikasi. `--dart-define=AI_FEATURE=off` menyembunyikan bagian AI.
 - Asisten AI memiliki input maksimal 500 karakter dengan penghitung, tiga chip pertanyaan contoh, jawaban berbentuk gelembung berlabel "Dijawab AI, bisa keliru. Cek buku manual.", tombol "Mulai ulang", serta penanganan memuat, galat jaringan dengan "Coba lagi", rate limit, dan kondisi AI belum dikonfigurasi ("Segera hadir").
 - Persetujuan AI disimpan lokal lewat `LocalAiConsentStorage`; tanpa persetujuan tidak ada permintaan jaringan. `install_id` berupa UUID v4 acak perangkat. Riwayat chat hanya di memori sesi layar. Spesifikasi motor hanya dikirim ke backend jika `verified: true`, selain itu `oil_spec: null`.
@@ -95,6 +96,7 @@ Terakhir diperbarui: 10 November 2026
 - Pemeriksaan dasar pengingat (7 November 2026): `flutter test` penuh lulus (99 tes, termasuk 4 tes kalkulator/kompatibilitas enum dan 1 widget test pilihan mode/tampil-sembunyi interval). `ReminderBasis` memengaruhi kalkulator jadwal dan kartu Oli mesin; komponen lain tetap mengikuti aturan interval masing-masing. `flutter analyze` tidak menemukan error atau warning, tetapi melaporkan 11 info lint `curly_braces_in_flow_control_structures` pada file fitur Perjalanan; perintah mengembalikan kode keluar 1 karena info tersebut.
 - Pemeriksaan animasi aplikasi: `flutter test` penuh lulus (102 tes, termasuk 2 widget test intro/transisi). `flutter analyze` tetap hanya melaporkan 11 info lint lama `curly_braces_in_flow_control_structures` pada fitur Perjalanan; tidak ada error analisis pada perubahan animasi.
 - Roadmap biaya/nota/pengingat (10 November 2026): `flutter test` penuh lulus 100% (107 tes). Tes tambahan mencakup serialisasi `ServiceRecord` dengan biaya, bengkel, dan `receiptPath`, kompatibilitas riwayat lama tanpa nota, serta format ringkasan rupiah. Notifikasi lokal memakai jadwal tanggal inexact dan receiver Android untuk reboot; jadwal berbasis KM tetap diperiksa ketika aplikasi dibuka atau KM diperbarui. `flutter analyze --no-pub` hanya melaporkan 11 info lint lama `curly_braces_in_flow_control_structures` pada fitur Perjalanan, tanpa error dari perubahan roadmap.
+- Panduan Oli online (10 November 2026): `flutter test test/oil_guide_test.dart` lulus 33 tes, termasuk parsing metadata sumber, pemuatan online, cache saat offline, dan fallback katalog lokal. Backend katalog belum disediakan di repository ini; fitur online aktif setelah `OIL_SPEC_BACKEND_URL` dikonfigurasi.
 - Perapian Beranda (7 November 2026): `DashboardHeader` hanya menampilkan sapaan pengendara; kartu profil menjadi satu-satunya tempat identitas motor. Jika nickname kosong, judul kartu memakai nama merek dan model, dengan tahun serta jenis motor sebagai keterangan. Tes header dan kedua variasi judul kartu diperbarui.
 - Placeholder foto Beranda (7 November 2026): saat foto belum dipilih, kartu profil kini menampilkan placeholder netral bergambar tambah foto—bukan ikon motor—dan tautan "Tambahkan foto motor di profil" membuka editor profil. Avatar di halaman pengaturan tetap memakai fallback ikon motor.
 - Fitur profil kendaraan ditambahkan:
@@ -119,10 +121,11 @@ Terakhir diperbarui: 10 November 2026
 5. Tambahkan widget tests untuk halaman Perjalanan, Riwayat, dan alur odometer; uji repository file lokal termasuk skema rusak/tidak kompatibel.
 6. Validasi alur log odometer, jadwal komponen, penyaringan profil, riwayat servis, serta Panduan Oli di emulator/perangkat.
 7. Isi `spesifikasi_oli` hanya untuk model yang sudah dicek dari buku manual resmi, lalu set `verified: true`.
-8. Bangun backend serverless sesuai `docs/ai-contract.md`, lalu jalankan aplikasi dengan `--dart-define=AI_BACKEND_URL=...`.
-9. Tetapkan application/bundle ID resmi dan tile provider produksi sebelum rilis.
-10. Ganti penyimpanan key-value dengan basis data lokal bila model data/riwayat servis bertambah kompleks.
-11. Siapkan build iOS di komputer macOS dengan Xcode.
+8. Bangun backend katalog oli sesuai `docs/oil-spec-contract.md`, verifikasi datanya terhadap manual resmi, lalu jalankan aplikasi dengan `--dart-define=OIL_SPEC_BACKEND_URL=...`.
+9. Bangun backend serverless AI sesuai kontrak yang tersedia, lalu jalankan aplikasi dengan `--dart-define=AI_BACKEND_URL=...`.
+10. Tetapkan application/bundle ID resmi dan tile provider produksi sebelum rilis.
+11. Ganti penyimpanan key-value dengan basis data lokal bila model data/riwayat servis bertambah kompleks.
+12. Siapkan build iOS di komputer macOS dengan Xcode.
 
 ## Catatan pemulihan sesi
 
