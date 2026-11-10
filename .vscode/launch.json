@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Rawatin Windows",
+            "request": "launch",
+            "type": "flutter",
+            "deviceId": "local",
+            "projectPath": "${workspaceFolder}/rawat_motor",
+            "args": [
+                "--dart-define=AI_BACKEND_URL=https://rawatin-ai.rawatin-app.workers.dev"
+            ]
+        }
+    ]
+}

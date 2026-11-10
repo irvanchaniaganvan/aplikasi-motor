@@ -123,6 +123,8 @@ Terakhir diperbarui: 10 November 2026
 - Build Windows debug berhasil: `build/windows/x64/runner/Debug/rawatin.exe`.
 - Belum ada build APK atau build iOS.
 - Pemeriksaan build fase AI setelah perbaikan error analisis (10 November 2026): `flutter analyze --no-pub` kembali bersih dari error/warning pada berkas AI (tersisa 11 info lint `curly_braces_in_flow_control_structures` di fitur Perjalanan), `flutter test` penuh lulus 105 tes, `npm.cmd test` di `rawat_motor/backend/ai-worker` lulus 14/14, Worker redeploy berhasil, dan uji live Worker (`/health`, sapaan, ucapan terima kasih, topik perawatan umum, spesifikasi oli Vario, penolakan luar topik) semuanya berhasil. Penggunaan `reference` Worker wajib non-kosong sehingga payload live-test awal sempat mengembalikan `bad_request` sebelum diperbaiki.
+- Konfigurasi F5 agar AI real (10 November 2026): `.vscode/launch.json` dibuat dengan konfigurasi Windows (`Rawatin Windows`) yang melewatkan `--dart-define=AI_BACKEND_URL=https://rawatin-ai.rawatin-app.workers.dev`, sehingga Fn+F5 di VS Code memakai backend AI sungguhan alih-alih default `FakeAiService`.
+- Tes widget `AiAssistantPage` ditambahkan di `test/ai_assistant_page_test.dart` (7 tes: header, chip, intro, alur persetujuan + jawaban, rate limit, AI belum dikonfigurasi); `flutter test` penuh lulus 112 tes dan `flutter analyze --no-pub` kembali bersih dari error/warning (11 info lint lama di fitur trips).
 
 ## Langkah berikutnya
 
