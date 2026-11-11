@@ -4,7 +4,7 @@ import 'package:rawatin/core/widgets/rawatin_intro_page.dart';
 import 'package:rawatin/core/widgets/rawatin_page_transition.dart';
 
 void main() {
-  testWidgets('intro mengetik wordmark smooth setelah logo lalu selesai', (
+  testWidgets('intro menampilkan slogan Rawatin di dua baris lalu selesai', (
     tester,
   ) async {
     var finished = false;
@@ -12,17 +12,17 @@ void main() {
       MaterialApp(home: RawatinIntroPage(onFinished: () => finished = true)),
     );
 
-    expect(find.text('Kamu yang gas, Rawatin yang ingat.'), findsOneWidget);
+    expect(find.text('Kamu yang gas,\nRawatin yang ingat.'), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 900));
     expect(find.text('RAWATIN'), findsNothing);
-    await tester.pump(const Duration(milliseconds: 1400));
+    await tester.pump(const Duration(milliseconds: 1900));
     expect(find.text('R'), findsOneWidget);
     expect(finished, isFalse);
-    await tester.pump(const Duration(milliseconds: 1300));
+    await tester.pump(const Duration(milliseconds: 1000));
+    expect(finished, isFalse);
+    await tester.pump(const Duration(milliseconds: 400));
     expect(finished, isFalse);
     await tester.pump(const Duration(milliseconds: 700));
-    expect(finished, isFalse);
-    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
     expect(finished, isTrue);
   });

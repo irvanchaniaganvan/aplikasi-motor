@@ -85,44 +85,100 @@ class RawatinLogoPainter extends CustomPainter {
     double segment(double start, double end) =>
         ((progress - start) / (end - start)).clamp(0.0, 1.0);
 
-    final topProgress = segment(0, .38);
-    final legProgress = segment(.55, .9);
+    final topProgress = segment(.10, .58);
+    final innerProgress = segment(.20, .70);
+    final legProgress = segment(.32, .82);
 
-    // Dua garis cepat membentuk kepala R; clip menjaga animasi intro bertahap.
-    canvas.save();
-    canvas.clipRect(Rect.fromLTRB(0, 0, viewBox * topProgress, viewBox));
+    // Path muncul sepanjang garisnya, seperti animasi pembentukan logo.
     final topLine = Path()
       ..moveTo(82, 132)
       ..lineTo(300, 132)
       ..cubicTo(366, 132, 402, 166, 402, 218)
       ..cubicTo(402, 270, 365, 300, 312, 300)
       ..lineTo(268, 300);
-    canvas.drawPath(topLine, orange);
     final innerLine = Path()
       ..moveTo(112, 190)
       ..lineTo(296, 190)
       ..cubicTo(322, 190, 342, 204, 342, 226)
       ..cubicTo(342, 248, 324, 264, 300, 264)
       ..lineTo(268, 264);
-    canvas.drawPath(innerLine, orange);
-    canvas.restore();
-
-    // Sepasang garis diagonal menutup monogram seperti kaki huruf R.
-    canvas.save();
-    canvas.clipRect(Rect.fromLTRB(0, 260, viewBox, 260 + 180 * legProgress));
     final frontLeg = Path()
       ..moveTo(218, 282)
       ..cubicTo(254, 282, 278, 299, 306, 332)
       ..lineTo(370, 402);
-    canvas.drawPath(frontLeg, orange);
     final rearLeg = Path()
       ..moveTo(170, 326)
       ..cubicTo(204, 326, 228, 341, 250, 368)
       ..lineTo(284, 408);
-    canvas.drawPath(rearLeg, orange);
-    canvas.restore();
+    _drawPathProgress(canvas, topLine, topProgress, orange);
+    _drawPathProgress(canvas, innerLine, innerProgress, orange);
+    _drawPathProgress(canvas, frontLeg, legProgress, orange);
+    _drawPathProgress(canvas, rearLeg, legProgress, orange);
+
+    // Dua trail titik masuk dari tepi dan bertemu pada pangkal logo.
+    final trailProgress = (progress / .46).clamp(0.0, 1.0);
+    final trailOpacity = ((.52 - progress) / .12).clamp(0.0, 1.0);
+    _drawTrail(
+      canvas,
+      const Offset(-92, 132),
+      const Offset(82, 132),
+      trailProgress,
+      trailOpacity,
+    );
+    _drawTrail(
+      canvas,
+      const Offset(-110, 326),
+      const Offset(170, 326),
+      trailProgress,
+      trailOpacity,
+    );
 
     canvas.restore();
+  }
+
+  void _drawPathProgress(
+    Canvas canvas,
+    Path path,
+    double progress,
+    Paint paint,
+  ) {
+    if (progress <= 0) return;
+    final metric = path.computeMetrics().first;
+    canvas.drawPath(metric.extractPath(0, metric.length * progress), paint);
+  }
+
+  void _drawTrail(
+    Canvas canvas,
+    Offset start,
+    Offset end,
+    double progress,
+    double opacity,
+  ) {
+    if (progress <= 0 || opacity <= 0) return;
+    final current = Offset.lerp(start, end, progress)!;
+    final direction = (end - start) / (end - start).distance;
+    final distance = (current - start).distance;
+    for (var offset = 0.0; offset < distance; offset += 22) {
+      final fade = (1 - offset / 220).clamp(0.0, 1.0);
+      canvas.drawCircle(
+        current - direction * offset,
+        4.5 * fade,
+        Paint()
+          ..color = AppPalette.accent.withValues(alpha: fade * .5 * opacity),
+      );
+    }
+    canvas.drawCircle(
+      current,
+      13,
+      Paint()
+        ..color = AppPalette.accent.withValues(alpha: .20 * opacity)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7),
+    );
+    canvas.drawCircle(
+      current,
+      4,
+      Paint()..color = const Color(0xFFFFC44D).withValues(alpha: opacity),
+    );
   }
 
   @override

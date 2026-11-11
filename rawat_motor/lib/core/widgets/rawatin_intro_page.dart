@@ -47,26 +47,26 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
     );
     _logoProgress = CurvedAnimation(
       parent: _controller,
-      curve: const Interval(0, .30, curve: Curves.easeInOutCubic),
+      curve: const Interval(0, .62, curve: Curves.easeInOutCubic),
     );
     _wordmarkOffset =
         Tween<Offset>(begin: const Offset(0, .12), end: Offset.zero).animate(
           CurvedAnimation(
             parent: _controller,
-            curve: const Interval(.30, .43, curve: Curves.easeOutCubic),
+            curve: const Interval(.65, .82, curve: Curves.easeOutCubic),
           ),
         );
     _taglineOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(.70, .84, curve: Curves.easeOutCubic),
+        curve: const Interval(.82, .94, curve: Curves.easeOutCubic),
       ),
     );
     _taglineOffset =
         Tween<Offset>(begin: const Offset(0, .18), end: Offset.zero).animate(
           CurvedAnimation(
             parent: _controller,
-            curve: const Interval(.70, .85, curve: Curves.easeOutCubic),
+            curve: const Interval(.82, .94, curve: Curves.easeOutCubic),
           ),
         );
     _controller.addStatusListener((status) {
@@ -75,8 +75,8 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
   }
 
   double _characterProgress(int index) {
-    const typingStart = .34;
-    const characterStep = .052;
+    const typingStart = .67;
+    const characterStep = .016;
     const characterDuration = .065;
     final start = typingStart + index * characterStep;
     final progress = ((_controller.value - start) / characterDuration).clamp(
@@ -159,11 +159,13 @@ class _RawatinIntroPageState extends State<RawatinIntroPage>
                       child: SlideTransition(
                         position: _taglineOffset,
                         child: const Text(
-                          'Kamu yang gas, Rawatin yang ingat.',
+                          'Kamu yang gas,\nRawatin yang ingat.',
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: AppPalette.accent,
-                            fontSize: 12,
-                            letterSpacing: .3,
+                            color: AppPalette.muted,
+                            fontSize: 11,
+                            height: 1.5,
+                            letterSpacing: .2,
                           ),
                         ),
                       ),
