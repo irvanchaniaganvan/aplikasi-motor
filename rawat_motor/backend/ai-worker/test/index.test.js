@@ -108,6 +108,7 @@ test('ucapan terima kasih dijawab ramah tanpa memanggil Gemini', async () => {
     post(payload({ question: 'terima kasih' })),
     BASE_ENV,
     {
+      now: () => Date.UTC(2026, 10, 11, 12),
       fetchImpl: async () => {
         called = true;
         return geminiResponse('Jawaban provider.');
@@ -121,7 +122,7 @@ test('ucapan terima kasih dijawab ramah tanpa memanggil Gemini', async () => {
   assert.equal(called, false);
 });
 
-test('pertanyaan hari atau tanggal saat ini ditolak tanpa memanggil Gemini', async () => {
+test('pertanyaan hari atau tanggal dijawab sesuai waktu Jakarta tanpa memanggil Gemini', async () => {
   let called = false;
   const response = await handleRequest(
     post(payload({ question: 'hari ini hari apa ya? tanggalnya?' })),
@@ -136,9 +137,9 @@ test('pertanyaan hari atau tanggal saat ini ditolak tanpa memanggil Gemini', asy
 
   const data = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(data.refused, true);
-  assert.equal(data.reason, 'off_topic');
-  assert.match(data.answer, /fokus membantu perawatan motor/);
+  assert.equal(data.refused, false);
+  assert.match(data.answer, /Hari ini/);
+  assert.match(data.answer, /2026/);
   assert.equal(called, false);
 });
 
@@ -211,7 +212,15 @@ test('permintaan valid memanggil Gemini dan mengembalikan answer', async () => {
   const providerBody = JSON.parse(capturedInit.body);
   assert.match(
     providerBody.system_instruction.parts[0].text,
-    /Asisten Perawatan Motor Rawatin/,
+    /Asisten Rawatin/,
+  );
+  assert.match(
+    providerBody.system_instruction.parts[0].text,
+    /boleh menyebut, membandingkan, dan merekomendasikan merek/,
+  );
+  assert.match(
+    providerBody.system_instruction.parts[0].text,
+    /Jangan menolak obrolan ringan atau pertanyaan umum sederhana/,
   );
   assert.equal(providerBody.generationConfig.responseMimeType, 'application/json');
   assert.equal(providerBody.generationConfig.maxOutputTokens, 800);
@@ -223,6 +232,26 @@ test('permintaan valid memanggil Gemini dan mengembalikan answer', async () => {
     providerBody.contents.at(-1).parts[0].text,
     /Kapan sebaiknya ganti oli\?/,
   );
+});
+
+test('pertanyaan umum singkat tetap diteruskan ke Gemini', async () => {
+  let capturedBody;
+  const response = await handleRequest(
+    post(payload({ question: 'Lagi hujan, enaknya minum apa?' })),
+    BASE_ENV,
+    {
+      fetchImpl: async (_url, init) => {
+        capturedBody = JSON.parse(init.body);
+        return geminiResponse('Minuman hangat seperti teh bisa jadi pilihan.');
+      },
+    },
+  );
+
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.refused, false);
+  assert.match(data.answer, /Minuman hangat/);
+  assert.match(capturedBody.contents.at(-1).parts[0].text, /Lagi hujan/);
 });
 
 test('model default adalah gemini-3.5-flash-lite', async () => {
