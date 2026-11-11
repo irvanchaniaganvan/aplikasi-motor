@@ -213,11 +213,23 @@ test('permintaan valid memanggil Gemini dan mengembalikan answer', async () => {
   );
   assert.match(
     providerBody.system_instruction.parts[0].text,
+    /Baca pesan terbaru bersama riwayat chat/,
+  );
+  assert.match(
+    providerBody.system_instruction.parts[0].text,
+    /ajukan satu pertanyaan spesifik dan alami/,
+  );
+  assert.match(
+    providerBody.system_instruction.parts[0].text,
     /jujur bahwa kamu Asisten Rawatin yang menggunakan Gemini/,
   );
   assert.match(
     providerBody.system_instruction.parts[0].text,
     /Jangan menyarankan pengguna membersihkan, melumasi, membongkar, atau menyetel komponen rem sendiri/,
+  );
+  assert.match(
+    providerBody.system_instruction.parts[0].text,
+    /Jangan biarkan pertanyaan lanjutan menggantikan panduan keselamatan/,
   );
   assert.match(
     providerBody.system_instruction.parts[0].text,
