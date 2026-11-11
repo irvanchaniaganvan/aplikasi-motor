@@ -102,6 +102,27 @@ test('sapaan dijawab ramah tanpa memanggil Gemini', async () => {
   assert.equal(called, false);
 });
 
+test('sapaan yang memperkenalkan nama dan bertanya identitas dijawab langsung', async () => {
+  let called = false;
+  const response = await handleRequest(
+    post(payload({ question: 'halo, nama ku Alexa, kamu siapa?' })),
+    BASE_ENV,
+    {
+      fetchImpl: async () => {
+        called = true;
+        return geminiResponse('Jawaban provider.');
+      },
+    },
+  );
+
+  const data = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(data.refused, false);
+  assert.match(data.answer, /Halo Alexa!/);
+  assert.match(data.answer, /Asisten Perawatan Motor Rawatin/);
+  assert.equal(called, false);
+});
+
 test('ucapan terima kasih dijawab ramah tanpa memanggil Gemini', async () => {
   let called = false;
   const response = await handleRequest(

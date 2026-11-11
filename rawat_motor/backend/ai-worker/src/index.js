@@ -268,6 +268,11 @@ function smallTalkResponse(question) {
     .replace(/\s+/g, ' ')
     .trim();
 
+  const greeting = greetingResponse(question, normalized);
+  if (greeting) {
+    return greeting;
+  }
+
   if (GREETINGS.has(normalized)) {
     return {
       answer:
@@ -285,6 +290,31 @@ function smallTalkResponse(question) {
   }
 
   return null;
+}
+
+function greetingResponse(question, normalized) {
+  const isGreeting =
+    /\b(halo|hai|hi|hello|hey)\b/.test(normalized) ||
+    /\b(selamat pagi|selamat siang|selamat sore|selamat malam)\b/.test(
+      normalized,
+    );
+  if (!isGreeting) return null;
+
+  const nameMatch = question.match(
+    /(?:\bnama\s*(?:ku|saya|aku)\s*|\baku\s+|\bsaya\s+)([\p{L}][\p{L}'-]{0,29})\b/iu,
+  );
+  const name = nameMatch?.[1];
+  const greeting = name ? `Halo ${name}!` : 'Halo!';
+  const asksIdentity = /\b(kamu siapa|siapa kamu|nama kamu siapa)\b/.test(
+    normalized,
+  );
+
+  return {
+    answer: asksIdentity
+      ? `${greeting} Aku Asisten Perawatan Motor Rawatin. Aku bisa bantu soal motor dan juga obrolan ringan. Ada yang ingin kamu tanyakan?`
+      : `${greeting} Aku siap bantu soal perawatan motor atau pertanyaan ringan lainnya.`,
+    refused: false,
+  };
 }
 
 function currentDateResponse(question, now) {
