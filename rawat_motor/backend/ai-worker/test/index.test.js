@@ -197,18 +197,35 @@ test('permintaan valid memanggil Gemini dan mengembalikan answer', async () => {
   assert.match(providerBody.system_instruction.parts[0].text, /Asisten Rawatin/);
   assert.match(
     providerBody.system_instruction.parts[0].text,
-    /boleh menyebut, membandingkan, dan merekomendasikan merek/,
+    /Boleh menyebut dan membandingkan merek/,
   );
   assert.match(
     providerBody.system_instruction.parts[0].text,
-    /Jangan menolak obrolan ringan atau pertanyaan umum sederhana/,
+    /Obrolan ringan dan pertanyaan umum sederhana boleh dijawab alami/,
   );
   assert.match(
     providerBody.system_instruction.parts[0].text,
-    /Jangan menyimpulkan jenis motor, sistem pendingin, tipe kopling, atau spesifikasi dari nama model saja/,
+    /Jangan menyimpulkan jenis motor, sistem pendingin, tipe kopling, atau spesifikasi hanya dari nama model/,
+  );
+  assert.match(
+    providerBody.system_instruction.parts[0].text,
+    /Jawab inti pertanyaan secara langsung terlebih dahulu/,
+  );
+  assert.match(
+    providerBody.system_instruction.parts[0].text,
+    /jujur bahwa kamu Asisten Rawatin yang menggunakan Gemini/,
+  );
+  assert.match(
+    providerBody.system_instruction.parts[0].text,
+    /Jangan menyarankan pengguna membersihkan, melumasi, membongkar, atau menyetel komponen rem sendiri/,
+  );
+  assert.match(
+    providerBody.system_instruction.parts[0].text,
+    /tanpa sumber dalam referensi/,
   );
   assert.equal(providerBody.generationConfig.responseMimeType, 'application/json');
-  assert.equal(providerBody.generationConfig.maxOutputTokens, 800);
+  assert.equal(providerBody.generationConfig.maxOutputTokens, 450);
+  assert.equal(providerBody.generationConfig.temperature, 0.4);
   assert.equal(
     providerBody.generationConfig.thinkingConfig.thinkingLevel,
     'low',
