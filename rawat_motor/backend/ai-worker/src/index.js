@@ -10,36 +10,6 @@ const GEMINI_TIMEOUT_MS = 12000;
 const UUID_V4 =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const GREETINGS = new Set([
-  'halo',
-  'hai',
-  'hi',
-  'hello',
-  'hey',
-  'pagi',
-  'siang',
-  'sore',
-  'malam',
-  'selamat pagi',
-  'selamat siang',
-  'selamat sore',
-  'selamat malam',
-  'halo pagi',
-  'halo siang',
-  'halo sore',
-  'halo malam',
-]);
-
-const THANKS = new Set([
-  'terima kasih',
-  'makasih',
-  'thanks',
-  'thank you',
-  'sip',
-  'oke',
-  'ok',
-]);
-
 const SYSTEM_PROMPT = `
 Kamu adalah Asisten Rawatin. Fokus utamamu membantu pengendara memahami perawatan motor, tetapi kamu juga boleh menanggapi obrolan ringan dan pertanyaan umum sederhana secara singkat agar percakapan terasa alami. Untuk topik umum yang luas atau membutuhkan keahlian khusus, jawab batas kemampuan dengan jujur lalu arahkan kembali ke topik motor.
 
@@ -48,7 +18,7 @@ ATURAN WAJIB:
 2. Jangan menyimpulkan jenis motor, sistem pendingin, tipe kopling, atau spesifikasi dari nama model saja kecuali informasi itu ada di REFERENSI PERAWATAN atau DATA MOTOR yang diberikan. Jangan pernah mengarang angka SAE, JASO, volume oli, torsi baut, ataupun spesifikasi/kompatibilitas produk untuk model tertentu. Jika data tidak cukup, berikan jawaban umum yang berguna, jelaskan bagian yang belum pasti, lalu minta varian/tahun atau sarankan memeriksa label/manual sebagai verifikasi.
 3. Kamu boleh menyebut, membandingkan, dan merekomendasikan merek atau produk komersial jika diminta. Beri alasan berdasarkan kecocokan spesifikasi, ketersediaan, dan kebutuhan pengguna; jangan mengklaim satu produk paling bagus secara mutlak atau mengarang spesifikasi produk. Untuk oli, cocokkan SAE, JASO/API, dan tipe motor sebelum menyarankan produk. Jika data produk atau model tidak pasti, jelaskan ketidakpastian itu dan sarankan memeriksa label atau buku manual sebagai verifikasi, bukan sebagai pengganti jawaban.
 4. Untuk keluhan berisiko seperti lampu oli menyala saat berkendara, oli bocor parah, rem blong, asap tebal, mesin mati mendadak, atau bunyi logam keras: sarankan menepi dengan aman, mematikan mesin, dan memeriksakan motor ke bengkel. Jangan memberi instruksi perbaikan darurat yang berisiko.
-5. Sapaan singkat seperti "halo", "hai", atau "selamat pagi" harus dibalas dengan hangat, lalu tawarkan topik perawatan motor. Jangan menolak sapaan sebagai pertanyaan di luar topik. Jika pertanyaan terlalu pendek atau ambigu, minta klarifikasi dengan ramah.
+5. Sapaan singkat dan pertanyaan identitas seperti "halo, aku Alexa, kamu siapa?" harus dijawab hangat dan alami. Gunakan nama yang pengguna berikan dalam percakapan bila jelas. Jika pertanyaan terlalu pendek atau ambigu, minta klarifikasi dengan ramah.
 6. Jangan menolak obrolan ringan atau pertanyaan umum sederhana hanya karena bukan tentang motor. Jawab ringkas jika mampu. Untuk permintaan yang terlalu luas, tidak aman, atau membutuhkan informasi real-time yang tidak tersedia, jelaskan batasannya dengan ramah. Gunakan refused=true hanya untuk permintaan yang memang tidak dapat dibantu dengan aman.
 7. Jangan mengklaim menyimpan, mengubah, atau melakukan tindakan pada data motor atau profil pengguna. Anda hanya menjawab informasi.
 8. Gunakan Bahasa Indonesia yang ringkas, hangat, dan mudah dipahami. Maksimal sekitar 120 kata; untuk menghemat biaya, jawaban umum biasanya cukup 1-3 kalimat.
@@ -132,17 +102,6 @@ export async function handleRequest(request, env, dependencies = {}) {
 
   const { installId, question, history, reference, motor } = validation.value;
 
-  // Sapaan dan ucapan terima kasih tidak perlu memanggil Gemini.
-  const smallTalk = smallTalkResponse(question);
-  if (smallTalk) {
-    return jsonResponse(smallTalk, 200, cors);
-  }
-
-  const currentDate = currentDateResponse(question, now());
-  if (currentDate) {
-    return jsonResponse(currentDate, 200, cors);
-  }
-
   if (typeof env.GEMINI_API_KEY !== 'string' || !env.GEMINI_API_KEY.trim()) {
     return errorResponse(
       500,
@@ -166,7 +125,7 @@ export async function handleRequest(request, env, dependencies = {}) {
   }
 
   const result = await askGemini(
-    { question, history, reference, motor },
+    { question, history, reference, motor, now: now() },
     env,
     fetchImpl,
   );
@@ -261,89 +220,6 @@ function normalizeMotor(value) {
   return { id, name, oilSpec };
 }
 
-function smallTalkResponse(question) {
-  const normalized = question
-    .toLowerCase()
-    .replace(/[^a-z\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const greeting = greetingResponse(question, normalized);
-  if (greeting) {
-    return greeting;
-  }
-
-  if (GREETINGS.has(normalized)) {
-    return {
-      answer:
-        'Halo! Aku Asisten Perawatan Motor Rawatin. Aku bisa bantu soal oli, rem, ban, CVT, aki, dan perawatan motor lain. Mau mulai dari topik apa?',
-      refused: false,
-    };
-  }
-
-  if (THANKS.has(normalized)) {
-    return {
-      answer:
-        'Sama-sama! Kalau ada pertanyaan lain seputar perawatan motor, tanyakan saja.',
-      refused: false,
-    };
-  }
-
-  return null;
-}
-
-function greetingResponse(question, normalized) {
-  const isGreeting =
-    /\b(halo|hai|hi|hello|hey)\b/.test(normalized) ||
-    /\b(selamat pagi|selamat siang|selamat sore|selamat malam)\b/.test(
-      normalized,
-    );
-  if (!isGreeting) return null;
-
-  const nameMatch = question.match(
-    /(?:\bnama\s*(?:ku|saya|aku)\s*|\baku\s+|\bsaya\s+)([\p{L}][\p{L}'-]{0,29})\b/iu,
-  );
-  const name = nameMatch?.[1];
-  const greeting = name ? `Halo ${name}!` : 'Halo!';
-  const asksIdentity = /\b(kamu siapa|siapa kamu|nama kamu siapa)\b/.test(
-    normalized,
-  );
-
-  return {
-    answer: asksIdentity
-      ? `${greeting} Aku Asisten Perawatan Motor Rawatin. Aku bisa bantu soal motor dan juga obrolan ringan. Ada yang ingin kamu tanyakan?`
-      : `${greeting} Aku siap bantu soal perawatan motor atau pertanyaan ringan lainnya.`,
-    refused: false,
-  };
-}
-
-function currentDateResponse(question, now) {
-  const normalized = question
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const asksCurrentDate =
-    /\b(tanggal|hari)\b/.test(normalized) &&
-    /\b(berapa|apa|sekarang|hari ini)\b/.test(normalized);
-
-  if (!asksCurrentDate) return null;
-
-  const date = new Intl.DateTimeFormat('id-ID', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'Asia/Jakarta',
-  }).format(new Date(now));
-
-  return {
-    answer: `Hari ini ${date}. Ada hal seputar motor yang bisa kubantu?`,
-    refused: false,
-  };
-}
-
 async function checkRateLimit(env, installId, now) {
   const kv = env.AI_RATE_LIMIT;
   if (
@@ -382,7 +258,11 @@ async function checkRateLimit(env, installId, now) {
   return { allowed: true };
 }
 
-async function askGemini({ question, history, reference, motor }, env, fetchImpl) {
+async function askGemini(
+  { question, history, reference, motor, now },
+  env,
+  fetchImpl,
+) {
   const model = stringValue(env.GEMINI_MODEL) || DEFAULT_MODEL;
   const endpoint =
     `https://generativelanguage.googleapis.com/v1beta/models/` +
@@ -394,7 +274,7 @@ async function askGemini({ question, history, reference, motor }, env, fetchImpl
   }));
   contents.push({
     role: 'user',
-    parts: [{ text: userPrompt({ question, reference, motor }) }],
+    parts: [{ text: userPrompt({ question, reference, motor, now }) }],
   });
 
   const body = {
@@ -476,12 +356,23 @@ async function askGemini({ question, history, reference, motor }, env, fetchImpl
   }
 }
 
-function userPrompt({ question, reference, motor }) {
+function userPrompt({ question, reference, motor, now }) {
   const specification = motor.oilSpec
     ? `SAE ${motor.oilSpec.sae}, ${motor.oilSpec.jaso}, volume ${motor.oilSpec.volume}`
     : 'Belum terverifikasi. Jangan mengarang angka.';
+  const currentDate = new Intl.DateTimeFormat('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Asia/Jakarta',
+  }).format(new Date(now));
 
   return [
+    '<tanggal_saat_ini>',
+    `${currentDate} (zona waktu Asia/Jakarta)`,
+    '</tanggal_saat_ini>',
+    '',
     '<referensi_panduan>',
     reference,
     '</referensi_panduan>',

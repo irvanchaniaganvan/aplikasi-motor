@@ -86,31 +86,15 @@ test('OPTIONS mengembalikan CORS untuk aplikasi web', async () => {
   assert.equal(response.headers.get('access-control-allow-origin'), '*');
 });
 
-test('sapaan dijawab ramah tanpa memanggil Gemini', async () => {
-  let called = false;
-  const response = await handleRequest(post(payload({ question: 'halo' })), BASE_ENV, {
-    fetchImpl: async () => {
-      called = true;
-      return geminiResponse('Jawaban provider.');
-    },
-  });
-
-  const data = await response.json();
-  assert.equal(response.status, 200);
-  assert.equal(data.refused, false);
-  assert.match(data.answer, /Halo!/);
-  assert.equal(called, false);
-});
-
-test('sapaan yang memperkenalkan nama dan bertanya identitas dijawab langsung', async () => {
-  let called = false;
+test('sapaan juga diteruskan ke Gemini untuk dijawab secara alami', async () => {
+  let capturedBody;
   const response = await handleRequest(
     post(payload({ question: 'halo, nama ku Alexa, kamu siapa?' })),
     BASE_ENV,
     {
-      fetchImpl: async () => {
-        called = true;
-        return geminiResponse('Jawaban provider.');
+      fetchImpl: async (_url, init) => {
+        capturedBody = JSON.parse(init.body);
+        return geminiResponse('Halo Alexa! Aku asisten Rawatin.');
       },
     },
   );
@@ -118,50 +102,29 @@ test('sapaan yang memperkenalkan nama dan bertanya identitas dijawab langsung', 
   const data = await response.json();
   assert.equal(response.status, 200);
   assert.equal(data.refused, false);
-  assert.match(data.answer, /Halo Alexa!/);
-  assert.match(data.answer, /Asisten Perawatan Motor Rawatin/);
-  assert.equal(called, false);
+  assert.match(data.answer, /Halo Alexa/);
+  assert.match(capturedBody.contents.at(-1).parts[0].text, /nama ku Alexa/);
 });
 
-test('ucapan terima kasih dijawab ramah tanpa memanggil Gemini', async () => {
-  let called = false;
+test('pertanyaan tanggal diteruskan ke Gemini bersama tanggal Jakarta yang tepercaya', async () => {
+  let capturedBody;
   const response = await handleRequest(
-    post(payload({ question: 'terima kasih' })),
+    post(payload({ question: 'ini tanggal berapa sih?' })),
     BASE_ENV,
     {
       now: () => Date.UTC(2026, 10, 11, 12),
-      fetchImpl: async () => {
-        called = true;
-        return geminiResponse('Jawaban provider.');
-      },
-    },
-  );
-
-  const data = await response.json();
-  assert.equal(data.refused, false);
-  assert.match(data.answer, /Sama-sama/);
-  assert.equal(called, false);
-});
-
-test('pertanyaan hari atau tanggal dijawab sesuai waktu Jakarta tanpa memanggil Gemini', async () => {
-  let called = false;
-  const response = await handleRequest(
-    post(payload({ question: 'hari ini hari apa ya? tanggalnya?' })),
-    BASE_ENV,
-    {
-      fetchImpl: async () => {
-        called = true;
-        return geminiResponse('Jawaban provider.');
+      fetchImpl: async (_url, init) => {
+        capturedBody = JSON.parse(init.body);
+        return geminiResponse('Hari ini Rabu, 11 November 2026.');
       },
     },
   );
 
   const data = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(data.refused, false);
-  assert.match(data.answer, /Hari ini/);
-  assert.match(data.answer, /2026/);
-  assert.equal(called, false);
+  assert.match(data.answer, /Rabu, 11 November 2026/);
+  assert.match(capturedBody.contents.at(-1).parts[0].text, /Rabu, 11 November 2026/);
+  assert.match(capturedBody.contents.at(-1).parts[0].text, /ini tanggal berapa sih/);
 });
 
 test('install_id yang bukan UUID v4 ditolak', async () => {

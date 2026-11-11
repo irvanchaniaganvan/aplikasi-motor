@@ -75,9 +75,9 @@ Jika permintaan tidak dapat dibantu dengan aman, model dapat menolak dengan sopa
 }
 ```
 
-Worker menjawab sapaan, terima kasih, dan tanggal saat ini secara langsung tanpa
-memanggil Gemini. Pertanyaan umum sederhana lainnya boleh dijawab Gemini dengan
-ringkas; fokus utama asisten tetap perawatan motor.
+Semua pesan percakapan diteruskan ke Gemini untuk disusun jawabannya. Worker
+menambahkan tanggal dan hari saat ini dari zona waktu Asia/Jakarta sebagai
+konteks tepercaya agar model tidak perlu menebak.
 
 ---
 
@@ -193,8 +193,9 @@ flutter run -d windows --dart-define=AI_BACKEND_URL=https://rawatin-ai.<subdomai
 
 ### Perilaku tambahan
 
-- Sapaan dan ucapan terima kasih dijawab langsung oleh Worker tanpa memanggil
-  Gemini agar hemat kuota dan konsisten.
+- Semua pesan percakapan, termasuk sapaan dan obrolan ringan, dijawab Gemini.
+  Worker hanya menangani keamanan, validasi, rate limit, dan konteks tanggal
+  saat ini; tanggal tersebut disediakan ke Gemini tanpa biaya panggilan tambahan.
 - `GEMINI_MODEL` dapat diubah di `wrangler.jsonc` atau lewat environment
   variable Wrangler. Default-nya `gemini-3.5-flash-lite`; Worker memakai
   `thinkingLevel: low` untuk pertanyaan panduan yang singkat.
