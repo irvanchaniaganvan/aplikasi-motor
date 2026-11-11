@@ -210,10 +210,7 @@ test('permintaan valid memanggil Gemini dan mengembalikan answer', async () => {
   assert.equal(capturedInit.headers['x-goog-api-key'], 'test-gemini-key');
 
   const providerBody = JSON.parse(capturedInit.body);
-  assert.match(
-    providerBody.system_instruction.parts[0].text,
-    /Asisten Rawatin/,
-  );
+  assert.match(providerBody.system_instruction.parts[0].text, /Asisten Rawatin/);
   assert.match(
     providerBody.system_instruction.parts[0].text,
     /boleh menyebut, membandingkan, dan merekomendasikan merek/,
@@ -221,6 +218,10 @@ test('permintaan valid memanggil Gemini dan mengembalikan answer', async () => {
   assert.match(
     providerBody.system_instruction.parts[0].text,
     /Jangan menolak obrolan ringan atau pertanyaan umum sederhana/,
+  );
+  assert.match(
+    providerBody.system_instruction.parts[0].text,
+    /Jangan menyimpulkan jenis motor, sistem pendingin, tipe kopling, atau spesifikasi dari nama model saja/,
   );
   assert.equal(providerBody.generationConfig.responseMimeType, 'application/json');
   assert.equal(providerBody.generationConfig.maxOutputTokens, 800);
