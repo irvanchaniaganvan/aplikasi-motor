@@ -1,9 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Logo Rawatin">
-  <!-- Bentuk monogram R yang sama dengan RawatinLogoPainter. -->
+  <!-- Monogram R racing-orange yang sama dengan RawatinLogoPainter. -->
   <rect width="512" height="512" rx="112" fill="#111820"/>
-  <path d="M250 282h80l86 126h-80z" fill="#F5F3EE"/>
-  <path d="M322 318l57 84" fill="none" stroke="#B79A63" stroke-width="8" stroke-linecap="round"/>
-  <rect x="136" y="104" width="64" height="304" rx="8" fill="#F5F3EE"/>
-  <path d="M200 104h102c62 0 102 40 102 98s-40 98-102 98H200z" fill="#F5F3EE"/>
-  <path d="M200 164h98c22 0 36 14 36 38s-14 38-36 38h-98z" fill="#111820"/>
+  <g fill="none" stroke="#FF5A1F" stroke-width="34" stroke-linecap="butt" stroke-linejoin="round">
+    <path d="M82 132h218c66 0 102 34 102 86s-37 82-90 82h-44"/>
+    <path d="M112 190h184c26 0 46 14 46 36s-18 38-42 38h-32"/>
+    <path d="M218 282c36 0 60 17 88 50l64 70"/>
+    <path d="M170 326c34 0 58 15 80 42l34 40"/>
+  </g>
 </svg>

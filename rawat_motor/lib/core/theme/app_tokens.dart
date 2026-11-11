@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 /// Warna status juga tersedia lewat [RawatinColors] agar nanti mudah
 /// ditukar saat dark mode ditambahkan.
 abstract final class AppPalette {
-  // Identitas Rawatin: graphite navy, warm ivory, dan brass yang digunakan hemat.
+  // Identitas Rawatin: graphite navy dan warm ivory dengan racing orange hemat.
   static const ink = Color(0xFF111820);
   static const inkSoft = Color(0xFF35414A);
   static const muted = Color(0xFF737D83);
@@ -19,9 +19,9 @@ abstract final class AppPalette {
   static const primaryBright = Color(0xFF35414A);
   static const primaryDark = Color(0xFF0A1015);
   static const primarySoft = Color(0xFFE8E8E3);
-  static const accent = Color(0xFFB79A63);
-  static const accentSoft = Color(0xFFF1EBDD);
-  static const onAccent = Color(0xFF211B10);
+  static const accent = Color(0xFFFF5A1F);
+  static const accentSoft = Color(0xFFFFE9DF);
+  static const onAccent = Color(0xFFFFFFFF);
 
   // Status semantik: jernih dan berstandar desain modern
   static const safe = Color(0xFF059669);

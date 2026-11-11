@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
-/// Simbol Rawatin: monogram R geometris dengan kaki yang membentuk rute.
+/// Simbol Rawatin: monogram R bergaya racing dengan garis-garis kecepatan.
 ///
 /// Sumber desain ada di `assets/brand/rawatin_logo.svg`. Geometri di
-/// [RawatinLogoPainter] sengaja memakai koordinat 512 yang sama agar logo di
-/// header dan ikon launcher selalu identik.
+/// [RawatinLogoPainter] memakai koordinat kanvas 512 supaya logo UI dan ikon
+/// launcher tetap konsisten.
 class RawatinLogo extends StatelessWidget {
   const RawatinLogo({
     super.key,
@@ -75,84 +75,52 @@ class RawatinLogoPainter extends CustomPainter {
       background,
     );
 
-    final white = Paint()
-      ..color = AppPalette.canvas
-      ..style = PaintingStyle.fill;
+    final orange = Paint()
+      ..color = AppPalette.accent
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 34
+      ..strokeCap = StrokeCap.butt
+      ..strokeJoin = StrokeJoin.round;
 
     double segment(double start, double end) =>
         ((progress - start) / (end - start)).clamp(0.0, 1.0);
 
-    final stemProgress = segment(0, .32);
-    final bowlProgress = segment(.18, .65);
-    final legProgress = segment(.52, .88);
-    final accentProgress = segment(.70, 1);
+    final topProgress = segment(0, .38);
+    final legProgress = segment(.55, .9);
 
-    // Batang vertikal digambar dari atas ke bawah.
+    // Dua garis cepat membentuk kepala R; clip menjaga animasi intro bertahap.
     canvas.save();
-    canvas.clipRect(Rect.fromLTRB(0, 104, viewBox, 104 + 304 * stemProgress));
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        const Rect.fromLTWH(136, 104, 64, 304),
-        const Radius.circular(8),
-      ),
-      white,
-    );
+    canvas.clipRect(Rect.fromLTRB(0, 0, viewBox * topProgress, viewBox));
+    final topLine = Path()
+      ..moveTo(82, 132)
+      ..lineTo(300, 132)
+      ..cubicTo(366, 132, 402, 166, 402, 218)
+      ..cubicTo(402, 270, 365, 300, 312, 300)
+      ..lineTo(268, 300);
+    canvas.drawPath(topLine, orange);
+    final innerLine = Path()
+      ..moveTo(112, 190)
+      ..lineTo(296, 190)
+      ..cubicTo(322, 190, 342, 204, 342, 226)
+      ..cubicTo(342, 248, 324, 264, 300, 264)
+      ..lineTo(268, 264);
+    canvas.drawPath(innerLine, orange);
     canvas.restore();
 
-    // Mangkuk R terbuka dari kiri ke kanan, seperti garis yang sedang ditarik.
+    // Sepasang garis diagonal menutup monogram seperti kaki huruf R.
     canvas.save();
-    canvas.clipRect(Rect.fromLTRB(0, 0, 200 + 204 * bowlProgress, viewBox));
-    final bowl = Path()
-      ..moveTo(200, 104)
-      ..lineTo(302, 104)
-      ..cubicTo(364, 104, 404, 144, 404, 202)
-      ..cubicTo(404, 260, 364, 300, 302, 300)
-      ..lineTo(200, 300)
-      ..close();
-    canvas.drawPath(bowl, white);
-
-    final hole = Path()
-      ..moveTo(200, 164)
-      ..lineTo(298, 164)
-      ..cubicTo(320, 164, 334, 178, 334, 202)
-      ..cubicTo(334, 226, 320, 240, 298, 240)
-      ..lineTo(200, 240)
-      ..close();
-    canvas.drawPath(
-      hole,
-      Paint()
-        ..color = AppPalette.ink
-        ..style = PaintingStyle.fill,
-    );
+    canvas.clipRect(Rect.fromLTRB(0, 260, viewBox, 260 + 180 * legProgress));
+    final frontLeg = Path()
+      ..moveTo(218, 282)
+      ..cubicTo(254, 282, 278, 299, 306, 332)
+      ..lineTo(370, 402);
+    canvas.drawPath(frontLeg, orange);
+    final rearLeg = Path()
+      ..moveTo(170, 326)
+      ..cubicTo(204, 326, 228, 341, 250, 368)
+      ..lineTo(284, 408);
+    canvas.drawPath(rearLeg, orange);
     canvas.restore();
-
-    // Kaki diagonal R menyusul dari pangkal menuju ujung.
-    canvas.save();
-    canvas.clipRect(Rect.fromLTRB(0, 282, viewBox, 282 + 126 * legProgress));
-    final leg = Path()
-      ..moveTo(250, 282)
-      ..lineTo(330, 282)
-      ..lineTo(416, 408)
-      ..lineTo(336, 408)
-      ..close();
-    canvas.drawPath(leg, white);
-    canvas.restore();
-
-    // Aksen brass mengikuti kaki R sebagai garis penutup.
-    final accentStart = const Offset(322, 318);
-    final accentEnd = Offset.lerp(
-      accentStart,
-      const Offset(379, 402),
-      accentProgress,
-    )!;
-    canvas.drawLine(
-      accentStart,
-      accentEnd,
-      Paint()
-        ..color = AppPalette.accent
-        ..strokeWidth = 8
-        ..strokeCap = StrokeCap.round,
-    );
 
     canvas.restore();
   }
