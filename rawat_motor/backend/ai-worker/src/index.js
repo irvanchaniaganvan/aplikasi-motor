@@ -295,9 +295,8 @@ function currentDateResponse(question, now) {
     .trim();
 
   const asksCurrentDate =
-    /\b(hari ini hari apa|hari apa hari ini|hari apa sekarang|tanggal hari ini|tanggal berapa hari ini|tanggal berapa sekarang)\b/.test(
-      normalized,
-    );
+    /\b(tanggal|hari)\b/.test(normalized) &&
+    /\b(berapa|apa|sekarang|hari ini)\b/.test(normalized);
 
   if (!asksCurrentDate) return null;
 
