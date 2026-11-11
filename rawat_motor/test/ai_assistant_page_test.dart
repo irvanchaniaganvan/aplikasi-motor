@@ -26,15 +26,23 @@ class _FakeConsentStorage implements AiConsentStorage {
 }
 
 class _CountingAiService implements AiService {
-  _CountingAiService({this.response, this.exception});
+  _CountingAiService({this.response, this.exception, this.failures = 0});
 
   final AiOilResponse? response;
   final AiServiceException? exception;
+  int failures;
   int callCount = 0;
 
   @override
   Future<AiOilResponse> askOilGuide(AiOilRequest request) async {
     callCount++;
+    if (failures > 0) {
+      failures--;
+      throw const AiServiceException(
+        code: 'server_error',
+        message: 'Server AI mengalami gangguan (Status: 500).',
+      );
+    }
     if (exception != null) {
       throw exception!;
     }
@@ -161,6 +169,27 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Coba lagi'), findsOneWidget);
+    });
+
+    testWidgets('coba lagi tidak menggandakan pesan pertanyaan', (tester) async {
+      final question = MotorCareContent.sampleQuestions.first;
+      final service = _CountingAiService(failures: 1);
+
+      await tester.pumpWidget(
+        _buildPage(aiService: service, consentStorage: _FakeConsentStorage()),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(question));
+      await tester.pumpAndSettle();
+      expect(find.text(question), findsOneWidget);
+
+      await tester.tap(find.text('Coba lagi'));
+      await tester.pumpAndSettle();
+
+      expect(service.callCount, 2);
+      expect(find.text(question), findsOneWidget);
+      expect(find.text('Jawaban dari AI uji.'), findsOneWidget);
     });
 
     testWidgets('AI belum dikonfigurasi menampilkan state kosong', (tester) async {

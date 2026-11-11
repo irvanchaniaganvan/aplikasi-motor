@@ -89,7 +89,12 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     }
   }
 
-  Future<void> _handleAskQuestion([String? presetQuestion]) async {
+  Future<void> _handleAskQuestion([
+    String? presetQuestion,
+    bool isRetry = false,
+  ]) async {
+    if (_isLoading) return;
+
     final question = (presetQuestion ?? _inputController.text).trim();
     if (question.isEmpty) return;
 
@@ -112,15 +117,24 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       _inputController.clear();
     }
 
-    final historyBefore = _chatHistory.length > 6
-        ? _chatHistory.sublist(_chatHistory.length - 6)
-        : List.of(_chatHistory);
+    final historyMessages = List<AiChatMessage>.of(_chatHistory);
+    if (isRetry &&
+        historyMessages.isNotEmpty &&
+        historyMessages.last.role == AiChatRole.user &&
+        historyMessages.last.content == question) {
+      historyMessages.removeLast();
+    }
+    final historyBefore = historyMessages.length > 6
+        ? historyMessages.sublist(historyMessages.length - 6)
+        : historyMessages;
 
     setState(() {
       _isLoading = true;
       _errorMessage = null;
       _lastFailedQuestion = null;
-      _chatHistory.add(AiChatMessage(role: AiChatRole.user, content: question));
+      if (!isRetry) {
+        _chatHistory.add(AiChatMessage(role: AiChatRole.user, content: question));
+      }
     });
 
     try {
@@ -448,7 +462,8 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                 ),
                 if (_lastFailedQuestion != null)
                   TextButton(
-                    onPressed: () => _handleAskQuestion(_lastFailedQuestion),
+                    onPressed: () =>
+                        _handleAskQuestion(_lastFailedQuestion, true),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: const Size(0, 30),
