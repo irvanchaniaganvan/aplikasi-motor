@@ -11,36 +11,32 @@ mesin saat ganti berkala) untuk model motor yang tersedia di katalog aplikasi.
 - Model tanpa spesifikasi terverifikasi harus dijawab dengan panduan umum per
  awatan motor, bukan dengan angka yang diharapkan dari AI.
 
-## Terverifikasi saat dipopulate
+## Hasil audit sumber
 
-| Model | SAE | JASO | Volume | Sumber |
+| Model/kode manual | SAE | JASO | Volume saat ganti berkala | Status dan catatan |
 |---|---|---|---|---|
-| Yamaha Fazzio | 10W-40 | JASO MB | 0.8 L | Buku pedoman pemilik Yamaha Fazzio (LCF125) + rekomendasi Yamaha STSJ |
-| Yamaha Gear 125 (alias Mio Gear 125) | 10W-40 | JASO MB | 0.8 L | Buku pedoman pemilik Yamaha Gear 125 (LNP125/LNP125-I) |
-| Honda BeAT (K0J 2020-2024) | 10W-30 | JASO MB | 0.8 L | Buku pedoman pemilik Honda BeAT (K0J) + Honda Genuine Scooter Oil |
-| Honda Vario 125 (KZR) | 10W-30 | JASO MB | 0.8 L | Buku pedoman pemilik Honda Vario 125 (KZR) + rekomendasi Honda |
+| Yamaha Fazzio LCF125 | 10W-40 | JASO MA atau MB | 0.80 L | Terverifikasi dari bagian Specifications, halaman manual 12-1. Manual menyebut rentang MA atau MB, bukan MB saja. PDF manual Yamaha di-host oleh Yamaha Maldives. |
+| Yamaha Gear 125 LNP125/LNP125-I | 10W-40 | JASO MB | 0.80 L | Terverifikasi dari bagian Specifications, halaman manual 10-1. PDF manual Yamaha di-host oleh Yamaha Maldives. |
+| Honda BeAT yang dipilih sebagai K0J 2020-2024 | 10W-30 | JASO MB | 0.7 L setelah penggantian saja; 0.8 L setelah pembongkaran | **Belum terverifikasi untuk K0J.** PDF yang sebelumnya dicatat adalah manual BeAT berkode ACH110CBT/CSF (manual 2017), bukan bukti yang cocok untuk generasi K0J. Di manual itu kapasitas servis reguler adalah 0.7 L; 0.8 L hanya setelah pembongkaran. Nilai katalog kandidat disesuaikan ke 0.7 L tetapi tetap disembunyikan sampai manual K0J yang cocok diperiksa. |
+| Honda Vario 125 KZR | Belum dipastikan | Belum dipastikan | Belum dipastikan | **Belum terverifikasi.** URL yang sebelumnya dicatat mengarah ke artikel pihak ketiga, bukan buku pedoman resmi Honda yang cocok untuk kode KZR. Nilai lama 10W-30/MB/0.8 L dipertahankan hanya sebagai kandidat internal dan tidak ditampilkan sebagai fakta. |
 
-Selain itu, beberapa kelompok umum yang sudah cukup kuat dari buku manual atau
-rekomendasi pabrikan:
-
-- Yamaha matic 125cc (Mio M3, Fino, Fazzio, Gear, FreeGo, Grand Filano): SAE
-  10W-40, JASO MB, volume sekitar 0.8 L untuk penggantian berkala.
-- Yamaha matic 150cc (Lexi LX 155, Aerox 155, NMAX 155, XMAX 250): SAE 10W-40,
-  JASO MB, volume sekitar 1.0 L.
-- Honda scooter dengan CVT kering (BeAT, Genio, Scoopy, Vario, PCX, ADV): SAE
-  10W-30, JASO MB, volume sekitar 0.8 L.
-- Motor sport dan bebek dengan kopling basah (JASO MA / MA2): SAE 10W-40,
-  volume bervariasi, selalu rujuk buku manual.
+Angka pada manual Yamaha Fazzio dan Gear di atas dapat dicek langsung dengan
+mengekstrak teks PDF. Manual Honda BeAT 2017 juga diperiksa dan memperlihatkan
+perbedaan penting antara kapasitas setelah penggantian oli dan setelah
+pembongkaran. Hasil ini tidak boleh digeneralisasi ke model/tahun lain hanya
+karena nama keluarga motornya sama.
 
 ## Belum terverifikasi
 
-Model berikut saat ini tidak memiliki spesifikasi oli resmi yang sudah dicatat
-dalam katalog, sehingga AI wajib menjawab dengan panduan umum dan menyuruh
-pengguna memeriksa buku manual. Contoh kelompok yang masih perlu verifikasi:
+Model berikut saat ini tidak memiliki spesifikasi oli yang dibuktikan oleh
+sumber resmi yang cocok dengan varian/tahunnya. Aplikasi/AI harus memberi
+panduan umum dan menyuruh pengguna memeriksa buku manual, bukan menampilkan
+angka kandidat sebagai terverifikasi. Contoh kelompok yang masih perlu audit:
 
-- Yamaha: Gear Ultima, Moto M3 lama, dan sebagian besar model sport/mebe.
-- Honda: Vario 160, Stylo, PCX, ADV, Forza, Revo, Supra X, CB150, Sonic, CBR,
-  CRF, dan model sport/mebe lainnya.
+- Yamaha: Gear Ultima, Mio M3, Fino, FreeGo, Grand Filano, dan sebagian besar
+  model sport/bebek.
+- Honda: BeAT K0J, Vario 125 KZR, Vario 160, Stylo, PCX, ADV, Forza, Revo,
+  Supra X, CB150, Sonic, CBR, CRF, dan model sport/bebek lainnya.
 - Suzuki: semua model Suzuki (Nex, Address, Avenis, Burgman, Satria, GSX, V-Strom).
 
 ## Cara menambah

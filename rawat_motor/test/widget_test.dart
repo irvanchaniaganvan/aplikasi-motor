@@ -531,6 +531,59 @@ void main() {
     expect(MotorModelCatalog.fromJson({'brands': []}).brands, isEmpty);
   });
 
+  test(
+    'katalog oli menampilkan sebagai verified hanya spesifikasi lolos audit',
+    () {
+      final modelJson = jsonDecode(
+        File('data/model_motor.json').readAsStringSync(),
+      ) as Map<String, dynamic>;
+      final models = MotorModelCatalog.fromJson(modelJson).brands
+          .expand((brand) => brand.models);
+      final maintenanceJson = jsonDecode(
+        File('data/motor/data/maintenance_motor_catalog.json')
+            .readAsStringSync(),
+      ) as Map<String, dynamic>;
+      final maintenanceMotors = MaintenanceMotorCatalog.fromJson(
+        maintenanceJson,
+      ).motors;
+
+      for (final model in models) {
+        final id = switch (model.name) {
+          'Fazzio' => 'yamaha-fazzio',
+          'Gear 125' => 'yamaha-mio-gear-2024',
+          'BeAT' => 'honda-beat-k0j',
+          'Vario 125' => 'honda-vario-125-kzr',
+          _ => null,
+        };
+        if (id == null) continue;
+
+        final maintenance = maintenanceMotors.singleWhere(
+          (motor) => motor.id == id,
+        );
+        expect(
+          model.oilSpec?.verified,
+          maintenance.oilSpec?.verified,
+          reason: id,
+        );
+      }
+
+      final catalogModels = MotorModelCatalog.fromJson(modelJson).brands
+          .expand((brand) => brand.models)
+          .toList();
+      final manualClaimFazzio = catalogModels
+          .singleWhere((model) => model.name == 'Fazzio')
+          .oilSpec!;
+      final beat = catalogModels.singleWhere((model) => model.name == 'BeAT');
+      final vario = catalogModels.singleWhere(
+        (model) => model.name == 'Vario 125',
+      );
+      expect(manualClaimFazzio.jaso, 'JASO MA atau MB');
+      expect(manualClaimFazzio.verified, isTrue);
+      expect(beat.oilSpec?.verified, isFalse);
+      expect(vario.oilSpec?.verified, isFalse);
+    },
+  );
+
   test('katalog Honda memiliki semua model dan alias yang diminta', () {
     final json = jsonDecode(
       File('data/model_motor.json').readAsStringSync(),
