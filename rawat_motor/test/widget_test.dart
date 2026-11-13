@@ -590,7 +590,7 @@ void main() {
     ) as Map<String, dynamic>;
     final honda = MotorModelCatalog.fromJson(json).brands
         .singleWhere((brand) => brand.name == 'Honda');
-    expect(honda.models, hasLength(24));
+    expect(honda.models, hasLength(25));
     expect(
       honda.models.where((model) => model.name.startsWith('Vario 160')),
       hasLength(2),
@@ -600,6 +600,17 @@ void main() {
     );
     expect(vario.aliases, ['KZR', 'Vario Techno 125']);
     expect(vario.cooling, 'cair');
+    final revoCarb = honda.models.singleWhere(
+      (model) => model.name == 'Revo Karburator',
+    );
+    final revoFi = honda.models.singleWhere((model) => model.name == 'Revo FI');
+    expect(revoCarb.aliases, contains('Absolute Revo 110'));
+    expect(revoCarb.aliases, contains('Revo Fit karbu'));
+    expect(revoFi.aliases, contains('Revo X'));
+    expect(revoCarb.searchLabel, contains('karburator'));
+    expect(revoFi.searchLabel, contains('AFS110'));
+    expect(revoCarb.oilSpec, isNull);
+    expect(revoFi.oilSpec, isNull);
     expect(
       honda.models.singleWhere((model) => model.name == 'CB150X').notes,
       'Pendingin disimpulkan',
