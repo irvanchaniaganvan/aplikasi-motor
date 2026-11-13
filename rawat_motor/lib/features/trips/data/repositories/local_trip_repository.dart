@@ -71,4 +71,10 @@ class LocalTripRepository implements TripRepository {
       flush: true,
     );
   }
+
+  /// Menghapus arsip perjalanan lokal milik kendaraan yang dihapus.
+  Future<void> deleteVehicleTrips(String vehicleId) async {
+    final file = await _file(vehicleId);
+    if (await file.exists()) await file.delete();
+  }
 }

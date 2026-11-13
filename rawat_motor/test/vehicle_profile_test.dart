@@ -211,6 +211,58 @@ void main() {
       expect(all.first.purchaseDate, purchase);
     });
 
+    test('menghapus kendaraan dan memilih kendaraan tersisa jika yang aktif dihapus', () async {
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+      final repo = LocalProfileRepository(SharedPreferencesAsync());
+      final first = DriverMotorProfile(
+        id: 'vehicle-a',
+        driverName: 'Irvan',
+        brand: 'Honda',
+        model: 'BeAT',
+        year: 2024,
+      );
+      final second = DriverMotorProfile(
+        id: 'vehicle-b',
+        driverName: 'Irvan',
+        brand: 'Yamaha',
+        model: 'Fazzio',
+        year: 2025,
+      );
+      await repo.saveVehicle(first);
+      await repo.saveVehicle(second);
+
+      final deleted = await repo.deleteVehicle(second.id);
+
+      expect(deleted?.id, second.id);
+      expect((await repo.loadAll()).map((item) => item.id), [first.id]);
+      expect(await repo.loadSelectedProfileId(), first.id);
+      expect((await repo.load())?.model, first.model);
+    });
+
+    test(
+      'menghapus satu-satunya kendaraan membersihkan profil legacy',
+      () async {
+        SharedPreferencesAsyncPlatform.instance =
+            InMemorySharedPreferencesAsync.empty();
+        final repo = LocalProfileRepository(SharedPreferencesAsync());
+        final profile = DriverMotorProfile(
+          id: 'vehicle-a',
+          driverName: 'Irvan',
+          brand: 'Honda',
+          model: 'BeAT',
+          year: 2024,
+        );
+        await repo.saveVehicle(profile);
+
+        expect(await repo.deleteVehicle(profile.id), isNotNull);
+
+        expect(await repo.loadAll(), isEmpty);
+        expect(await repo.loadSelectedProfileId(), isNull);
+        expect(await repo.load(), isNull);
+      },
+    );
+
     test('copyWith dengan flag penghapusan eksplisit bekerja dengan benar', () {
       final profile = DriverMotorProfile(
         driverName: 'Irvan',

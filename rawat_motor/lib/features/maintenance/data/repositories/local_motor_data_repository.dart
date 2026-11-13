@@ -52,4 +52,17 @@ class LocalMotorDataRepository implements MotorDataRepository {
 
   @override
   Future<void> clear() => _preferences.remove(_scopedKey);
+
+  /// Menghapus seluruh data servis kendaraan berdasarkan ID kendaraannya.
+  static Future<void> clearVehicleData(
+    SharedPreferencesAsync preferences,
+    String vehicleId,
+  ) async {
+    await preferences.remove('$_storageKey.vehicle.$vehicleId');
+    if (vehicleId == 'vehicle-1') {
+      for (final key in _legacyKeys) {
+        await preferences.remove(key);
+      }
+    }
+  }
 }

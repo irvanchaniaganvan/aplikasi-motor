@@ -67,8 +67,10 @@ class LocalProfileRepository {
     await _saveLegacyProfile(normalized);
   }
 
-  Future<void> deleteVehicle(String id) async {
+  Future<DriverMotorProfile?> deleteVehicle(String id) async {
     final vehicles = await loadAll();
+    final removed = vehicles.where((item) => item.id == id).firstOrNull;
+    if (removed == null) return null;
     vehicles.removeWhere((item) => item.id == id);
     await saveAll(vehicles);
     await _preferences.remove('rawatin.motor_data.v1.vehicle.$id');
@@ -84,6 +86,7 @@ class LocalProfileRepository {
       await _preferences.remove(_selectedProfileKey);
       await clearProfile();
     }
+    return removed;
   }
 
   Future<String?> loadAccountEmail() => _preferences.getString('account.email');

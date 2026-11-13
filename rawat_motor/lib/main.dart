@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/services/vehicle_photo_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/widgets/rawatin_intro_page.dart';
 import 'core/widgets/rawatin_page_transition.dart';
 import 'features/maintenance/data/repositories/local_motor_data_repository.dart';
+import 'features/trips/data/repositories/local_trip_repository.dart';
 import 'features/maintenance/domain/use_cases/load_motor_data.dart';
 import 'features/maintenance/domain/use_cases/save_motor_data.dart';
 import 'features/maintenance/presentation/pages/oil_reminder_page.dart';
@@ -280,7 +282,7 @@ Widget _buildDashboard({
       );
     },
     onManageVehicles: () async {
-      final toDelete = await showDialog<String>(
+      final toDelete = await showDialog<DriverMotorProfile>(
         context: context,
         builder: (dialogContext) => SimpleDialog(
           title: const Text('Kelola kendaraan'),
@@ -288,21 +290,76 @@ Widget _buildDashboard({
             for (final vehicle in vehicles)
               ListTile(
                 title: Text('${vehicle.brand} ${vehicle.model}'),
-                trailing: IconButton(
-                  tooltip: 'Hapus kendaraan',
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => Navigator.pop(dialogContext, vehicle.id),
-                ),
+                subtitle: vehicle.nickname == null
+                    ? null
+                    : Text(vehicle.nickname!),
+                trailing: const Icon(Icons.delete_outline),
+                onTap: () => Navigator.pop(dialogContext, vehicle),
               ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Batal'),
+            ),
           ],
         ),
       );
-      if (toDelete == null || vehicles.length <= 1) return;
-      await profileRepository.deleteVehicle(toDelete);
-      final remaining = vehicles
-          .where((vehicle) => vehicle.id != toDelete)
-          .toList();
-      final selected = profile.id == toDelete ? remaining.first : profile;
+      if (toDelete == null || !context.mounted) return;
+      final errorColor = Theme.of(context).colorScheme.error;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Hapus kendaraan?'),
+          content: Text(
+            'Kendaraan ${toDelete.nickname ?? '${toDelete.brand} ${toDelete.model}'} akan dihapus permanen dari perangkat ini. Data servis, log odometer, perjalanan, dan foto kendaraan yang terkait juga akan dihapus. Tindakan ini tidak bisa dibatalkan.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: errorColor),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Hapus permanen'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+
+      final preferences = SharedPreferencesAsync();
+      final vehicleData = await LocalMotorDataRepository(
+        preferences,
+        vehicleId: toDelete.id,
+      ).load();
+      final deleted = await profileRepository.deleteVehicle(toDelete.id);
+      if (deleted == null) return;
+      final photoService = VehiclePhotoService();
+      await photoService.deletePhoto(deleted.photoPath);
+      for (final record in vehicleData?.serviceHistory ?? const []) {
+        await photoService.deletePhoto(record.receiptPath);
+      }
+      await LocalMotorDataRepository.clearVehicleData(preferences, toDelete.id);
+      await LocalTripRepository().deleteVehicleTrips(toDelete.id);
+      final remaining = (await profileRepository.loadAll());
+      if (!context.mounted) return;
+      if (remaining.isEmpty) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => _buildProfileSetupPage(
+              context: context,
+              profileRepository: profileRepository,
+              motorDataRepository: motorDataRepository,
+            ),
+          ),
+          (_) => false,
+        );
+        return;
+      }
+      final selectedId = await profileRepository.loadSelectedProfileId();
+      final selected =
+          remaining.where((vehicle) => vehicle.id == selectedId).firstOrNull ??
+          remaining.first;
       if (!context.mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
