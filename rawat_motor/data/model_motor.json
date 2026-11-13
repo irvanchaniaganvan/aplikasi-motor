@@ -188,21 +188,21 @@
         },
         {
           "name": "Revo Karburator",
-          "generasi": "Absolute Revo 110 / Revo Fit karburator; sekitar 2009–2011 terdata",
-          "alias": ["Honda Absolute Revo", "Absolute Revo 110", "Revo Fit karbu", "Revo Fit karburator", "Revo CW karbu", "Revo DX"],
+          "generasi": "Karburator · 110 cc",
+          "alias": ["Absolute Revo", "Absolute Revo 110", "Revo Fit karbu", "Revo CW karbu", "Revo DX"],
           "jenis": "bebek",
           "pendingin": "udara",
           "sumber": "Katalog suku cadang Honda Revo 110 revisi 2011 mencantumkan Revo 110 dan Revo Fit; brosur Absolute Revo dari dealer Honda Cengkareng.",
-          "catatan": "Generasi karburator dipisahkan dari Revo FI. Rentang tahun akhir dan spesifikasi/jadwal perawatan khusus 2009–2010 belum terverifikasi dari buku pedoman pemilik atau buku servis yang cocok. Kapasitas oli rutin 0,8 L baru didukung brosur, belum manual khusus; SAE/API/JASO dan kapasitas setelah bongkar tidak diisi."
+          "catatan": "Katalog part revisi 2011 memuat model Revo 110 dan Revo Fit. Rentang tahun akhir serta spesifikasi/jadwal khusus 2009–2010 belum terverifikasi dari manual yang cocok. Brosur menyebut oli rutin 0,8 L, tetapi SAE/API/JASO dan kapasitas setelah bongkar belum diketahui."
         },
         {
           "name": "Revo FI",
-          "generasi": "AFS110 / PGM-FI; diluncurkan 2014, katalog part mencatat tipe model 2013–2017",
-          "alias": ["Honda Revo FI", "Revo Fit FI", "Revo FI Spoke", "Revo FI CW", "Revo X", "Revo X FI"],
+          "generasi": "PGM-FI · AFS110",
+          "alias": ["Revo Fit FI", "Revo FI Spoke", "Revo FI CW", "Revo X"],
           "jenis": "bebek",
           "pendingin": "udara",
           "sumber": "Katalog suku cadang Honda Revo FI AFS110 edisi 2013 dan Parts Catalog Revo-X 2017; artikel resmi AHM tentang Revo series.",
-          "catatan": "AFS110 memiliki varian Fit & Spoke (MS) dan CW (MCS); Revo X merupakan nama varian CW pada periode berikutnya. Spesifikasi oli 10W-30, API SG atau lebih tinggi, JASO MA, kapasitas rutin 0,8 L dan bongkar 1,0 L dilaporkan dari BPR AFS110 82K58H0, tetapi sumber yang dibagikan berupa salinan Scribd sehingga belum ditandai sebagai spesifikasi katalog terverifikasi. Interval servis juga belum diterapkan karena buku servis yang dirujuk belum dipastikan cakupan model/tahunnya."
+          "catatan": "Katalog AFS110 memuat tipe Fit & Spoke (MS) dan CW (MCS); Revo X menjadi nama varian CW pada periode berikutnya. Angka oli dari salinan BPR AFS110 82K58H0 dan interval dari buku servis belum dimasukkan sebagai data terverifikasi karena cakupan dokumennya belum dipastikan."
         },
         {
           "name": "Supra X 125 FI",

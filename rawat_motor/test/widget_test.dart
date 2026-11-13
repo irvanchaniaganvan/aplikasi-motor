@@ -607,7 +607,7 @@ void main() {
     expect(revoCarb.aliases, contains('Absolute Revo 110'));
     expect(revoCarb.aliases, contains('Revo Fit karbu'));
     expect(revoFi.aliases, contains('Revo X'));
-    expect(revoCarb.searchLabel, contains('karburator'));
+    expect(revoCarb.searchLabel, contains('110 cc'));
     expect(revoFi.searchLabel, contains('AFS110'));
     expect(revoCarb.oilSpec, isNull);
     expect(revoFi.oilSpec, isNull);
@@ -701,10 +701,75 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).last, 'KZR');
     await tester.pumpAndSettle();
-    expect(
-      find.text('Vario 125 (Techno / FI 2012-2015; KZR, Vario Techno 125)'),
-      findsOneWidget,
+    expect(find.text('Vario 125 (Techno / FI 2012-2015)'), findsOneWidget);
+  });
+
+  testWidgets('sistem rem menyesuaikan merek yang dipilih', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    const catalog = MotorModelCatalog(
+      brands: [
+        MotorBrand(
+          name: 'Honda',
+          models: [
+            MotorModel(
+              name: 'Model Honda',
+              motorType: 'matic',
+              cooling: 'udara',
+              source: 'uji',
+            ),
+          ],
+        ),
+        MotorBrand(
+          name: 'Yamaha',
+          models: [
+            MotorModel(
+              name: 'Model Yamaha',
+              motorType: 'matic',
+              cooling: 'udara',
+              source: 'uji',
+            ),
+          ],
+        ),
+      ],
     );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileSetupPage(catalog: catalog, onSave: (_) async {}),
+      ),
+    );
+
+    await tester.tap(find.text('Cari atau pilih merek'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Honda'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sistem pengereman'), findsOneWidget);
+    expect(brakeSystemOptionsForBrand('Honda').keys, ['CBS', 'ABS']);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileSetupPage(catalog: catalog, onSave: (_) async {}),
+      ),
+    );
+    await tester.tap(find.text('Cari atau pilih merek'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Yamaha'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sistem pengereman'), findsOneWidget);
+    expect(brakeSystemOptionsForBrand('Yamaha').keys, ['ABS', 'UBS']);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ProfileSetupPage(catalog: catalog, onSave: (_) async {}),
+      ),
+    );
+    await tester.tap(find.text('Cari atau pilih merek'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lainnya'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sistem pengereman'), findsNothing);
+    expect(brakeSystemOptionsForBrand('Suzuki'), isEmpty);
   });
 
   testWidgets('model terpilih mengisi jenis dan pendingin otomatis', (

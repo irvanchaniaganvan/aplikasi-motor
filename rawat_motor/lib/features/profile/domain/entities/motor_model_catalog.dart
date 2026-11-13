@@ -91,6 +91,15 @@ class MotorModel {
     return details.isEmpty ? name : '$name (${details.join('; ')})';
   }
 
+  /// Label ringkas untuk ditampilkan; alias tetap dipakai untuk pencarian.
+  String get displayLabel {
+    final details = <String>[
+      if (generation != null && generation!.isNotEmpty) generation!,
+      if (variant != null && variant!.isNotEmpty) variant!,
+    ];
+    return details.isEmpty ? name : '$name (${details.join('; ')})';
+  }
+
   factory MotorModel.fromJson(Map<String, dynamic> json) {
     final name = json['name'];
     final motorType = json['jenis'];

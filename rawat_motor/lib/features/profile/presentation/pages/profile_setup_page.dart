@@ -16,6 +16,17 @@ import '../widgets/vehicle_photo_viewer.dart';
 import '../../../maintenance/domain/entities/maintenance_motor_catalog.dart';
 import '../../../maintenance/data/repositories/default_interval_repository.dart';
 
+Map<String, String> brakeSystemOptionsForBrand(String? brand) {
+  final normalizedBrand = brand?.trim().toLowerCase();
+  final isHonda = normalizedBrand == 'honda';
+  final isYamaha = normalizedBrand == 'yamaha';
+  return {
+    if (isHonda) 'CBS': 'CBS',
+    if (isHonda || isYamaha) 'ABS': 'ABS',
+    if (isYamaha) 'UBS': 'UBS',
+  };
+}
+
 class ProfileSetupPage extends StatefulWidget {
   const ProfileSetupPage({
     required this.onSave,
@@ -63,6 +74,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
   bool _coolingEdited = false;
   bool _saving = false;
   bool get _isEditing => widget.initialProfile != null;
+  bool get _isHonda =>
+      (_selectedBrand?.name ?? _brand.text).trim().toLowerCase() == 'honda';
+  bool get _isYamaha =>
+      (_selectedBrand?.name ?? _brand.text).trim().toLowerCase() == 'yamaha';
+  bool get _showBrakeSystem => _isHonda || _isYamaha;
+  Map<String, String> get _brakeSystemOptions =>
+      brakeSystemOptionsForBrand(_selectedBrand?.name ?? _brand.text);
 
   @override
   void initState() {
@@ -142,7 +160,10 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     _frontBrake = model.frontBrake ?? (preserveExisting ? _frontBrake : null);
     _rearBrake = model.rearBrake ?? (preserveExisting ? _rearBrake : null);
     _brakeSystem =
-        model.brakeSystem ?? (preserveExisting ? _brakeSystem : null);
+        model.brakeSystem ??
+        (preserveExisting && _brakeSystemOptions.containsKey(_brakeSystem)
+            ? _brakeSystem
+            : null);
     _motorVariant = model.variant ?? (preserveExisting ? _motorVariant : null);
     if (_selectedMaintenanceMotor != null) {
       _cooling = _selectedMaintenanceMotor!.cooling;
@@ -350,9 +371,13 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                     .where((b) => b.name == value)
                                     .firstOrNull;
                                 _selectedModel = null;
+                                _selectedMaintenanceMotor = null;
                                 _model.clear();
                                 _manualMotor = value == 'Lainnya';
                                 _brand.text = _manualMotor ? '' : value ?? '';
+                                _frontBrake = null;
+                                _rearBrake = null;
+                                _brakeSystem = null;
                               });
                             },
                           ),
@@ -364,10 +389,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                               value: _selectedModel?.name,
                               options: [
                                 ..._selectedBrand!.models.map(
-                                  (model) => model.searchLabel,
+                                  (model) => model.displayLabel,
                                 ),
                                 'Lainnya',
                               ],
+                              searchText: {
+                                for (final model in _selectedBrand!.models)
+                                  model.displayLabel: model.searchLabel,
+                              },
                               onChanged: (value) {
                                 if (value == 'Lainnya') {
                                   setState(() {
@@ -379,7 +408,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                                   return;
                                 }
                                 final model = _selectedBrand!.models
-                                    .where((m) => m.searchLabel == value)
+                                    .where((m) => m.displayLabel == value)
                                     .firstOrNull;
                                 setState(() {
                                   _selectedModel = model;
@@ -498,20 +527,18 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
                               setState(() => _rearBrake = value),
                         ),
                         const SizedBox(height: 14),
-                        _dropdown(
-                          value: _brakeSystem,
-                          label: 'Sistem pengereman',
-                          hint: 'Pilih sistem pengereman',
-                          icon: Icons.security_rounded,
-                          items: const {
-                            'CBS': 'CBS',
-                            'ABS': 'ABS',
-                            'UBS': 'UBS',
-                          },
-                          requiredField: false,
-                          onChanged: (value) =>
-                              setState(() => _brakeSystem = value),
-                        ),
+                        if (_showBrakeSystem) ...[
+                          _dropdown(
+                            value: _brakeSystem,
+                            label: 'Sistem pengereman',
+                            hint: 'Pilih sistem pengereman',
+                            icon: Icons.security_rounded,
+                            items: _brakeSystemOptions,
+                            requiredField: false,
+                            onChanged: (value) =>
+                                setState(() => _brakeSystem = value),
+                          ),
+                        ],
                         if (_selectedModel != null &&
                             (_selectedModel!.frontBrake != null ||
                                 _selectedModel!.rearBrake != null) &&
@@ -1064,6 +1091,7 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
     required String hint,
     required String? value,
     required List<String> options,
+    Map<String, String> searchText = const {},
     required ValueChanged<String?> onChanged,
   }) => FormField<String>(
     initialValue: value,
@@ -1073,8 +1101,11 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
       onTap: () async {
         final selected = await showDialog<String>(
           context: context,
-          builder: (context) =>
-              _SearchOptionDialog(title: label, options: options),
+          builder: (context) => _SearchOptionDialog(
+            title: label,
+            options: options,
+            searchText: searchText,
+          ),
         );
         if (selected != null) {
           field.didChange(selected);
@@ -1108,9 +1139,14 @@ class _ProfileSetupPageState extends State<ProfileSetupPage> {
 }
 
 class _SearchOptionDialog extends StatefulWidget {
-  const _SearchOptionDialog({required this.title, required this.options});
+  const _SearchOptionDialog({
+    required this.title,
+    required this.options,
+    required this.searchText,
+  });
   final String title;
   final List<String> options;
+  final Map<String, String> searchText;
 
   @override
   State<_SearchOptionDialog> createState() => _SearchOptionDialogState();
@@ -1122,7 +1158,11 @@ class _SearchOptionDialogState extends State<_SearchOptionDialog> {
   @override
   Widget build(BuildContext context) {
     final filtered = widget.options
-        .where((item) => item.toLowerCase().contains(_query.toLowerCase()))
+        .where(
+          (item) => (widget.searchText[item] ?? item).toLowerCase().contains(
+            _query.toLowerCase(),
+          ),
+        )
         .toList();
     return AlertDialog(
       title: Text('Cari ${widget.title.toLowerCase()}'),
