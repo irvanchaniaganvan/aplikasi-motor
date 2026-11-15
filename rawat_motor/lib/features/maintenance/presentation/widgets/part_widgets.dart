@@ -72,7 +72,11 @@ class PartCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  RawatinIconTile(icon: icon, color: statusColor, soft: statusSoft),
+                  RawatinIconTile(
+                    icon: icon,
+                    color: statusColor,
+                    soft: statusSoft,
+                  ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(
@@ -87,7 +91,10 @@ class PartCard extends StatelessWidget {
                   ),
                   if (inspection) ...[
                     const SizedBox(width: AppSpacing.sm),
-                    RawatinInfoChip(icon: AppIcons.search, label: 'Pemeriksaan'),
+                    RawatinInfoChip(
+                      icon: AppIcons.search,
+                      label: 'Pemeriksaan',
+                    ),
                   ],
                 ],
               ),
@@ -126,11 +133,7 @@ class PartCard extends StatelessWidget {
               ),
               if (progress != null) ...[
                 const SizedBox(height: AppSpacing.sm),
-                SegmentedGauge(
-                  value: progress!,
-                  color: statusColor,
-                  height: 8,
-                ),
+                SegmentedGauge(value: progress!, color: statusColor, height: 8),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -168,7 +171,11 @@ class PartCard extends StatelessWidget {
                     ),
                     child: const Text('Detail · Atur interval'),
                   ),
-                  PartRecordButton(prominent: prominent, onPressed: onRecord),
+                  PartRecordButton(
+                    prominent: prominent,
+                    inspection: inspection,
+                    onPressed: onRecord,
+                  ),
                 ],
               ),
             ],
@@ -183,11 +190,13 @@ class PartRecordButton extends StatelessWidget {
   const PartRecordButton({
     required this.onPressed,
     this.prominent = false,
+    this.inspection = false,
     super.key,
   });
 
   final VoidCallback onPressed;
   final bool prominent;
+  final bool inspection;
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +204,7 @@ class PartRecordButton extends StatelessWidget {
     return FilledButton.icon(
       onPressed: onPressed,
       icon: const Icon(AppIcons.record, size: 15),
-      label: const Text('Catat ganti'),
+      label: Text(inspection ? 'Catat cek' : 'Catat ganti'),
       style: FilledButton.styleFrom(
         minimumSize: const Size(0, 34),
         padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -353,7 +362,7 @@ class CompactPartRow extends StatelessWidget {
                 background: statusSoft,
               ),
               IconButton(
-                tooltip: 'Catat ganti',
+                tooltip: part.isInspection ? 'Catat cek' : 'Catat ganti',
                 onPressed: onRecord,
                 visualDensity: VisualDensity.compact,
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),

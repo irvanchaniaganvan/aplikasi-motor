@@ -1081,9 +1081,10 @@ class _OilReminderPageState extends State<OilReminderPage> {
             ? data.oilInterval
             : component.intervalKm);
     final isOil = component.id == 'oli-mesin' || component.name == 'Oli mesin';
-    final months =
-        state?.intervalMonthsOverride ??
-        (isOil ? data.oilIntervalMonths : component.intervalMonths);
+    final months = state?.intervalMonthsOverride == 0
+        ? null
+        : state?.intervalMonthsOverride ??
+              (isOil ? data.oilIntervalMonths : component.intervalMonths);
     return const ComponentScheduleCalculator().calculate(
       currentOdometer: data.currentOdometer,
       intervalKm: isOil && data.reminderBasis == ReminderBasis.time
@@ -1120,11 +1121,12 @@ class _OilReminderPageState extends State<OilReminderPage> {
             ? data.oilInterval
             : component.intervalKm);
     final isOil = component.id == 'oli-mesin' || component.name == 'Oli mesin';
-    final months =
-        state?.intervalMonthsOverride ??
-        (component.name == 'Oli mesin'
-            ? data.oilIntervalMonths
-            : component.intervalMonths);
+    final months = state?.intervalMonthsOverride == 0
+        ? null
+        : state?.intervalMonthsOverride ??
+              (component.name == 'Oli mesin'
+                  ? data.oilIntervalMonths
+                  : component.intervalMonths);
     var lastServicedKm = state?.lastServicedKm;
     if (component.name == 'Oli mesin' &&
         lastServicedKm == null &&
@@ -1184,9 +1186,15 @@ class _OilReminderPageState extends State<OilReminderPage> {
             ComponentScheduleStatus.due =>
               component.isInspection ? 'Waktunya cek' : 'Waktunya ganti',
           };
-    final intervalText =
-        '${component.isInspection ? 'Cek' : 'Ganti'} tiap ${formatKm(interval)}'
-        '${months == null ? '' : ' / $months bln'}';
+    final intervalParts = [
+      if (interval > 0)
+        '${component.isInspection ? 'Cek' : 'Ganti'} tiap ${formatKm(interval)}',
+      if (months != null)
+        '${component.isInspection ? 'Cek' : 'Ganti'} tiap $months bln',
+    ];
+    final intervalText = intervalParts.isEmpty
+        ? 'Interval belum diatur'
+        : intervalParts.join(' / ');
     final progress = needsCheck || interval <= 0 || lastServicedKm == null
         ? null
         : ((data.currentOdometer - lastServicedKm) / interval)
@@ -1446,7 +1454,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 TextField(
                   controller: kmController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Kilometer',
                     suffixText: 'km',
                   ),
@@ -1547,19 +1555,23 @@ class _OilReminderPageState extends State<OilReminderPage> {
   Future<void> _showRecordComponentForm(MaintenanceComponent component) async {
     final data = _motorData;
     if (data == null) return;
+    final isInspection = component.isInspection;
+    final isOil =
+        component.id == 'oli-mesin' ||
+        component.name.toLowerCase() == 'oli mesin';
+    final currentState = _findComponentState(data, component.name);
     final kmController = TextEditingController(
       text: data.currentOdometer.toString(),
     );
     final intervalKmController = TextEditingController(
-      text:
-          '${_findComponentState(data, component.name)?.intervalKmOverride ?? component.intervalKm}',
+      text: (currentState?.intervalKmOverride ?? 0) > 0
+          ? currentState!.intervalKmOverride.toString()
+          : '',
     );
     final intervalMonthsController = TextEditingController(
-      text:
-          (_findComponentState(data, component.name)?.intervalMonthsOverride ??
-                  component.intervalMonths)
-              ?.toString() ??
-          '',
+      text: (currentState?.intervalMonthsOverride ?? 0) > 0
+          ? currentState!.intervalMonthsOverride.toString()
+          : '',
     );
     final costController = TextEditingController();
     final notesController = TextEditingController();
@@ -1590,7 +1602,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Catat ganti ${component.name}',
+                  '${isInspection ? 'Catat cek' : 'Catat ganti'} ${component.name}',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w800,
@@ -1606,32 +1618,35 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 TextField(
                   controller: kmController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'KM motor saat ban diganti',
+                  decoration: InputDecoration(
+                    labelText:
+                        'KM motor saat ${isInspection ? 'dicek' : 'diservis'}',
                     helperText: 'Kalau lupa angka pastinya, masukkan perkiraan KM saat itu.',
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: () => setSheetState(
-                    () => showScheduleSettings = !showScheduleSettings,
+                if (!isOil)
+                  TextButton.icon(
+                    onPressed: () => setSheetState(
+                      () => showScheduleSettings = !showScheduleSettings,
+                    ),
+                    icon: Icon(
+                      showScheduleSettings
+                          ? Icons.expand_less
+                          : Icons.tune_rounded,
+                    ),
+                    label: Text(
+                      showScheduleSettings
+                          ? 'Sembunyikan interval'
+                          : 'Atur interval ${isInspection ? 'pemeriksaan' : 'penggantian'}',
+                    ),
                   ),
-                  icon: Icon(
-                    showScheduleSettings
-                        ? Icons.expand_less
-                        : Icons.tune_rounded,
-                  ),
-                  label: Text(
-                    showScheduleSettings
-                        ? 'Sembunyikan interval penggantian'
-                        : 'Atur interval penggantian ban',
-                  ),
-                ),
                 if (showScheduleSettings) ...[
                   TextField(
                     controller: intervalKmController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Ganti setiap (opsional)',
+                    decoration: InputDecoration(
+                      labelText:
+                          '${isInspection ? 'Cek' : 'Ganti'} setiap (opsional)',
                       hintText: 'Kosongkan jika tidak pakai interval KM',
                       suffixText: 'km',
                     ),
@@ -1644,7 +1659,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
                           controller: intervalMonthsController,
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            labelText: 'Ganti setiap (opsional)',
+                            labelText:
+                                '${isInspection ? 'Cek' : 'Ganti'} setiap (opsional)',
                             hintText: intervalUsesYears
                                 ? 'Contoh: 2'
                                 : 'Contoh: 24',
@@ -1812,7 +1828,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                                     intervalKm == null &&
                                     intervalMonths == null
                                 ? 'Isi interval kilometer, waktu, atau keduanya.'
-                                : 'Pastikan KM servis, interval, dan biaya diisi dengan angka yang valid.',
+                                : 'Pastikan KM ${isInspection ? 'pemeriksaan' : 'servis'}, interval, dan biaya diisi dengan angka yang valid.',
                           ),
                         ),
                       );
@@ -1866,17 +1882,13 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     }
                     var dataToRecord = data;
                     if (showScheduleSettings) {
-                      final existingState = _findComponentState(
-                        data,
-                        component.name,
-                      );
                       final scheduleState = ComponentMaintenanceState(
                         componentName: component.name,
                         componentId: component.id,
-                        lastServicedKm: existingState?.lastServicedKm,
+                        lastServicedKm: currentState?.lastServicedKm,
                         intervalKmOverride: intervalKm ?? 0,
-                        intervalMonthsOverride: intervalMonths,
-                        lastServicedAt: existingState?.lastServicedAt,
+                        intervalMonthsOverride: intervalMonths ?? 0,
+                        lastServicedAt: currentState?.lastServicedAt,
                       );
                       dataToRecord = data.copyWith(
                         componentStates: _replaceComponentState(

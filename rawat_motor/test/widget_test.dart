@@ -1162,7 +1162,7 @@ void main() {
     expect(find.text('Kilometer'), findsOneWidget);
   });
 
-  testWidgets('form catat ban menerima KM servis dan interval km/tahun', (
+  testWidgets('form catat komponen menerima KM servis dan interval km/tahun', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1000, 900));
@@ -1199,7 +1199,7 @@ void main() {
     await tester.tap(find.text('Catat ganti').first);
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, '30000');
-    await tester.tap(find.text('Atur interval penggantian ban'));
+    await tester.tap(find.text('Atur interval penggantian'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).at(1), '25000');
     await tester.enterText(find.byType(TextField).at(2), '2');
@@ -1220,6 +1220,98 @@ void main() {
     expect(tireState.intervalKmOverride, 25000);
     expect(tireState.intervalMonthsOverride, 24);
     expect(repository.data!.currentOdometer, 34987);
+  });
+
+  testWidgets(
+    'form Oli gardan tidak memakai label khusus ban atau interval oli',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1000, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repository = _MemoryMotorDataRepository()
+        ..data = const MotorData(
+          currentOdometer: 34987,
+          lastOilOdometer: 0,
+          oilInterval: 3000,
+        );
+      const catalog = MaintenanceCatalog(
+        source: 'uji',
+        components: [
+          MaintenanceComponent(
+            name: 'Oli gardan',
+            action: 'ganti',
+            intervalKm: 6000,
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OilReminderPage(
+            loadMotorData: LoadMotorData(repository),
+            saveMotorData: SaveMotorData(repository),
+            catalog: catalog,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Semua').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Catat ganti').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Catat ganti Oli gardan'), findsOneWidget);
+      expect(find.text('KM motor saat diservis'), findsOneWidget);
+      expect(find.text('Atur interval penggantian'), findsOneWidget);
+      expect(find.textContaining('ban'), findsNothing);
+      expect(find.text('Atur interval penggantian oli'), findsNothing);
+    },
+  );
+
+  testWidgets('komponen pemeriksaan memakai label cek, bukan ganti', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repository = _MemoryMotorDataRepository()
+      ..data = const MotorData(
+        currentOdometer: 6000,
+        lastOilOdometer: 0,
+        oilInterval: 3000,
+        componentStates: [
+          ComponentMaintenanceState(
+            componentName: 'Kampas rem',
+            lastServicedKm: 1000,
+          ),
+        ],
+      );
+    const catalog = MaintenanceCatalog(
+      source: 'uji',
+      components: [
+        MaintenanceComponent(
+          name: 'Kampas rem',
+          action: 'cek',
+          intervalKm: 4000,
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OilReminderPage(
+          loadMotorData: LoadMotorData(repository),
+          saveMotorData: SaveMotorData(repository),
+          catalog: catalog,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Semua').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Catat cek'), findsOneWidget);
+    expect(find.text('Catat ganti'), findsNothing);
+    await tester.tap(find.text('Catat cek'));
+    await tester.pumpAndSettle();
+    expect(find.text('Catat cek Kampas rem'), findsOneWidget);
+    expect(find.text('Atur interval pemeriksaan'), findsOneWidget);
   });
 
   test('menghitung jadwal oli tanpa bergantung pada antarmuka', () {
@@ -1364,7 +1456,8 @@ void main() {
     await tester.tap(find.text('Catat ganti').first);
     await tester.pumpAndSettle();
     expect(find.text('Odometer sekarang: 11.500 km'), findsOneWidget);
-    expect(find.text('KM motor saat ban diganti'), findsOneWidget);
+    expect(find.text('KM motor saat diservis'), findsOneWidget);
+    expect(find.text('Atur interval penggantian ban'), findsNothing);
     await tester.enterText(find.byType(TextField).first, '10000');
     tester.testTextInput.hide();
     await tester.pump();
