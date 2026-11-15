@@ -36,6 +36,7 @@ import '../widgets/common_widgets.dart';
 import '../widgets/part_widgets.dart';
 import '../widgets/app_shell.dart';
 import '../widgets/dashboard_widgets.dart';
+import '../widgets/cost_summary_card.dart';
 
 class OilReminderPage extends StatefulWidget {
   const OilReminderPage({
@@ -1255,113 +1256,320 @@ class _OilReminderPageState extends State<OilReminderPage> {
     if (data == null) return;
     final history =
         data.serviceHistory
+            .asMap()
+            .entries
+            .where(
+              (entry) =>
+                  entry.value.item.toLowerCase() ==
+                  component.name.toLowerCase(),
+            )
+            .toList()
+          ..sort((a, b) => b.value.date.compareTo(a.value.date));
+    final currentState = state ?? _findComponentState(data, component.name);
+    var schedule = _componentSchedule(component, data);
+    final intervalKm =
+        currentState?.intervalKmOverride ??
+        (component.name == 'Oli mesin'
+            ? data.oilInterval
+            : component.intervalKm);
+    final intervalMonths = currentState?.intervalMonthsOverride == 0
+        ? null
+        : currentState?.intervalMonthsOverride ??
+              (component.name == 'Oli mesin'
+                  ? data.oilIntervalMonths
+                  : component.intervalMonths);
+    var lastService = history.isEmpty ? null : history.first.value;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      backgroundColor: cream,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(_componentIcon(component), color: green, size: 24),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        component.name,
+                        style: const TextStyle(
+                          color: ink,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: line),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Interval: ${intervalKm > 0 ? 'tiap ${formatKm(intervalKm)}' : 'belum diatur'}${intervalMonths == null || intervalMonths <= 0 ? '' : ' / $intervalMonths bulan'}',
+                        style: const TextStyle(color: ink, fontSize: 13),
+                      ),
+                      const SizedBox(height: 4),
+                      if (lastService == null)
+                        const Text(
+                          'Belum ada catatan servis terakhir.',
+                          style: TextStyle(color: muted, fontSize: 12),
+                        )
+                      else ...[
+                        Text(
+                          'Terakhir: ${formatKm(lastService!.odometer)} · ${formatShortDate(lastService!.date)}',
+                          style: const TextStyle(color: muted, fontSize: 12),
+                        ),
+                        if (intervalKm > 0) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Perkiraan berikutnya: ${formatKm(lastService!.odometer + intervalKm)}',
+                            style: const TextStyle(color: ink, fontSize: 12),
+                          ),
+                        ],
+                      ],
+                      if (schedule == null)
+                        const SizedBox.shrink()
+                      else ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Status sekarang: ${switch (schedule!.status) {
+                            ComponentScheduleStatus.safe => 'Aman',
+                            ComponentScheduleStatus.soon => 'Segera',
+                            ComponentScheduleStatus.due => 'Waktunya servis',
+                            ComponentScheduleStatus.needsCheck => 'Belum ada catatan',
+                          }}',
+                          style: const TextStyle(color: muted, fontSize: 12),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _editComponentInterval(component, state);
+                  },
+                  icon: const Icon(Icons.tune_rounded),
+                  label: const Text('Ubah interval'),
+                ),
+                if (component.name == 'Oli mesin' ||
+                    component.name == 'Oli gardan') ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      _openOilGuide();
+                    },
+                    icon: const Icon(AppIcons.oil),
+                    label: const Text('Panduan oli'),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                const Text(
+                  'Riwayat servis',
+                  style: TextStyle(color: ink, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                if (history.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'Belum ada riwayat servis untuk komponen ini.',
+                      style: TextStyle(color: muted, fontSize: 13),
+                    ),
+                  )
+                else
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(sheetContext).height * .35,
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: history.length,
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final entry = history[index];
+                        final record = entry.value;
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(
+                            Icons.build_circle_outlined,
+                            color: green,
+                          ),
+                          title: Text(
+                            formatKm(record.odometer),
+                            style: const TextStyle(
+                              color: ink,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                formatShortDate(record.date),
+                                style: const TextStyle(
+                                  color: muted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              if (record.workshop.trim().isNotEmpty)
+                                Text('Bengkel: ${record.workshop}'),
+                              if (record.cost > 0)
+                                Text('Biaya: ${formatRupiah(record.cost)}'),
+                              if (record.notes.trim().isNotEmpty)
+                                Text(record.notes),
+                            ],
+                          ),
+                          trailing: IconButton(
+                            tooltip: 'Hapus catatan servis',
+                            icon: const Icon(Icons.delete_outline_rounded),
+                            onPressed: () async {
+                              final confirmed =
+                                  await _confirmDeleteServiceRecord(record);
+                              if (!confirmed || !mounted) return;
+                              final removed =
+                                  await _deleteComponentServiceRecord(
+                                    component,
+                                    record,
+                                  );
+                              if (!removed || !sheetContext.mounted) return;
+                              setSheetState(() {
+                                history.removeWhere(
+                                  (item) => item.key == entry.key,
+                                );
+                                lastService = history.isEmpty
+                                    ? null
+                                    : history.first.value;
+                                final latestData = _motorData;
+                                if (latestData != null) {
+                                  schedule = _componentSchedule(
+                                    component,
+                                    latestData,
+                                  );
+                                }
+                              });
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _confirmDeleteServiceRecord(ServiceRecord record) async =>
+      await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Hapus catatan servis?'),
+          content: Text(
+            'Catatan ${record.item} pada ${formatKm(record.odometer)} (${formatShortDate(record.date)}) akan dihapus. Tindakan ini tidak bisa dibatalkan.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Hapus'),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+
+  Future<bool> _deleteComponentServiceRecord(
+    MaintenanceComponent component,
+    ServiceRecord record,
+  ) async {
+    final data = _motorData;
+    if (data == null) return false;
+    final recordIndex = data.serviceHistory.indexWhere(
+      (candidate) => identical(candidate, record),
+    );
+    if (recordIndex < 0) return false;
+    final currentPhotoPaths = data.serviceHistory
+        .where((candidate) => !identical(candidate, record))
+        .map((candidate) => candidate.receiptPath)
+        .whereType<String>()
+        .toSet();
+    final photoToDelete =
+        record.receiptPath != null &&
+            !currentPhotoPaths.contains(record.receiptPath)
+        ? record.receiptPath
+        : null;
+    final records = [...data.serviceHistory]..removeAt(recordIndex);
+    final remaining =
+        records
             .where(
               (record) =>
                   record.item.toLowerCase() == component.name.toLowerCase(),
             )
             .toList()
           ..sort((a, b) => b.date.compareTo(a.date));
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      backgroundColor: cream,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Icon(_componentIcon(component), color: green, size: 24),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      component.name,
-                      style: const TextStyle(
-                        color: ink,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.pop(sheetContext);
-                  _editComponentInterval(component, state);
-                },
-                icon: const Icon(Icons.tune_rounded),
-                label: const Text('Ubah interval'),
-              ),
-              if (component.name == 'Oli mesin' ||
-                  component.name == 'Oli gardan') ...[
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    _openOilGuide();
-                  },
-                  icon: const Icon(AppIcons.oil),
-                  label: const Text('Panduan oli'),
-                ),
-              ],
-              const SizedBox(height: 16),
-              const Text(
-                'Riwayat servis',
-                style: TextStyle(color: ink, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 8),
-              if (history.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Text(
-                    'Belum ada riwayat servis untuk komponen ini.',
-                    style: TextStyle(color: muted, fontSize: 13),
-                  ),
-                )
-              else
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.sizeOf(sheetContext).height * .35,
-                  ),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: history.length,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final record = history[index];
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(
-                          Icons.build_circle_outlined,
-                          color: green,
-                        ),
-                        title: Text(
-                          formatKm(record.odometer),
-                          style: const TextStyle(
-                            color: ink,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        subtitle: Text(
-                          formatShortDate(record.date),
-                          style: const TextStyle(color: muted, fontSize: 12),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        ),
+    final latest = remaining.isEmpty ? null : remaining.first;
+    final current = _findComponentState(data, component.name);
+    final updatedState = ComponentMaintenanceState(
+      componentName: component.name,
+      componentId: component.id,
+      lastServicedKm: latest?.odometer,
+      intervalKmOverride: current?.intervalKmOverride,
+      intervalMonthsOverride: current?.intervalMonthsOverride,
+      lastServicedAt: latest?.date,
+    );
+    var updated = data.copyWith(
+      serviceHistory: records,
+      componentStates: _replaceComponentState(
+        data.componentStates,
+        updatedState,
       ),
     );
+    if (component.name == 'Oli mesin') {
+      updated = updated.copyWith(
+        lastOilOdometer: latest?.odometer ?? 0,
+        lastOilChangeDate: latest?.date,
+        clearLastOilChangeDate: latest == null,
+      );
+    }
+    final saved = await _saveComponentData(updated);
+    if (!saved) return false;
+    if (photoToDelete != null) {
+      try {
+        await VehiclePhotoService().deletePhoto(photoToDelete);
+      } catch (_) {
+        if (mounted) {
+          _showMessage('Catatan dihapus, tetapi file nota gagal dibersihkan.');
+        }
+      }
+    }
+    if (saved && mounted) {
+      _showMessage('Catatan servis ${record.item} berhasil dihapus.');
+    }
+    return saved;
   }
 
   void _openOilGuide() {

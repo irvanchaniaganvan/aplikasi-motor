@@ -141,6 +141,7 @@ class MotorData {
     int? lastOilOdometer,
     int? oilInterval,
     DateTime? lastOilChangeDate,
+    bool clearLastOilChangeDate = false,
     int? oilIntervalMonths,
     List<OdometerEntry>? odometerLogs,
     List<ServiceRecord>? serviceHistory,
@@ -154,7 +155,9 @@ class MotorData {
       currentOdometer: currentOdometer ?? this.currentOdometer,
       lastOilOdometer: lastOilOdometer ?? this.lastOilOdometer,
       oilInterval: oilInterval ?? this.oilInterval,
-      lastOilChangeDate: lastOilChangeDate ?? this.lastOilChangeDate,
+      lastOilChangeDate: clearLastOilChangeDate
+          ? null
+          : lastOilChangeDate ?? this.lastOilChangeDate,
       oilIntervalMonths: oilIntervalMonths ?? this.oilIntervalMonths,
       odometerLogs: odometerLogs ?? this.odometerLogs,
       serviceHistory: serviceHistory ?? this.serviceHistory,

@@ -1152,6 +1152,89 @@ void main() {
     expect(careTile.selected, isTrue);
   });
 
+  testWidgets(
+    'detail komponen menampilkan info servis dan hapus terkonfirmasi',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repository = _MemoryMotorDataRepository()
+        ..data = MotorData(
+          currentOdometer: 35000,
+          lastOilOdometer: 0,
+          oilInterval: 3000,
+          componentStates: const [
+            ComponentMaintenanceState(
+              componentName: 'Ban',
+              lastServicedKm: 29000,
+              intervalKmOverride: 10000,
+            ),
+          ],
+          serviceHistory: [
+            ServiceRecord(
+              date: DateTime(2026, 5, 1),
+              odometer: 20000,
+              item: 'Ban',
+              workshop: 'Bengkel Lama',
+              cost: 150000,
+            ),
+            ServiceRecord(
+              date: DateTime(2026, 11, 15),
+              odometer: 29000,
+              item: 'Ban',
+              workshop: 'Planet Ban',
+              cost: 280000,
+              notes: 'Ganti ban belakang',
+            ),
+          ],
+        );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OilReminderPage(
+            loadMotorData: LoadMotorData(repository),
+            saveMotorData: SaveMotorData(repository),
+            catalog: const MaintenanceCatalog(
+              source: 'uji',
+              components: [
+                MaintenanceComponent(
+                  name: 'Ban',
+                  action: 'ganti',
+                  intervalKm: 10000,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Perawatan').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Detail · Atur interval').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Interval: tiap 10.000 km'), findsOneWidget);
+      expect(find.textContaining('Terakhir: 29.000 km'), findsOneWidget);
+      expect(
+        find.textContaining('Perkiraan berikutnya: 39.000 km'),
+        findsOneWidget,
+      );
+      expect(find.text('Bengkel: Planet Ban'), findsOneWidget);
+      expect(find.text('Biaya: Rp280.000'), findsOneWidget);
+      expect(find.text('Ganti ban belakang'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Hapus catatan servis').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Hapus catatan servis?'), findsOneWidget);
+      await tester.tap(find.text('Hapus').last);
+      await tester.pumpAndSettle();
+
+      expect(repository.data!.serviceHistory, hasLength(1));
+      expect(repository.data!.serviceHistory.single.workshop, 'Bengkel Lama');
+      expect(repository.data!.componentStates.single.lastServicedKm, 20000);
+      expect(find.textContaining('Terakhir: 20.000 km'), findsOneWidget);
+      expect(find.text('Bengkel: Planet Ban'), findsNothing);
+    },
+  );
+
   testWidgets('angka status Beranda membuka jadwal dengan filter status', (
     tester,
   ) async {
