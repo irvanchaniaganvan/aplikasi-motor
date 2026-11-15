@@ -1303,12 +1303,29 @@ void main() {
     await tester.ensureVisible(find.text('Catat ganti').first);
     await tester.tap(find.text('Catat ganti').first);
     await tester.pumpAndSettle();
+    expect(find.text('Odometer sekarang: 11.500 km'), findsOneWidget);
+    expect(find.text('Tahu KM-nya'), findsOneWidget);
+    expect(find.text('Perkiraan'), findsOneWidget);
+    await tester.tap(find.text('Perkiraan'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Kira-kira jarak yang ditempuh sejak servis'),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(TextField).first, '1500');
+    tester.testTextInput.hide();
+    await tester.pump();
+    await tester.ensureVisible(find.text('Simpan'));
     await tester.tap(find.text('Simpan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Kilometer lebih rendah'), findsOneWidget);
+    await tester.tap(find.text('Tetap catat'));
     await tester.pumpAndSettle();
 
     expect(find.text('Oli mesin berhasil dicatat.'), findsOneWidget);
-    expect(find.textContaining('2.000 km lagi'), findsOneWidget);
+    expect(find.textContaining('500 km lagi'), findsOneWidget);
     expect(repository.data?.serviceHistory, hasLength(1));
+    expect(repository.data?.lastOilOdometer, 10000);
   });
 
   testWidgets('Beranda menampilkan status dengan teks dan ikon', (

@@ -1550,10 +1550,12 @@ class _OilReminderPageState extends State<OilReminderPage> {
     final kmController = TextEditingController(
       text: data.currentOdometer.toString(),
     );
+    final estimatedDistanceController = TextEditingController();
     final costController = TextEditingController();
     final notesController = TextEditingController();
     final workshopController = TextEditingController();
     var serviceDate = DateTime.now();
+    var useEstimatedDistance = false;
     var showDetails = false;
     Uint8List? receiptBytes;
     var receiptExtension = 'png';
@@ -1571,210 +1573,287 @@ class _OilReminderPageState extends State<OilReminderPage> {
             20,
             20 + MediaQuery.viewInsetsOf(context).bottom,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Catat ganti ${component.name}',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: ink,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: kmController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Kilometer servis',
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () async {
-                  final chosen = await showDatePicker(
-                    context: context,
-                    initialDate: serviceDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime.now(),
-                  );
-                  if (chosen != null) setSheetState(() => serviceDate = chosen);
-                },
-                icon: const Icon(Icons.calendar_month),
-                label: Text(
-                  'Tanggal: ${serviceDate.day}/${serviceDate.month}/${serviceDate.year}',
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () =>
-                    setSheetState(() => showDetails = !showDetails),
-                icon: Icon(showDetails ? Icons.expand_less : Icons.expand_more),
-                label: Text(
-                  showDetails ? 'Sembunyikan detail' : 'Tambah detail',
-                ),
-              ),
-              if (showDetails) ...[
-                TextField(
-                  controller: costController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Biaya (opsional)',
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Catat ganti ${component.name}',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: ink,
                   ),
                 ),
-                TextField(
-                  controller: workshopController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nama bengkel (opsional)',
+                const SizedBox(height: 12),
+                Text(
+                  'Odometer sekarang: ${formatKm(data.currentOdometer)}',
+                  style: const TextStyle(color: muted, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                SegmentedButton<bool>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(value: false, label: Text('Tahu KM-nya')),
+                    ButtonSegment(value: true, label: Text('Perkiraan')),
+                  ],
+                  selected: {useEstimatedDistance},
+                  onSelectionChanged: (selection) => setSheetState(() {
+                    useEstimatedDistance = selection.first;
+                  }),
+                ),
+                const SizedBox(height: 8),
+                if (useEstimatedDistance) ...[
+                  TextField(
+                    controller: estimatedDistanceController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Kira-kira jarak yang ditempuh sejak servis',
+                      hintText: 'Contoh: 2.000',
+                      suffixText: 'km',
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Perkiraan ini dikurangi dari odometer sekarang. Contoh: rata-rata 20 km/hari selama 100 hari ≈ 2.000 km.',
+                    style: TextStyle(
+                      color: RawatinColors.of(context).muted,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ] else
+                  TextField(
+                    controller: kmController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Kilometer saat servis',
+                      helperText: 'Kalau lupa, pilih Perkiraan.',
+                    ),
+                  ),
+                TextButton.icon(
+                  onPressed: () async {
+                    final chosen = await showDatePicker(
+                      context: context,
+                      initialDate: serviceDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime.now(),
+                    );
+                    if (chosen != null) {
+                      setSheetState(() => serviceDate = chosen);
+                    }
+                  },
+                  icon: const Icon(Icons.calendar_month),
+                  label: Text(
+                    'Tanggal: ${serviceDate.day}/${serviceDate.month}/${serviceDate.year}',
                   ),
                 ),
-                TextField(
-                  controller: notesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Catatan (opsional)',
+                TextButton.icon(
+                  onPressed: () =>
+                      setSheetState(() => showDetails = !showDetails),
+                  icon: Icon(
+                    showDetails ? Icons.expand_less : Icons.expand_more,
+                  ),
+                  label: Text(
+                    showDetails ? 'Sembunyikan detail' : 'Tambah detail',
                   ),
                 ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () async {
-                      try {
-                        final selected = await VehiclePhotoService().pickPhoto(
-                          source: ImageSource.gallery,
-                        );
-                        if (selected != null) {
-                          setSheetState(() {
-                            receiptBytes = selected.bytes;
-                            receiptExtension = selected.extension;
-                          });
+                Text(
+                  'Kalau servisnya sudah lama, sesuaikan juga tanggal servis di atas. Kalau tidak ingat persis, pilih tanggal perkiraan.',
+                  style: TextStyle(
+                    color: RawatinColors.of(context).muted,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+                if (showDetails) ...[
+                  TextField(
+                    controller: costController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Biaya (opsional)',
+                    ),
+                  ),
+                  TextField(
+                    controller: workshopController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nama bengkel (opsional)',
+                    ),
+                  ),
+                  TextField(
+                    controller: notesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Catatan (opsional)',
+                    ),
+                  ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        try {
+                          final selected = await VehiclePhotoService()
+                              .pickPhoto(source: ImageSource.gallery);
+                          if (selected != null) {
+                            setSheetState(() {
+                              receiptBytes = selected.bytes;
+                              receiptExtension = selected.extension;
+                            });
+                          }
+                        } catch (error) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  VehiclePhotoService.resolveErrorMessage(
+                                    error,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
                         }
-                      } catch (error) {
+                      },
+                      icon: Icon(
+                        receiptBytes == null
+                            ? Icons.add_a_photo_outlined
+                            : Icons.check_circle_outline,
+                      ),
+                      label: Text(
+                        receiptBytes == null
+                            ? 'Tambah foto nota'
+                            : 'Foto nota siap dipakai',
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () async {
+                    final currentKm = int.tryParse(kmController.text.trim());
+                    final estimatedDistance = int.tryParse(
+                      estimatedDistanceController.text.trim(),
+                    );
+                    final km = useEstimatedDistance
+                        ? currentKm == null || estimatedDistance == null
+                              ? null
+                              : currentKm - estimatedDistance
+                        : currentKm;
+                    final cost = int.tryParse(
+                      costController.text.trim().isEmpty
+                          ? '0'
+                          : costController.text.trim(),
+                    );
+                    if (km == null ||
+                        km < 0 ||
+                        (useEstimatedDistance &&
+                            (estimatedDistance == null ||
+                                estimatedDistance <= 0)) ||
+                        cost == null ||
+                        cost < 0) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            useEstimatedDistance
+                                ? 'Isi perkiraan jarak sejak servis dengan angka lebih dari 0 km dan pastikan tidak melebihi odometer sekarang.'
+                                : 'Isi kilometer dan biaya dengan angka yang valid.',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    if (km < data.currentOdometer) {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (dialogContext) => AlertDialog(
+                          title: const Text('Kilometer lebih rendah'),
+                          content: Text(
+                            'Odometer saat ini ${formatKm(data.currentOdometer)}, sedangkan catatan ${formatKm(km)}. Servis boleh dicatat, tetapi log odometer tidak ditambah. Lanjutkan?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, false),
+                              child: const Text('Batal'),
+                            ),
+                            FilledButton(
+                              onPressed: () =>
+                                  Navigator.pop(dialogContext, true),
+                              child: const Text('Tetap catat'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (!context.mounted) return;
+                      if (confirmed != true) return;
+                    }
+                    if (receiptBytes != null) {
+                      try {
+                        receiptPath = await VehiclePhotoService()
+                            .savePhotoBytes(
+                              bytes: receiptBytes!,
+                              profileId: widget.profile?.id ?? 'vehicle-1',
+                              extension: receiptExtension,
+                            );
+                      } catch (_) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                            const SnackBar(
                               content: Text(
-                                VehiclePhotoService.resolveErrorMessage(error),
+                                'Foto nota belum berhasil disimpan.',
                               ),
                             ),
                           );
                         }
+                        return;
                       }
-                    },
-                    icon: Icon(
-                      receiptBytes == null
-                          ? Icons.add_a_photo_outlined
-                          : Icons.check_circle_outline,
-                    ),
-                    label: Text(
-                      receiptBytes == null
-                          ? 'Tambah foto nota'
-                          : 'Foto nota siap dipakai',
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: () async {
-                  final km = int.tryParse(kmController.text.trim());
-                  final cost = int.tryParse(
-                    costController.text.trim().isEmpty
-                        ? '0'
-                        : costController.text.trim(),
-                  );
-                  if (km == null || km < 0 || cost == null || cost < 0) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Isi kilometer dan biaya dengan angka yang valid.',
-                        ),
-                      ),
+                    }
+                    final updated = const RecordComponentService().record(
+                      data: data,
+                      component: component,
+                      odometer: km,
+                      date: serviceDate,
+                      cost: cost,
+                      notes: notesController.text.trim(),
+                      receiptPath: receiptPath,
+                      workshop: workshopController.text.trim(),
                     );
-                    return;
-                  }
-                  if (km < data.currentOdometer) {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (dialogContext) => AlertDialog(
-                        title: const Text('Kilometer lebih rendah'),
-                        content: Text(
-                          'Odometer saat ini ${formatKm(data.currentOdometer)}, sedangkan catatan ${formatKm(km)}. Servis boleh dicatat, tetapi log odometer tidak ditambah. Lanjutkan?',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () =>
-                                Navigator.pop(dialogContext, false),
-                            child: const Text('Batal'),
-                          ),
-                          FilledButton(
-                            onPressed: () => Navigator.pop(dialogContext, true),
-                            child: const Text('Tetap catat'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (!context.mounted) return;
-                    if (confirmed != true) return;
-                  }
-                  if (receiptBytes != null) {
                     try {
-                      receiptPath = await VehiclePhotoService().savePhotoBytes(
-                        bytes: receiptBytes!,
-                        profileId: widget.profile?.id ?? 'vehicle-1',
-                        extension: receiptExtension,
-                      );
+                      await widget.saveMotorData(updated);
+                      if (!context.mounted || !mounted) return;
+                      setState(() => _motorData = updated);
+                      Navigator.pop(sheetContext);
+                      _showMessage('${component.name} berhasil dicatat.');
                     } catch (_) {
+                      if (receiptPath != null) {
+                        await VehiclePhotoService().deletePhoto(receiptPath);
+                      }
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Foto nota belum berhasil disimpan.'),
+                            content: Text('Catatan servis gagal disimpan.'),
                           ),
                         );
                       }
-                      return;
                     }
-                  }
-                  final updated = const RecordComponentService().record(
-                    data: data,
-                    component: component,
-                    odometer: km,
-                    date: serviceDate,
-                    cost: cost,
-                    notes: notesController.text.trim(),
-                    receiptPath: receiptPath,
-                    workshop: workshopController.text.trim(),
-                  );
-                  try {
-                    await widget.saveMotorData(updated);
-                    if (!context.mounted || !mounted) return;
-                    setState(() => _motorData = updated);
-                    Navigator.pop(sheetContext);
-                    _showMessage('${component.name} berhasil dicatat.');
-                  } catch (_) {
-                    if (receiptPath != null) {
-                      await VehiclePhotoService().deletePhoto(receiptPath);
-                    }
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Catatan servis gagal disimpan.'),
-                        ),
-                      );
-                    }
-                  }
-                },
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  },
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                  child: const Text('Simpan'),
                 ),
-                child: const Text('Simpan'),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
+    // Sheet masih menyelesaikan animasi tutup setelah `showModalBottomSheet`
+    // mengembalikan hasil; tahan controller sampai animasi keluar selesai.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     kmController.dispose();
+    estimatedDistanceController.dispose();
     costController.dispose();
     notesController.dispose();
     workshopController.dispose();
