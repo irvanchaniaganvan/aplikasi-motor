@@ -1162,6 +1162,66 @@ void main() {
     expect(find.text('Kilometer'), findsOneWidget);
   });
 
+  testWidgets('form catat ban menerima KM servis dan interval km/tahun', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repository = _MemoryMotorDataRepository()
+      ..data = const MotorData(
+        currentOdometer: 34987,
+        lastOilOdometer: 0,
+        oilInterval: 3000,
+      );
+    const catalog = MaintenanceCatalog(
+      source: 'uji',
+      components: [
+        MaintenanceComponent(
+          name: 'Ban depan',
+          action: 'ganti',
+          intervalKm: 20000,
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OilReminderPage(
+          loadMotorData: LoadMotorData(repository),
+          saveMotorData: SaveMotorData(repository),
+          catalog: catalog,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Semua').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Catat ganti').first);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).first, '30000');
+    await tester.tap(find.text('Atur interval penggantian ban'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(1), '25000');
+    await tester.enterText(find.byType(TextField).at(2), '2');
+    await tester.tap(find.text('Bulan').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tahun').last);
+    await tester.pumpAndSettle();
+    tester.testTextInput.hide();
+    await tester.pump();
+    await tester.ensureVisible(find.text('Simpan'));
+    await tester.tap(find.text('Simpan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tetap catat'));
+    await tester.pumpAndSettle();
+
+    final tireState = repository.data!.componentStates.single;
+    expect(tireState.lastServicedKm, 30000);
+    expect(tireState.intervalKmOverride, 25000);
+    expect(tireState.intervalMonthsOverride, 24);
+    expect(repository.data!.currentOdometer, 34987);
+  });
+
   test('menghitung jadwal oli tanpa bergantung pada antarmuka', () {
     final result = const OilScheduleCalculator().calculate(
       const MotorData(
@@ -1304,15 +1364,8 @@ void main() {
     await tester.tap(find.text('Catat ganti').first);
     await tester.pumpAndSettle();
     expect(find.text('Odometer sekarang: 11.500 km'), findsOneWidget);
-    expect(find.text('Tahu KM-nya'), findsOneWidget);
-    expect(find.text('Perkiraan'), findsOneWidget);
-    await tester.tap(find.text('Perkiraan'));
-    await tester.pumpAndSettle();
-    expect(
-      find.text('Kira-kira jarak yang ditempuh sejak servis'),
-      findsOneWidget,
-    );
-    await tester.enterText(find.byType(TextField).first, '1500');
+    expect(find.text('KM motor saat ban diganti'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, '10000');
     tester.testTextInput.hide();
     await tester.pump();
     await tester.ensureVisible(find.text('Simpan'));

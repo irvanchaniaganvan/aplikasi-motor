@@ -1550,13 +1550,24 @@ class _OilReminderPageState extends State<OilReminderPage> {
     final kmController = TextEditingController(
       text: data.currentOdometer.toString(),
     );
-    final estimatedDistanceController = TextEditingController();
+    final intervalKmController = TextEditingController(
+      text:
+          '${_findComponentState(data, component.name)?.intervalKmOverride ?? component.intervalKm}',
+    );
+    final intervalMonthsController = TextEditingController(
+      text:
+          (_findComponentState(data, component.name)?.intervalMonthsOverride ??
+                  component.intervalMonths)
+              ?.toString() ??
+          '',
+    );
     final costController = TextEditingController();
     final notesController = TextEditingController();
     final workshopController = TextEditingController();
     var serviceDate = DateTime.now();
-    var useEstimatedDistance = false;
     var showDetails = false;
+    var showScheduleSettings = false;
+    var intervalUsesYears = false;
     Uint8List? receiptBytes;
     var receiptExtension = 'png';
     String? receiptPath;
@@ -1592,46 +1603,77 @@ class _OilReminderPageState extends State<OilReminderPage> {
                   style: const TextStyle(color: muted, fontSize: 13),
                 ),
                 const SizedBox(height: 12),
-                SegmentedButton<bool>(
-                  showSelectedIcon: false,
-                  segments: const [
-                    ButtonSegment(value: false, label: Text('Tahu KM-nya')),
-                    ButtonSegment(value: true, label: Text('Perkiraan')),
-                  ],
-                  selected: {useEstimatedDistance},
-                  onSelectionChanged: (selection) => setSheetState(() {
-                    useEstimatedDistance = selection.first;
-                  }),
+                TextField(
+                  controller: kmController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'KM motor saat ban diganti',
+                    helperText: 'Kalau lupa angka pastinya, masukkan perkiraan KM saat itu.',
+                  ),
                 ),
-                const SizedBox(height: 8),
-                if (useEstimatedDistance) ...[
+                TextButton.icon(
+                  onPressed: () => setSheetState(
+                    () => showScheduleSettings = !showScheduleSettings,
+                  ),
+                  icon: Icon(
+                    showScheduleSettings
+                        ? Icons.expand_less
+                        : Icons.tune_rounded,
+                  ),
+                  label: Text(
+                    showScheduleSettings
+                        ? 'Sembunyikan interval penggantian'
+                        : 'Atur interval penggantian ban',
+                  ),
+                ),
+                if (showScheduleSettings) ...[
                   TextField(
-                    controller: estimatedDistanceController,
+                    controller: intervalKmController,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                      labelText: 'Kira-kira jarak yang ditempuh sejak servis',
-                      hintText: 'Contoh: 2.000',
+                      labelText: 'Ganti setiap (opsional)',
+                      hintText: 'Kosongkan jika tidak pakai interval KM',
                       suffixText: 'km',
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: intervalMonthsController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Ganti setiap (opsional)',
+                            hintText: intervalUsesYears
+                                ? 'Contoh: 2'
+                                : 'Contoh: 24',
+                            suffixText: intervalUsesYears ? 'tahun' : 'bulan',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      DropdownButton<bool>(
+                        value: intervalUsesYears,
+                        items: const [
+                          DropdownMenuItem(value: false, child: Text('Bulan')),
+                          DropdownMenuItem(value: true, child: Text('Tahun')),
+                        ],
+                        onChanged: (value) => setSheetState(
+                          () => intervalUsesYears = value ?? false,
+                        ),
+                      ),
+                    ],
+                  ),
                   Text(
-                    'Perkiraan ini dikurangi dari odometer sekarang. Contoh: rata-rata 20 km/hari selama 100 hari ≈ 2.000 km.',
+                    'Isi kilometer, waktu, atau keduanya. Kosongkan yang tidak ingin dipakai.',
                     style: TextStyle(
                       color: RawatinColors.of(context).muted,
                       fontSize: 12,
                       height: 1.4,
                     ),
                   ),
-                ] else
-                  TextField(
-                    controller: kmController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'Kilometer saat servis',
-                      helperText: 'Kalau lupa, pilih Perkiraan.',
-                    ),
-                  ),
+                ],
                 TextButton.icon(
                   onPressed: () async {
                     final chosen = await showDatePicker(
@@ -1730,15 +1772,21 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 const SizedBox(height: 12),
                 FilledButton(
                   onPressed: () async {
-                    final currentKm = int.tryParse(kmController.text.trim());
-                    final estimatedDistance = int.tryParse(
-                      estimatedDistanceController.text.trim(),
-                    );
-                    final km = useEstimatedDistance
-                        ? currentKm == null || estimatedDistance == null
-                              ? null
-                              : currentKm - estimatedDistance
-                        : currentKm;
+                    final km = int.tryParse(kmController.text.trim());
+                    final intervalKmText = intervalKmController.text.trim();
+                    final intervalKm = intervalKmText.isEmpty
+                        ? null
+                        : int.tryParse(intervalKmText);
+                    final intervalTimeText = intervalMonthsController.text
+                        .trim();
+                    final intervalTimeValue = intervalTimeText.isEmpty
+                        ? null
+                        : int.tryParse(intervalTimeText);
+                    final intervalMonths = intervalTimeValue == null
+                        ? null
+                        : intervalUsesYears
+                        ? intervalTimeValue * 12
+                        : intervalTimeValue;
                     final cost = int.tryParse(
                       costController.text.trim().isEmpty
                           ? '0'
@@ -1746,18 +1794,25 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     );
                     if (km == null ||
                         km < 0 ||
-                        (useEstimatedDistance &&
-                            (estimatedDistance == null ||
-                                estimatedDistance <= 0)) ||
+                        (intervalKmText.isNotEmpty &&
+                            (intervalKm == null || intervalKm <= 0)) ||
+                        (intervalTimeText.isNotEmpty &&
+                            (intervalTimeValue == null ||
+                                intervalTimeValue <= 0)) ||
+                        (showScheduleSettings &&
+                            intervalKm == null &&
+                            intervalMonths == null) ||
                         cost == null ||
                         cost < 0) {
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            useEstimatedDistance
-                                ? 'Isi perkiraan jarak sejak servis dengan angka lebih dari 0 km dan pastikan tidak melebihi odometer sekarang.'
-                                : 'Isi kilometer dan biaya dengan angka yang valid.',
+                            showScheduleSettings &&
+                                    intervalKm == null &&
+                                    intervalMonths == null
+                                ? 'Isi interval kilometer, waktu, atau keduanya.'
+                                : 'Pastikan KM servis, interval, dan biaya diisi dengan angka yang valid.',
                           ),
                         ),
                       );
@@ -1809,8 +1864,29 @@ class _OilReminderPageState extends State<OilReminderPage> {
                         return;
                       }
                     }
+                    var dataToRecord = data;
+                    if (showScheduleSettings) {
+                      final existingState = _findComponentState(
+                        data,
+                        component.name,
+                      );
+                      final scheduleState = ComponentMaintenanceState(
+                        componentName: component.name,
+                        componentId: component.id,
+                        lastServicedKm: existingState?.lastServicedKm,
+                        intervalKmOverride: intervalKm ?? 0,
+                        intervalMonthsOverride: intervalMonths,
+                        lastServicedAt: existingState?.lastServicedAt,
+                      );
+                      dataToRecord = data.copyWith(
+                        componentStates: _replaceComponentState(
+                          data.componentStates,
+                          scheduleState,
+                        ),
+                      );
+                    }
                     final updated = const RecordComponentService().record(
-                      data: data,
+                      data: dataToRecord,
                       component: component,
                       odometer: km,
                       date: serviceDate,
@@ -1853,7 +1929,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
     // mengembalikan hasil; tahan controller sampai animasi keluar selesai.
     await Future<void>.delayed(const Duration(milliseconds: 300));
     kmController.dispose();
-    estimatedDistanceController.dispose();
+    intervalKmController.dispose();
+    intervalMonthsController.dispose();
     costController.dispose();
     notesController.dispose();
     workshopController.dispose();
