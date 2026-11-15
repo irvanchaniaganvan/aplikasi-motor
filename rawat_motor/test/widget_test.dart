@@ -1381,7 +1381,27 @@ void main() {
     await tester.ensureVisible(find.text('Simpan'));
     await tester.tap(find.text('Simpan'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Tetap catat'));
+    expect(find.text('Catat servis di KM sebelumnya?'), findsOneWidget);
+    expect(find.text('KM motor sekarang'), findsOneWidget);
+    expect(find.text('34.987 km'), findsOneWidget);
+    expect(find.text('KM saat servis'), findsOneWidget);
+    expect(find.text('30.000 km'), findsOneWidget);
+    expect(
+      find.text(
+        'Riwayat servis tetap dicatat. Odometer utama tidak akan berubah.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Periksa angka'));
+    await tester.pumpAndSettle();
+
+    expect(repository.data!.serviceHistory, isEmpty);
+    expect(repository.data!.currentOdometer, 34987);
+
+    await tester.ensureVisible(find.text('Simpan'));
+    await tester.tap(find.text('Simpan'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Tetap catat servis'));
     await tester.pumpAndSettle();
 
     final tireState = repository.data!.componentStates.single;
@@ -1633,8 +1653,8 @@ void main() {
     await tester.ensureVisible(find.text('Simpan'));
     await tester.tap(find.text('Simpan'));
     await tester.pumpAndSettle();
-    expect(find.text('Kilometer lebih rendah'), findsOneWidget);
-    await tester.tap(find.text('Tetap catat'));
+    expect(find.text('Catat servis di KM sebelumnya?'), findsOneWidget);
+    await tester.tap(find.text('Tetap catat servis'));
     await tester.pumpAndSettle();
 
     expect(find.text('Oli mesin berhasil dicatat.'), findsOneWidget);

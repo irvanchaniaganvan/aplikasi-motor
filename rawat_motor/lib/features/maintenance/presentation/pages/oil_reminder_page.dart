@@ -2031,24 +2031,92 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     if (km < data.currentOdometer) {
                       final confirmed = await showDialog<bool>(
                         context: context,
-                        builder: (dialogContext) => AlertDialog(
-                          title: const Text('Kilometer lebih rendah'),
-                          content: Text(
-                            'Odometer saat ini ${formatKm(data.currentOdometer)}, sedangkan catatan ${formatKm(km)}. Servis boleh dicatat, tetapi log odometer tidak ditambah. Lanjutkan?',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(dialogContext, false),
-                              child: const Text('Batal'),
+                        builder: (dialogContext) {
+                          final colors = Theme.of(dialogContext).colorScheme;
+                          return AlertDialog(
+                            scrollable: true,
+                            icon: Icon(
+                              Icons.history_rounded,
+                              color: colors.primary,
+                              size: 30,
                             ),
-                            FilledButton(
-                              onPressed: () =>
-                                  Navigator.pop(dialogContext, true),
-                              child: const Text('Tetap catat'),
+                            title: const Text(
+                              'Catat servis di KM sebelumnya?',
+                              textAlign: TextAlign.center,
                             ),
-                          ],
-                        ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const Text(
+                                  'Angka servis lebih rendah dari odometer sekarang. Pastikan kamu mencatat servis yang memang dilakukan sebelumnya.',
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 16),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: colors.surfaceContainerHighest,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      _OdometerComparisonRow(
+                                        label: 'KM motor sekarang',
+                                        value: formatKm(data.currentOdometer),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      _OdometerComparisonRow(
+                                        label: 'KM saat servis',
+                                        value: formatKm(km),
+                                        emphasize: true,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: colors.primaryContainer.withValues(
+                                      alpha: 0.55,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.info_outline_rounded,
+                                        size: 19,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Riwayat servis tetap dicatat. Odometer utama tidak akan berubah.',
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, false),
+                                child: const Text('Periksa angka'),
+                              ),
+                              FilledButton(
+                                onPressed: () =>
+                                    Navigator.pop(dialogContext, true),
+                                child: const Text('Tetap catat servis'),
+                              ),
+                            ],
+                            actionsAlignment: MainAxisAlignment.spaceBetween,
+                          );
+                        },
                       );
                       if (!context.mounted) return;
                       if (confirmed != true) return;
@@ -2828,4 +2896,35 @@ class _OilReminderPageState extends State<OilReminderPage> {
     'tromol' => 'Rem tromol',
     _ => null,
   };
+}
+
+class _OdometerComparisonRow extends StatelessWidget {
+  const _OdometerComparisonRow({
+    required this.label,
+    required this.value,
+    this.emphasize = false,
+  });
+
+  final String label;
+  final String value;
+  final bool emphasize;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = emphasize
+        ? Theme.of(context).colorScheme.primary
+        : Theme.of(context).colorScheme.onSurfaceVariant;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(label, style: TextStyle(color: color)),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          value,
+          style: TextStyle(fontWeight: FontWeight.w700, color: color),
+        ),
+      ],
+    );
+  }
 }
