@@ -1235,6 +1235,97 @@ void main() {
     },
   );
 
+  testWidgets(
+    'halaman Perawatan dapat dimuat ulang lewat tombol refresh dan pull-to-refresh',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repository = _MemoryMotorDataRepository()
+        ..data = const MotorData(
+          currentOdometer: 10000,
+          lastOilOdometer: 8000,
+          oilInterval: 3000,
+          componentStates: [
+            ComponentMaintenanceState(
+              componentName: 'Oli mesin',
+              lastServicedKm: 8000,
+              intervalKmOverride: 3000,
+            ),
+          ],
+        );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OilReminderPage(
+            loadMotorData: LoadMotorData(repository),
+            saveMotorData: SaveMotorData(repository),
+            catalog: const MaintenanceCatalog(
+              source: 'uji',
+              components: [
+                MaintenanceComponent(
+                  name: 'Oli mesin',
+                  action: 'ganti',
+                  intervalKm: 3000,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Perawatan').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Jadwal perawatan'), findsOneWidget);
+      expect(find.byTooltip('Muat ulang data'), findsOneWidget);
+      expect(find.byType(RefreshIndicator), findsOneWidget);
+      expect(find.text('Aman'), findsWidgets);
+
+      repository.data = const MotorData(
+        currentOdometer: 12000,
+        lastOilOdometer: 8000,
+        oilInterval: 3000,
+        componentStates: [
+          ComponentMaintenanceState(
+            componentName: 'Oli mesin',
+            lastServicedKm: 8000,
+            intervalKmOverride: 3000,
+          ),
+        ],
+      );
+
+      await tester.tap(find.byTooltip('Muat ulang data'));
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Data perawatan diperbarui.'), findsOneWidget);
+      expect(find.text('Waktunya ganti'), findsWidgets);
+
+      repository.data = const MotorData(
+        currentOdometer: 8500,
+        lastOilOdometer: 8000,
+        oilInterval: 3000,
+        componentStates: [
+          ComponentMaintenanceState(
+            componentName: 'Oli mesin',
+            lastServicedKm: 8000,
+            intervalKmOverride: 3000,
+          ),
+        ],
+      );
+      await tester.fling(
+        find.byType(SingleChildScrollView),
+        const Offset(0, 300),
+        1000,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Data perawatan diperbarui.'), findsOneWidget);
+      expect(find.text('Aman'), findsWidgets);
+    },
+  );
+
   testWidgets('angka status Beranda membuka jadwal dengan filter status', (
     tester,
   ) async {

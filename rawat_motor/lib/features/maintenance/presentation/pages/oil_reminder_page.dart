@@ -81,6 +81,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
   MotorData? _motorData;
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isRefreshing = false;
   ReminderBasis _reminderBasis = ReminderBasis.whicheverFirst;
   AppSection _selectedSection = AppSection.home;
   ComponentScheduleStatus? _dashboardStatusFilter;
@@ -159,6 +160,29 @@ class _OilReminderPageState extends State<OilReminderPage> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       _showMessage('Data tersimpan tidak dapat dibaca. Coba simpan ulang.');
+    }
+  }
+
+  Future<void> _handleRefresh({bool showFeedback = false}) async {
+    if (_isRefreshing) return;
+    setState(() => _isRefreshing = true);
+    try {
+      await _loadSavedData();
+      if (_components.isEmpty && widget.catalog == null) {
+        await _loadDefaultIntervals();
+      }
+      if (!mounted) return;
+      if (showFeedback) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _showMessage('Data perawatan diperbarui.');
+          }
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshing = false);
+      }
     }
   }
 
@@ -858,156 +882,173 @@ class _OilReminderPageState extends State<OilReminderPage> {
           (a, b) =>
               _componentUrgency(a, data).compareTo(_componentUrgency(b, data)),
         );
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.xxl,
-        AppSpacing.lg,
-        AppSpacing.xxxl,
-      ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1120),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const RawatinScreenIntro(
-                eyebrow: 'KOMPONEN & PERAWATAN',
-                title: 'Jadwal perawatan',
-                description: 'Interval adalah perkiraan umum: bukan spesifikasi resmi. Ikuti buku manual atau saran bengkel.',
-              ),
-              if (widget.profile != null) ...[
-                const SizedBox(height: AppSpacing.lg),
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: [
-                    RawatinInfoChip(
-                      icon: AppIcons.vehicle,
-                      label:
-                          '${widget.profile!.brand} ${widget.profile!.model}',
-                    ),
-                    if (_motorTypeLabel != null)
-                      RawatinInfoChip(
-                        icon: AppIcons.category,
-                        label: _motorTypeLabel!,
-                      ),
-                    if (_coolingLabel != null)
-                      RawatinInfoChip(
-                        icon: AppIcons.cooling,
-                        label: _coolingLabel!,
-                      ),
-                    if (_frontBrakeLabel != null)
-                      RawatinInfoChip(
-                        icon: AppIcons.brake,
-                        label: _frontBrakeLabel!,
-                      ),
-                    RawatinInfoChip(
-                      icon: AppIcons.grid,
-                      label: '${visibleComponents.length} komponen',
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: AppSpacing.xl),
-              if (_dashboardStatusFilter != null) ...[
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: InputChip(
-                    avatar: const Icon(Icons.filter_alt_rounded, size: 18),
-                    label: Text(
-                      'Status: ${_statusFilterLabel(_dashboardStatusFilter!)}',
-                    ),
-                    onDeleted: _clearDashboardStatusFilter,
+    return RefreshIndicator(
+      onRefresh: () => _handleRefresh(showFeedback: true),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.xxl,
+          AppSpacing.lg,
+          AppSpacing.xxxl,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1120),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                RawatinScreenIntro(
+                  eyebrow: 'KOMPONEN & PERAWATAN',
+                  title: 'Jadwal perawatan',
+                  description: 'Interval adalah perkiraan umum: bukan spesifikasi resmi. Ikuti buku manual atau saran bengkel.',
+                  action: IconButton.outlined(
+                    tooltip: 'Muat ulang data',
+                    onPressed: _isRefreshing
+                        ? null
+                        : () => _handleRefresh(showFeedback: true),
+                    icon: _isRefreshing
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh_rounded),
                   ),
                 ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-              if (data == null) ...[
-                RawatinCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                if (widget.profile != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
                     children: [
-                      const RawatinSectionHeading(
-                        eyebrow: 'LANGKAH PERTAMA',
-                        title: 'Mulai dari odometer',
+                      RawatinInfoChip(
+                        icon: AppIcons.vehicle,
+                        label:
+                            '${widget.profile!.brand} ${widget.profile!.model}',
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'Masukkan kilometer saat ini dan kapan oli terakhir diganti. Setelah disimpan, jadwal part akan muncul otomatis.',
-                        style: TextStyle(
-                          color: RawatinColors.of(context).muted,
-                          height: 1.5,
+                      if (_motorTypeLabel != null)
+                        RawatinInfoChip(
+                          icon: AppIcons.category,
+                          label: _motorTypeLabel!,
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.lg),
-                      FilledButton.icon(
-                        onPressed: _showOilReminderSettings,
-                        icon: const Icon(AppIcons.play),
-                        label: const Text('Atur kilometer motor'),
+                      if (_coolingLabel != null)
+                        RawatinInfoChip(
+                          icon: AppIcons.cooling,
+                          label: _coolingLabel!,
+                        ),
+                      if (_frontBrakeLabel != null)
+                        RawatinInfoChip(
+                          icon: AppIcons.brake,
+                          label: _frontBrakeLabel!,
+                        ),
+                      RawatinInfoChip(
+                        icon: AppIcons.grid,
+                        label: '${visibleComponents.length} komponen',
                       ),
                     ],
                   ),
-                ),
-              ] else if (_components.isEmpty) ...[
-                RawatinCard(
-                  child: _catalogFailed
-                      ? Text(
-                          'Data interval perawatan tidak dapat dimuat. Periksa file data default.',
+                ],
+                const SizedBox(height: AppSpacing.xl),
+                if (_dashboardStatusFilter != null) ...[
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: InputChip(
+                      avatar: const Icon(Icons.filter_alt_rounded, size: 18),
+                      label: Text(
+                        'Status: ${_statusFilterLabel(_dashboardStatusFilter!)}',
+                      ),
+                      onDeleted: _clearDashboardStatusFilter,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                ],
+                if (data == null) ...[
+                  RawatinCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const RawatinSectionHeading(
+                          eyebrow: 'LANGKAH PERTAMA',
+                          title: 'Mulai dari odometer',
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Text(
+                          'Masukkan kilometer saat ini dan kapan oli terakhir diganti. Setelah disimpan, jadwal part akan muncul otomatis.',
+                          style: TextStyle(
+                            color: RawatinColors.of(context).muted,
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        FilledButton.icon(
+                          onPressed: _showOilReminderSettings,
+                          icon: const Icon(AppIcons.play),
+                          label: const Text('Atur kilometer motor'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (_components.isEmpty) ...[
+                  RawatinCard(
+                    child: _catalogFailed
+                        ? Text(
+                            'Data interval perawatan tidak dapat dimuat. Periksa file data default.',
+                            style: TextStyle(
+                              color: RawatinColors.of(context).muted,
+                            ),
+                          )
+                        : const Center(child: CircularProgressIndicator()),
+                  ),
+                ] else if (visibleComponents.isEmpty) ...[
+                  RawatinCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _dashboardStatusFilter == null
+                              ? 'Belum ada komponen yang cocok dengan profil motor.'
+                              : 'Tidak ada komponen berstatus ${_statusFilterLabel(_dashboardStatusFilter!)}.',
                           style: TextStyle(
                             color: RawatinColors.of(context).muted,
                           ),
-                        )
-                      : const Center(child: CircularProgressIndicator()),
-                ),
-              ] else if (visibleComponents.isEmpty) ...[
-                RawatinCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _dashboardStatusFilter == null
-                            ? 'Belum ada komponen yang cocok dengan profil motor.'
-                            : 'Tidak ada komponen berstatus ${_statusFilterLabel(_dashboardStatusFilter!)}.',
-                        style: TextStyle(
-                          color: RawatinColors.of(context).muted,
                         ),
-                      ),
-                      if (_dashboardStatusFilter != null) ...[
-                        const SizedBox(height: AppSpacing.sm),
-                        TextButton(
-                          onPressed: _clearDashboardStatusFilter,
-                          child: const Text('Tampilkan semua status'),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ] else ...[
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final columns = constraints.maxWidth >= 920
-                        ? 3
-                        : constraints.maxWidth >= 600
-                        ? 2
-                        : 1;
-                    final width =
-                        (constraints.maxWidth - (columns - 1) * 16) / columns;
-                    return Wrap(
-                      spacing: AppSpacing.lg,
-                      runSpacing: AppSpacing.lg,
-                      children: [
-                        for (final component in visibleComponents)
-                          SizedBox(
-                            width: width,
-                            child: _buildComponentCard(component, data),
+                        if (_dashboardStatusFilter != null) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          TextButton(
+                            onPressed: _clearDashboardStatusFilter,
+                            child: const Text('Tampilkan semua status'),
                           ),
+                        ],
                       ],
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                ] else ...[
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final columns = constraints.maxWidth >= 920
+                          ? 3
+                          : constraints.maxWidth >= 600
+                          ? 2
+                          : 1;
+                      final width =
+                          (constraints.maxWidth - (columns - 1) * 16) / columns;
+                      return Wrap(
+                        spacing: AppSpacing.lg,
+                        runSpacing: AppSpacing.lg,
+                        children: [
+                          for (final component in visibleComponents)
+                            SizedBox(
+                              width: width,
+                              child: _buildComponentCard(component, data),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

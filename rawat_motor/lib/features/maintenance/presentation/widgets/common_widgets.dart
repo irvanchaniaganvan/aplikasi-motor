@@ -109,11 +109,7 @@ class RawatinIconTile extends StatelessWidget {
 }
 
 class RawatinInfoChip extends StatelessWidget {
-  const RawatinInfoChip({
-    required this.icon,
-    required this.label,
-    super.key,
-  });
+  const RawatinInfoChip({required this.icon, required this.label, super.key});
 
   final IconData icon;
   final String label;
@@ -347,17 +343,19 @@ class RawatinScreenIntro extends StatelessWidget {
     required this.eyebrow,
     required this.title,
     required this.description,
+    this.action,
     super.key,
   });
 
   final String eyebrow;
   final String title;
   final String description;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
     final colors = RawatinColors.of(context);
-    return Column(
+    final textContent = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -390,6 +388,17 @@ class RawatinScreenIntro extends StatelessWidget {
           description,
           style: TextStyle(color: colors.muted, height: 1.45, fontSize: 13.5),
         ),
+      ],
+    );
+
+    if (action == null) return textContent;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: textContent),
+        const SizedBox(width: AppSpacing.md),
+        action!,
       ],
     );
   }
