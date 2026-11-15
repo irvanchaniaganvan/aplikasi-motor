@@ -19,6 +19,7 @@ import 'package:rawatin/features/maintenance/presentation/widgets/cost_summary_c
 import 'package:rawatin/features/maintenance/domain/use_cases/load_motor_data.dart';
 import 'package:rawatin/features/maintenance/domain/use_cases/save_motor_data.dart';
 import 'package:rawatin/features/maintenance/presentation/pages/oil_reminder_page.dart';
+import 'package:rawatin/features/maintenance/presentation/widgets/app_shell.dart';
 import 'package:rawatin/features/profile/domain/entities/driver_motor_profile.dart';
 import 'package:rawatin/features/profile/domain/entities/motor_model_catalog.dart';
 import 'package:rawatin/features/profile/presentation/pages/local_account_page.dart';
@@ -1065,6 +1066,91 @@ void main() {
       expect(find.textContaining('Perlu dicek'), findsWidgets);
     },
   );
+
+  testWidgets('tab Perawatan terpisah dari Perjalanan di navigasi mobile', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repository = _MemoryMotorDataRepository()
+      ..data = const MotorData(
+        currentOdometer: 12000,
+        lastOilOdometer: 10000,
+        oilInterval: 3000,
+      );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OilReminderPage(
+          loadMotorData: LoadMotorData(repository),
+          saveMotorData: SaveMotorData(repository),
+          catalog: const MaintenanceCatalog(
+            source: 'uji',
+            components: [
+              MaintenanceComponent(
+                name: 'Oli gardan',
+                action: 'ganti',
+                intervalKm: 6000,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('Perawatan'), findsOneWidget);
+    expect(find.text('Perjalanan'), findsOneWidget);
+    await tester.tap(find.text('Perawatan').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Jadwal perawatan'), findsOneWidget);
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      AppSection.care.index,
+    );
+
+    await tester.tap(find.text('Perjalanan').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Mulai perjalanan'), findsOneWidget);
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      AppSection.trips.index,
+    );
+  });
+
+  testWidgets('sidebar desktop menandai tab Perawatan dengan benar', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1000, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repository = _MemoryMotorDataRepository()
+      ..data = const MotorData(
+        currentOdometer: 12000,
+        lastOilOdometer: 10000,
+        oilInterval: 3000,
+      );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OilReminderPage(
+          loadMotorData: LoadMotorData(repository),
+          saveMotorData: SaveMotorData(repository),
+          catalog: const MaintenanceCatalog(source: 'uji', components: []),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Perawatan').first);
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Jadwal perawatan'), findsOneWidget);
+    final careTile = tester.widget<ListTile>(
+      find.ancestor(
+        of: find.text('Perawatan').first,
+        matching: find.byType(ListTile),
+      ),
+    );
+    expect(careTile.selected, isTrue);
+  });
 
   testWidgets('angka status Beranda membuka jadwal dengan filter status', (
     tester,

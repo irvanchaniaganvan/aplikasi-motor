@@ -81,7 +81,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
   bool _isLoading = true;
   bool _isSaving = false;
   ReminderBasis _reminderBasis = ReminderBasis.whicheverFirst;
-  int _selectedSection = 0;
+  AppSection _selectedSection = AppSection.home;
   ComponentScheduleStatus? _dashboardStatusFilter;
   List<MaintenanceComponent> _components = const [];
   List<MaintenanceMotor> _maintenanceMotors = const [];
@@ -357,13 +357,13 @@ class _OilReminderPageState extends State<OilReminderPage> {
                         child: RawatinPageTransition(
                           key: ValueKey(_selectedSection),
                           child: switch (_selectedSection) {
-                            0 => _buildDashboard(),
-                            1 => HistoryView(
+                            AppSection.home => _buildDashboard(),
+                            AppSection.history => HistoryView(
                               data: _motorData,
                               vehicleId: widget.profile?.id ?? 'vehicle-1',
                             ),
-                            2 => _buildTripsPage(),
-                            _ => _buildPartsPage(),
+                            AppSection.trips => _buildTripsPage(),
+                            AppSection.care => _buildPartsPage(),
                           },
                         ),
                       ),
@@ -379,8 +379,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
     );
   }
 
-  void _selectSection(int index) => setState(() {
-    _selectedSection = index;
+  void _selectSection(AppSection section) => setState(() {
+    _selectedSection = section;
     _dashboardStatusFilter = null;
   });
 
@@ -476,33 +476,19 @@ class _OilReminderPageState extends State<OilReminderPage> {
   }
 
   Widget _buildMobileNavigation() => NavigationBar(
-    selectedIndex: _selectedSection.clamp(0, 2),
-    onDestinationSelected: (index) => _selectSection(index),
-    destinations: const [
-      NavigationDestination(
-        icon: Icon(AppIcons.home),
-        selectedIcon: Icon(AppIcons.home),
-        label: 'Beranda',
-      ),
-      NavigationDestination(
-        icon: Icon(AppIcons.history),
-        selectedIcon: Icon(AppIcons.history),
-        label: 'Riwayat',
-      ),
-      NavigationDestination(
-        icon: Icon(Icons.route_outlined),
-        selectedIcon: Icon(Icons.route_rounded),
-        label: 'Perjalanan',
-      ),
+    selectedIndex: _selectedSection.index,
+    onDestinationSelected: (index) => _selectSection(AppSection.values[index]),
+    destinations: [
+      for (final section in AppSection.values)
+        NavigationDestination(
+          icon: Icon(section.icon),
+          selectedIcon: Icon(section.icon),
+          label: section.label,
+        ),
     ],
   );
 
-  String get _sectionTitle => switch (_selectedSection) {
-    0 => 'Beranda',
-    1 => 'Riwayat',
-    2 => 'Perjalanan',
-    _ => 'Semua jadwal',
-  };
+  String get _sectionTitle => _selectedSection.label;
 
   Widget _buildOdometerHero() {
     final colors = RawatinColors.of(context);
@@ -696,7 +682,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
   void _openDashboardStatus(ComponentScheduleStatus status) {
     setState(() {
       _dashboardStatusFilter = status;
-      _selectedSection = 3;
+      _selectedSection = AppSection.care;
     });
   }
 
@@ -723,7 +709,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
               children: [
                 Expanded(child: DashboardHeader(profile: widget.profile)),
                 TextButton.icon(
-                  onPressed: () => _selectSection(3),
+                  onPressed: () => _selectSection(AppSection.care),
                   icon: const Icon(AppIcons.arrowForward, size: 16),
                   label: const Text('Semua'),
                 ),

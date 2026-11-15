@@ -4,6 +4,18 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/rawatin_logo.dart';
 import '../../../profile/domain/entities/driver_motor_profile.dart';
 
+enum AppSection {
+  home('Beranda', AppIcons.home),
+  care('Perawatan', AppIcons.wrench),
+  history('Riwayat', AppIcons.history),
+  trips('Perjalanan', Icons.route_rounded);
+
+  const AppSection(this.label, this.icon);
+
+  final String label;
+  final IconData icon;
+}
+
 class RawatinSidebar extends StatelessWidget {
   const RawatinSidebar({
     required this.selected,
@@ -12,8 +24,8 @@ class RawatinSidebar extends StatelessWidget {
     this.onOpenSettings,
     super.key,
   });
-  final int selected;
-  final ValueChanged<int> onSelect;
+  final AppSection selected;
+  final ValueChanged<AppSection> onSelect;
   final DriverMotorProfile? profile;
   final VoidCallback? onOpenSettings;
 
@@ -76,9 +88,8 @@ class RawatinSidebar extends StatelessWidget {
                     ),
                   ),
                 ),
-                _navItem(0, AppIcons.home, 'Beranda', colors),
-                _navItem(1, AppIcons.history, 'Riwayat', colors),
-                _navItem(2, Icons.route_rounded, 'Perjalanan', colors),
+                for (final section in AppSection.values)
+                  _navItem(section, colors),
                 _actionItem(
                   AppIcons.settings,
                   'Pengaturan motor',
@@ -145,13 +156,8 @@ class RawatinSidebar extends StatelessWidget {
     );
   }
 
-  Widget _navItem(
-    int index,
-    IconData icon,
-    String label,
-    RawatinColors colors,
-  ) {
-    final active = selected == index;
+  Widget _navItem(AppSection section, RawatinColors colors) {
+    final active = selected == section;
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
@@ -166,19 +172,19 @@ class RawatinSidebar extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(horizontal: 12),
           minLeadingWidth: 22,
           leading: Icon(
-            icon,
+            section.icon,
             color: active ? colors.primaryDark : colors.muted,
             size: 20,
           ),
           title: Text(
-            label,
+            section.label,
             style: TextStyle(
               color: active ? colors.primaryDark : colors.inkSoft,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500,
               fontSize: 13,
             ),
           ),
-          onTap: () => onSelect(index),
+          onTap: () => onSelect(section),
           dense: true,
         ),
       ),
