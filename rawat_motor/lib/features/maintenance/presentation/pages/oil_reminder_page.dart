@@ -82,6 +82,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
   bool _isSaving = false;
   ReminderBasis _reminderBasis = ReminderBasis.whicheverFirst;
   int _selectedSection = 0;
+  ComponentScheduleStatus? _dashboardStatusFilter;
   List<MaintenanceComponent> _components = const [];
   List<MaintenanceMotor> _maintenanceMotors = const [];
   bool _catalogFailed = false;
@@ -378,7 +379,10 @@ class _OilReminderPageState extends State<OilReminderPage> {
     );
   }
 
-  void _selectSection(int index) => setState(() => _selectedSection = index);
+  void _selectSection(int index) => setState(() {
+    _selectedSection = index;
+    _dashboardStatusFilter = null;
+  });
 
   Widget _buildTripsPage() => SingleChildScrollView(
     padding: const EdgeInsets.all(AppSpacing.lg),
@@ -619,6 +623,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
                         color: colors.due,
                         soft: colors.dueSoft,
                         icon: AppIcons.due,
+                        onTap: () =>
+                            _openDashboardStatus(ComponentScheduleStatus.due),
                       ),
                       HeroStat(
                         label: 'Segera',
@@ -626,6 +632,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
                         color: colors.soon,
                         soft: colors.soonSoft,
                         icon: AppIcons.soon,
+                        onTap: () =>
+                            _openDashboardStatus(ComponentScheduleStatus.soon),
                       ),
                       HeroStat(
                         label: 'Aman',
@@ -633,6 +641,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
                         color: colors.safe,
                         soft: colors.safeSoft,
                         icon: AppIcons.check,
+                        onTap: () =>
+                            _openDashboardStatus(ComponentScheduleStatus.safe),
                       ),
                     ],
                   ),
@@ -683,6 +693,18 @@ class _OilReminderPageState extends State<OilReminderPage> {
     );
   }
 
+  void _openDashboardStatus(ComponentScheduleStatus status) {
+    setState(() {
+      _dashboardStatusFilter = status;
+      _selectedSection = 3;
+    });
+  }
+
+  void _clearDashboardStatusFilter() {
+    if (_dashboardStatusFilter == null) return;
+    setState(() => _dashboardStatusFilter = null);
+  }
+
   Widget _buildDashboard() => SingleChildScrollView(
     padding: const EdgeInsets.fromLTRB(
       AppSpacing.lg,
@@ -713,9 +735,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
             _buildOdometerHero(),
             const SizedBox(height: AppSpacing.lg),
             if (AiServiceFactory.featureEnabled)
-              AiAssistantCard(
-                onTap: _openAiAssistant,
-              ),
+              AiAssistantCard(onTap: _openAiAssistant),
             const SizedBox(height: AppSpacing.xl),
             const RawatinSectionHeading(
               eyebrow: 'JADWAL MOTOR',
@@ -839,11 +859,18 @@ class _OilReminderPageState extends State<OilReminderPage> {
 
   Widget _buildPartsPage() {
     final data = _motorData;
-    final visibleComponents = _visibleParts()
-      ..sort(
-        (a, b) =>
-            _componentUrgency(a, data).compareTo(_componentUrgency(b, data)),
-      );
+    final visibleComponents =
+        _visibleParts().where((component) {
+          final filter = _dashboardStatusFilter;
+          if (filter == null) return true;
+          final schedule = data == null
+              ? null
+              : _componentSchedule(component, data);
+          return schedule?.status == filter;
+        }).toList()..sort(
+          (a, b) =>
+              _componentUrgency(a, data).compareTo(_componentUrgency(b, data)),
+        );
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -896,6 +923,19 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 ),
               ],
               const SizedBox(height: AppSpacing.xl),
+              if (_dashboardStatusFilter != null) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: InputChip(
+                    avatar: const Icon(Icons.filter_alt_rounded, size: 18),
+                    label: Text(
+                      'Status: ${_statusFilterLabel(_dashboardStatusFilter!)}',
+                    ),
+                    onDeleted: _clearDashboardStatusFilter,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
               if (data == null) ...[
                 RawatinCard(
                   child: Column(
@@ -935,9 +975,25 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 ),
               ] else if (visibleComponents.isEmpty) ...[
                 RawatinCard(
-                  child: Text(
-                    'Belum ada komponen yang cocok dengan profil motor.',
-                    style: TextStyle(color: RawatinColors.of(context).muted),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _dashboardStatusFilter == null
+                            ? 'Belum ada komponen yang cocok dengan profil motor.'
+                            : 'Tidak ada komponen berstatus ${_statusFilterLabel(_dashboardStatusFilter!)}.',
+                        style: TextStyle(
+                          color: RawatinColors.of(context).muted,
+                        ),
+                      ),
+                      if (_dashboardStatusFilter != null) ...[
+                        const SizedBox(height: AppSpacing.sm),
+                        TextButton(
+                          onPressed: _clearDashboardStatusFilter,
+                          child: const Text('Tampilkan semua status'),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ] else ...[
@@ -970,6 +1026,13 @@ class _OilReminderPageState extends State<OilReminderPage> {
       ),
     );
   }
+
+  String _statusFilterLabel(ComponentScheduleStatus status) => switch (status) {
+    ComponentScheduleStatus.due => 'Waktunya',
+    ComponentScheduleStatus.soon => 'Segera',
+    ComponentScheduleStatus.safe => 'Aman',
+    ComponentScheduleStatus.needsCheck => 'Perlu dicek',
+  };
 
   MaintenanceMotor? get _selectedMaintenanceMotor {
     final profile = widget.profile;
@@ -1324,10 +1387,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
     final motor = _selectedMaintenanceMotor;
     Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => AiAssistantPage(
-          motor: motor,
-          profile: widget.profile,
-        ),
+        builder: (_) => AiAssistantPage(motor: motor, profile: widget.profile),
       ),
     );
   }
@@ -1466,6 +1526,22 @@ class _OilReminderPageState extends State<OilReminderPage> {
       );
     }
     await _saveComponentData(updated);
+  }
+
+  void _editOilInterval() {
+    final data = _motorData;
+    if (data == null) return;
+    final oilComponent = _visibleParts().where(
+      (component) => component.name == 'Oli mesin',
+    );
+    if (oilComponent.isEmpty) {
+      _showOilReminderSettings();
+      return;
+    }
+    _editComponentInterval(
+      oilComponent.first,
+      _findComponentState(data, oilComponent.first.name),
+    );
   }
 
   Future<void> _showRecordComponentForm(MaintenanceComponent component) async {
@@ -2111,6 +2187,15 @@ class _OilReminderPageState extends State<OilReminderPage> {
           ),
           const SizedBox(height: AppSpacing.md),
         ],
+        OutlinedButton.icon(
+          onPressed: data == null ? null : _editOilInterval,
+          icon: const Icon(Icons.tune_rounded),
+          label: const Text('Ubah interval ganti oli'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(48),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
         RawatinCard(
           padding: EdgeInsets.zero,
           child: InkWell(
@@ -2333,6 +2418,15 @@ class _OilReminderPageState extends State<OilReminderPage> {
             ),
           ],
           const SizedBox(height: AppSpacing.xl),
+          OutlinedButton.icon(
+            onPressed: data == null ? null : _editOilInterval,
+            icon: const Icon(Icons.tune_rounded),
+            label: const Text('Ubah interval ganti oli'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           FilledButton.icon(
             onPressed: data == null ? null : _recordOilChange,
             icon: const Icon(AppIcons.checkCircleOutline, size: 19),

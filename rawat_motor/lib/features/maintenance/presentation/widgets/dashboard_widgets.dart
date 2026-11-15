@@ -20,11 +20,7 @@ class DashboardHeader extends StatelessWidget {
 }
 
 class CountUpOdometer extends StatelessWidget {
-  const CountUpOdometer({
-    required this.value,
-    required this.style,
-    super.key,
-  });
+  const CountUpOdometer({required this.value, required this.style, super.key});
   final int value;
   final TextStyle style;
 
@@ -53,6 +49,7 @@ class HeroStat extends StatelessWidget {
     required this.color,
     required this.soft,
     required this.icon,
+    this.onTap,
     super.key,
   });
 
@@ -61,48 +58,57 @@ class HeroStat extends StatelessWidget {
   final Color color;
   final Color soft;
   final IconData icon;
+  final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(AppRadii.sm),
-      border: Border.all(color: color.withValues(alpha: 0.32), width: 1),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: color),
-        const SizedBox(width: 5),
-        Text(
-          '$value',
-          style: AppType.metric.copyWith(
-            color: Colors.white,
-            fontSize: 14,
-            fontFeatures: const [],
+  Widget build(BuildContext context) {
+    final content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        border: Border.all(color: color.withValues(alpha: 0.32), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            '$value',
+            style: AppType.metric.copyWith(
+              color: Colors.white,
+              fontSize: 14,
+              fontFeatures: const [],
+            ),
           ),
-        ),
-        const SizedBox(width: 5),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 10.5,
-            fontWeight: FontWeight.w600,
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.8),
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+    if (onTap == null) return content;
+    return Semantics(
+      button: true,
+      label: '$value $label',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadii.sm),
+        child: content,
+      ),
+    );
+  }
 }
 
 class FinishBanner extends StatelessWidget {
-  const FinishBanner({
-    required this.title,
-    required this.subtitle,
-    super.key,
-  });
+  const FinishBanner({required this.title, required this.subtitle, super.key});
   final String title;
   final String subtitle;
 

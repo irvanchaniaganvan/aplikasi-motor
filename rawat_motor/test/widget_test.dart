@@ -1066,6 +1066,102 @@ void main() {
     },
   );
 
+  testWidgets('angka status Beranda membuka jadwal dengan filter status', (
+    tester,
+  ) async {
+    final repository = _MemoryMotorDataRepository()
+      ..data = const MotorData(
+        currentOdometer: 15000,
+        lastOilOdometer: 10000,
+        oilInterval: 3000,
+        componentStates: [
+          ComponentMaintenanceState(
+            componentName: 'Oli mesin',
+            lastServicedKm: 10000,
+          ),
+          ComponentMaintenanceState(
+            componentName: 'Oli gardan',
+            lastServicedKm: 12000,
+          ),
+          ComponentMaintenanceState(
+            componentName: 'Busi',
+            lastServicedKm: 14000,
+          ),
+        ],
+      );
+    const catalog = MaintenanceCatalog(
+      source: 'uji',
+      components: [
+        MaintenanceComponent(
+          name: 'Oli mesin',
+          action: 'ganti',
+          intervalKm: 3000,
+        ),
+        MaintenanceComponent(
+          name: 'Oli gardan',
+          action: 'ganti',
+          intervalKm: 6000,
+        ),
+        MaintenanceComponent(name: 'Busi', action: 'ganti', intervalKm: 4000),
+      ],
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OilReminderPage(
+          loadMotorData: LoadMotorData(repository),
+          saveMotorData: SaveMotorData(repository),
+          catalog: catalog,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Waktunya'));
+    await tester.pumpAndSettle();
+    expect(find.text('Jadwal perawatan'), findsOneWidget);
+    expect(find.text('Oli mesin'), findsOneWidget);
+    expect(find.text('Oli gardan'), findsNothing);
+    expect(find.text('Status: Waktunya'), findsOneWidget);
+  });
+
+  testWidgets('kartu oli menyediakan jalan langsung untuk ubah interval', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final repository = _MemoryMotorDataRepository()
+      ..data = const MotorData(
+        currentOdometer: 11500,
+        lastOilOdometer: 10000,
+        oilInterval: 2000,
+      );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OilReminderPage(
+          loadMotorData: LoadMotorData(repository),
+          saveMotorData: SaveMotorData(repository),
+          catalog: const MaintenanceCatalog(
+            source: 'uji',
+            components: [
+              MaintenanceComponent(
+                name: 'Oli mesin',
+                action: 'ganti',
+                intervalKm: 3000,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Ubah interval ganti oli'));
+    await tester.tap(find.text('Ubah interval ganti oli'));
+    await tester.pumpAndSettle();
+    expect(find.text('Atur interval · Oli mesin'), findsOneWidget);
+    expect(find.text('Kilometer'), findsOneWidget);
+  });
+
   test('menghitung jadwal oli tanpa bergantung pada antarmuka', () {
     final result = const OilScheduleCalculator().calculate(
       const MotorData(
