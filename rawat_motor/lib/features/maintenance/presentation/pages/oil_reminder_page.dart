@@ -86,6 +86,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
   ReminderBasis _reminderBasis = ReminderBasis.whicheverFirst;
   AppSection _selectedSection = AppSection.home;
   ComponentScheduleStatus? _dashboardStatusFilter;
+  String _partsFilter = 'Semua';
   List<MaintenanceComponent> _components = const [];
   List<MaintenanceMotor> _maintenanceMotors = const [];
   bool _catalogFailed = false;
@@ -871,14 +872,30 @@ class _OilReminderPageState extends State<OilReminderPage> {
 
   Widget _buildPartsPage() {
     final data = _motorData;
+    final allVisibleComponents = _visibleParts();
+    final attentionCount = allVisibleComponents.where((component) {
+      final status = data == null
+          ? ComponentScheduleStatus.needsCheck
+          : _componentSchedule(component, data)?.status;
+      return status != ComponentScheduleStatus.safe;
+    }).length;
+    final safeCount = allVisibleComponents.length - attentionCount;
     final visibleComponents =
-        _visibleParts().where((component) {
+        allVisibleComponents.where((component) {
+          final status = data == null
+              ? ComponentScheduleStatus.needsCheck
+              : _componentSchedule(component, data)?.status;
+          if (_partsFilter == 'Perlu perhatian' &&
+              status == ComponentScheduleStatus.safe) {
+            return false;
+          }
+          if (_partsFilter == 'Aman' &&
+              status != ComponentScheduleStatus.safe) {
+            return false;
+          }
           final filter = _dashboardStatusFilter;
           if (filter == null) return true;
-          final schedule = data == null
-              ? null
-              : _componentSchedule(component, data);
-          return schedule?.status == filter;
+          return status == filter;
         }).toList()..sort(
           (a, b) =>
               _componentUrgency(a, data).compareTo(_componentUrgency(b, data)),
@@ -951,6 +968,18 @@ class _OilReminderPageState extends State<OilReminderPage> {
                   ),
                 ],
                 const SizedBox(height: AppSpacing.xl),
+                if (data != null && allVisibleComponents.isNotEmpty) ...[
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      _partsFilterChip('Semua', allVisibleComponents.length),
+                      _partsFilterChip('Perlu perhatian', attentionCount),
+                      _partsFilterChip('Aman', safeCount),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
                 if (_dashboardStatusFilter != null) ...[
                   Align(
                     alignment: Alignment.centerLeft,
@@ -1027,11 +1056,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 ] else ...[
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final columns = constraints.maxWidth >= 920
-                          ? 3
-                          : constraints.maxWidth >= 600
-                          ? 2
-                          : 1;
+                      final columns = constraints.maxWidth >= 600 ? 2 : 1;
                       final width =
                           (constraints.maxWidth - (columns - 1) * 16) / columns;
                       return Wrap(
@@ -1055,6 +1080,25 @@ class _OilReminderPageState extends State<OilReminderPage> {
       ),
     );
   }
+
+  Widget _partsFilterChip(String label, int count) => FilterChip(
+    selected: _partsFilter == label,
+    label: Text('$label · $count'),
+    onSelected: (_) => setState(() => _partsFilter = label),
+    showCheckmark: false,
+    selectedColor: RawatinColors.of(context).primarySoft,
+    side: BorderSide(
+      color: _partsFilter == label
+          ? RawatinColors.of(context).primary
+          : RawatinColors.of(context).line,
+    ),
+    labelStyle: TextStyle(
+      color: _partsFilter == label
+          ? RawatinColors.of(context).primaryDark
+          : RawatinColors.of(context).inkSoft,
+      fontWeight: _partsFilter == label ? FontWeight.w700 : FontWeight.w500,
+    ),
+  );
 
   String _statusFilterLabel(ComponentScheduleStatus status) => switch (status) {
     ComponentScheduleStatus.due => 'Waktunya',
@@ -1253,6 +1297,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
       prominent: due || soon,
       inspection: component.isInspection,
       onOpen: () => _showComponentActions(component, state),
+      onEditInterval: () => _editComponentInterval(component, state),
       onRecord: () => _showRecordComponentForm(component),
     );
   }

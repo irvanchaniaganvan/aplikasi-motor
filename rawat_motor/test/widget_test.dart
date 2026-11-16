@@ -1208,7 +1208,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Perawatan').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Detail · Atur interval').first);
+      await tester.tap(find.text('Riwayat').first);
       await tester.pumpAndSettle();
 
       expect(find.text('Interval: tiap 10.000 km'), findsOneWidget);
@@ -1284,7 +1284,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Perawatan').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Detail · Atur interval').first);
+      await tester.tap(find.text('Riwayat').first);
       await tester.pumpAndSettle();
 
       expect(find.text('Riwayat servis'), findsOneWidget);
@@ -1321,6 +1321,75 @@ void main() {
       expect(find.text('Biaya: Rp280.000'), findsOneWidget);
       expect(find.text('Bengkel: Planet Ban'), findsOneWidget);
       expect(find.text('Ganti ban belakang baru'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'filter Perawatan menyaring komponen dan aksi Atur interval membuka editor',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1000, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repository = _MemoryMotorDataRepository()
+        ..data = MotorData(
+          currentOdometer: 10000,
+          lastOilOdometer: 9000,
+          oilInterval: 3000,
+          componentStates: const [
+            ComponentMaintenanceState(
+              componentName: 'Ban',
+              lastServicedKm: 9000,
+              intervalKmOverride: 10000,
+            ),
+          ],
+          serviceHistory: [
+            ServiceRecord(
+              date: DateTime(2026, 11, 1),
+              odometer: 9000,
+              item: 'Ban',
+            ),
+          ],
+        );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OilReminderPage(
+            loadMotorData: LoadMotorData(repository),
+            saveMotorData: SaveMotorData(repository),
+            catalog: const MaintenanceCatalog(
+              source: 'uji',
+              components: [
+                MaintenanceComponent(
+                  name: 'Ban',
+                  action: 'ganti',
+                  intervalKm: 10000,
+                ),
+                MaintenanceComponent(
+                  name: 'Busi',
+                  action: 'ganti',
+                  intervalKm: 8000,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Perawatan').last);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Semua · 2'), findsOneWidget);
+      expect(find.text('Perlu perhatian · 1'), findsOneWidget);
+      expect(find.text('Aman · 1'), findsOneWidget);
+      expect(find.text('Ban'), findsOneWidget);
+      expect(find.text('Busi'), findsOneWidget);
+
+      await tester.tap(find.text('Aman · 1'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ban'), findsOneWidget);
+      expect(find.text('Busi'), findsNothing);
+
+      await tester.tap(find.text('Atur interval').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Atur interval · Ban'), findsOneWidget);
     },
   );
 
@@ -1545,7 +1614,7 @@ void main() {
 
     await tester.tap(find.text('Semua').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Catat ganti').first);
+    await tester.tap(find.text('Catat servis').first);
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, '30000');
     await tester.tap(find.text('Atur interval penggantian'));
@@ -1624,7 +1693,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Semua').first);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Catat ganti').first);
+      await tester.tap(find.text('Catat servis').first);
       await tester.pumpAndSettle();
 
       expect(find.text('Catat ganti Oli gardan'), findsOneWidget);
@@ -1676,7 +1745,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Catat cek'), findsOneWidget);
-    expect(find.text('Catat ganti'), findsNothing);
+    expect(find.text('Catat servis'), findsNothing);
     await tester.tap(find.text('Catat cek'));
     await tester.pumpAndSettle();
     expect(find.text('Catat cek Kampas rem'), findsOneWidget);
@@ -1821,8 +1890,8 @@ void main() {
     expect(find.textContaining('500 km lagi'), findsOneWidget);
     expect(find.text('Segera'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Catat ganti').first);
-    await tester.tap(find.text('Catat ganti').first);
+    await tester.ensureVisible(find.text('Catat servis').first);
+    await tester.tap(find.text('Catat servis').first);
     await tester.pumpAndSettle();
     expect(find.text('Odometer sekarang: 11.500 km'), findsOneWidget);
     expect(find.text('KM motor saat diservis'), findsOneWidget);

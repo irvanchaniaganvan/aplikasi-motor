@@ -17,6 +17,7 @@ class PartCard extends StatelessWidget {
     required this.description,
     required this.meta,
     required this.onOpen,
+    required this.onEditInterval,
     required this.onRecord,
     this.progress,
     this.prominent = false,
@@ -33,6 +34,7 @@ class PartCard extends StatelessWidget {
   final String description;
   final String meta;
   final VoidCallback onOpen;
+  final VoidCallback onEditInterval;
   final VoidCallback onRecord;
   final double? progress;
   final bool prominent;
@@ -159,17 +161,36 @@ class PartCard extends StatelessWidget {
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.xs,
                 children: [
-                  TextButton(
-                    onPressed: onOpen,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xs,
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    children: [
+                      TextButton.icon(
+                        onPressed: onOpen,
+                        icon: const Icon(Icons.history_rounded, size: 15),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs,
+                          ),
+                          minimumSize: const Size(0, 32),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: AppType.button.copyWith(fontSize: 12),
+                        ),
+                        label: const Text('Riwayat'),
                       ),
-                      minimumSize: const Size(0, 32),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      textStyle: AppType.button.copyWith(fontSize: 12),
-                    ),
-                    child: const Text('Detail · Atur interval'),
+                      TextButton.icon(
+                        onPressed: onEditInterval,
+                        icon: const Icon(Icons.tune_rounded, size: 15),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs,
+                          ),
+                          minimumSize: const Size(0, 32),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          textStyle: AppType.button.copyWith(fontSize: 12),
+                        ),
+                        label: const Text('Atur interval'),
+                      ),
+                    ],
                   ),
                   PartRecordButton(
                     prominent: prominent,
@@ -204,7 +225,7 @@ class PartRecordButton extends StatelessWidget {
     return FilledButton.icon(
       onPressed: onPressed,
       icon: const Icon(AppIcons.record, size: 15),
-      label: Text(inspection ? 'Catat cek' : 'Catat ganti'),
+      label: Text(inspection ? 'Catat cek' : 'Catat servis'),
       style: FilledButton.styleFrom(
         minimumSize: const Size(0, 34),
         padding: const EdgeInsets.symmetric(horizontal: 10),
