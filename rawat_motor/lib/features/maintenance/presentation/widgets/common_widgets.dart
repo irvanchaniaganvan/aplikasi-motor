@@ -344,6 +344,7 @@ class RawatinScreenIntro extends StatelessWidget {
     required this.title,
     required this.description,
     this.action,
+    this.compact = false,
     super.key,
   });
 
@@ -351,6 +352,7 @@ class RawatinScreenIntro extends StatelessWidget {
   final String title;
   final String description;
   final Widget? action;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -373,20 +375,24 @@ class RawatinScreenIntro extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: compact ? 4 : 6),
         Text(
           title,
           style: AppType.km.copyWith(
             color: colors.ink,
-            fontSize: 34,
+            fontSize: compact ? 30 : 34,
             height: 1.02,
             letterSpacing: 0.2,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: compact ? 4 : 6),
         Text(
           description,
-          style: TextStyle(color: colors.muted, height: 1.45, fontSize: 13.5),
+          style: TextStyle(
+            color: colors.muted,
+            height: compact ? 1.3 : 1.45,
+            fontSize: compact ? 12.5 : 13.5,
+          ),
         ),
       ],
     );

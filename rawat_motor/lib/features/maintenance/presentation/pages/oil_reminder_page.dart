@@ -872,6 +872,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
 
   Widget _buildPartsPage() {
     final data = _motorData;
+    final isNarrow = MediaQuery.sizeOf(context).width < 600;
     final allVisibleComponents = _visibleParts();
     final attentionCount = allVisibleComponents.where((component) {
       final status = data == null
@@ -904,9 +905,9 @@ class _OilReminderPageState extends State<OilReminderPage> {
       onRefresh: () => _handleRefresh(showFeedback: true),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
+        padding: EdgeInsets.fromLTRB(
           AppSpacing.lg,
-          AppSpacing.xxl,
+          isNarrow ? AppSpacing.lg : AppSpacing.xxl,
           AppSpacing.lg,
           AppSpacing.xxxl,
         ),
@@ -919,7 +920,10 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 RawatinScreenIntro(
                   eyebrow: 'KOMPONEN & PERAWATAN',
                   title: 'Jadwal perawatan',
-                  description: 'Interval adalah perkiraan umum: bukan spesifikasi resmi. Ikuti buku manual atau saran bengkel.',
+                  compact: isNarrow,
+                  description: isNarrow
+                      ? 'Interval perkiraan, bukan spesifikasi resmi. Ikuti buku manual atau saran bengkel.'
+                      : 'Interval adalah perkiraan umum: bukan spesifikasi resmi. Ikuti buku manual atau saran bengkel.',
                   action: IconButton.outlined(
                     tooltip: 'Muat ulang data',
                     onPressed: _isRefreshing
@@ -935,7 +939,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                   ),
                 ),
                 if (widget.profile != null) ...[
-                  const SizedBox(height: AppSpacing.lg),
+                  SizedBox(height: isNarrow ? AppSpacing.md : AppSpacing.lg),
                   Wrap(
                     spacing: AppSpacing.sm,
                     runSpacing: AppSpacing.sm,
@@ -962,12 +966,12 @@ class _OilReminderPageState extends State<OilReminderPage> {
                         ),
                       RawatinInfoChip(
                         icon: AppIcons.grid,
-                        label: '${visibleComponents.length} komponen',
+                        label: '${allVisibleComponents.length} komponen',
                       ),
                     ],
                   ),
                 ],
-                const SizedBox(height: AppSpacing.xl),
+                SizedBox(height: isNarrow ? AppSpacing.lg : AppSpacing.xl),
                 if (data != null && allVisibleComponents.isNotEmpty) ...[
                   Wrap(
                     spacing: AppSpacing.sm,
@@ -978,7 +982,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                       _partsFilterChip('Aman', safeCount),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.lg),
+                  SizedBox(height: isNarrow ? AppSpacing.md : AppSpacing.lg),
                 ],
                 if (_dashboardStatusFilter != null) ...[
                   Align(
@@ -1061,7 +1065,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                           (constraints.maxWidth - (columns - 1) * 16) / columns;
                       return Wrap(
                         spacing: AppSpacing.lg,
-                        runSpacing: AppSpacing.lg,
+                        runSpacing: isNarrow ? AppSpacing.md : AppSpacing.lg,
                         children: [
                           for (final component in visibleComponents)
                             SizedBox(
@@ -1233,14 +1237,14 @@ class _OilReminderPageState extends State<OilReminderPage> {
         : soon
         ? colors.soon
         : needsCheck
-        ? colors.check
+        ? colors.soon
         : colors.safe;
     final statusBackground = due
         ? colors.dueSoft
         : soon
         ? colors.soonSoft
         : needsCheck
-        ? colors.checkSoft
+        ? colors.soonSoft
         : colors.safeSoft;
     final statusIcon = due
         ? AppIcons.due
@@ -1294,7 +1298,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
       description: description,
       meta: intervalText,
       progress: progress,
-      prominent: due || soon,
+      compact: MediaQuery.sizeOf(context).width < 600,
+      prominent: due || soon || needsCheck,
       inspection: component.isInspection,
       onOpen: () => _showComponentActions(component, state),
       onEditInterval: () => _editComponentInterval(component, state),

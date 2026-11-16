@@ -20,6 +20,7 @@ class PartCard extends StatelessWidget {
     required this.onEditInterval,
     required this.onRecord,
     this.progress,
+    this.compact = false,
     this.prominent = false,
     this.inspection = false,
     super.key,
@@ -37,6 +38,7 @@ class PartCard extends StatelessWidget {
   final VoidCallback onEditInterval;
   final VoidCallback onRecord;
   final double? progress;
+  final bool compact;
   final bool prominent;
   final bool inspection;
 
@@ -57,7 +59,7 @@ class PartCard extends StatelessWidget {
               color: prominent
                   ? statusColor.withValues(alpha: 0.5)
                   : colors.line,
-              width: prominent ? 1.4 : 1,
+              width: prominent ? 1.5 : 1,
             ),
             boxShadow: prominent
                 ? [
@@ -78,8 +80,9 @@ class PartCard extends StatelessWidget {
                     icon: icon,
                     color: statusColor,
                     soft: statusSoft,
+                    size: compact ? 42 : 46,
                   ),
-                  const SizedBox(width: AppSpacing.md),
+                  SizedBox(width: compact ? AppSpacing.sm : AppSpacing.md),
                   Expanded(
                     child: Text(
                       name,
@@ -87,7 +90,7 @@ class PartCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: AppType.cardTitle.copyWith(
                         color: colors.ink,
-                        fontSize: 17,
+                        fontSize: compact ? 16 : 17,
                       ),
                     ),
                   ),
@@ -100,7 +103,7 @@ class PartCard extends StatelessWidget {
                   ],
                 ],
               ),
-              const SizedBox(height: AppSpacing.sm),
+              SizedBox(height: compact ? 9 : AppSpacing.sm),
               Row(
                 children: [
                   Flexible(
@@ -122,20 +125,24 @@ class PartCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: compact ? 7 : 9),
               Text(
                 description,
-                maxLines: 1,
+                maxLines: compact ? 2 : 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: prominent ? statusColor : colors.inkSoft,
-                  fontSize: 12.5,
+                  fontSize: compact ? 13 : 12.5,
                   fontWeight: prominent ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
               if (progress != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                SegmentedGauge(value: progress!, color: statusColor, height: 8),
+                SizedBox(height: compact ? 9 : AppSpacing.sm),
+                SegmentedGauge(
+                  value: progress!,
+                  color: statusColor,
+                  height: compact ? 6 : 8,
+                ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -154,7 +161,7 @@ class PartCard extends StatelessWidget {
                   ],
                 ),
               ],
-              const SizedBox(height: 6),
+              SizedBox(height: compact ? 5 : 8),
               Wrap(
                 alignment: WrapAlignment.spaceBetween,
                 crossAxisAlignment: WrapCrossAlignment.center,
@@ -227,10 +234,10 @@ class PartRecordButton extends StatelessWidget {
       icon: const Icon(AppIcons.record, size: 15),
       label: Text(inspection ? 'Catat cek' : 'Catat servis'),
       style: FilledButton.styleFrom(
-        minimumSize: const Size(0, 34),
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        backgroundColor: prominent ? colors.primary : colors.primarySoft,
-        foregroundColor: prominent ? colors.white : colors.primaryDark,
+        minimumSize: const Size(0, 40),
+        padding: const EdgeInsets.symmetric(horizontal: 13),
+        backgroundColor: colors.accent,
+        foregroundColor: colors.onAccent,
         textStyle: AppType.button.copyWith(fontSize: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.sm),
