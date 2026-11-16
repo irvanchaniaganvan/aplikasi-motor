@@ -1236,6 +1236,95 @@ void main() {
   );
 
   testWidgets(
+    'dapat mengedit catatan riwayat servis langsung dari detail komponen',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final repository = _MemoryMotorDataRepository()
+        ..data = MotorData(
+          currentOdometer: 30000,
+          lastOilOdometer: 29000,
+          oilInterval: 3000,
+          componentStates: const [
+            ComponentMaintenanceState(
+              componentName: 'Ban',
+              lastServicedKm: 29000,
+              intervalKmOverride: 10000,
+            ),
+          ],
+          serviceHistory: [
+            ServiceRecord(
+              date: DateTime(2026, 11, 15),
+              odometer: 29000,
+              item: 'Ban',
+              workshop: '',
+              cost: 0,
+              notes: '',
+            ),
+          ],
+        );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OilReminderPage(
+            loadMotorData: LoadMotorData(repository),
+            saveMotorData: SaveMotorData(repository),
+            catalog: const MaintenanceCatalog(
+              source: 'uji',
+              components: [
+                MaintenanceComponent(
+                  name: 'Ban',
+                  action: 'ganti',
+                  intervalKm: 10000,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Perawatan').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Detail · Atur interval').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Riwayat servis'), findsOneWidget);
+      expect(find.text('Biaya: Rp0'), findsNothing);
+      expect(find.byTooltip('Edit catatan servis'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Edit catatan servis').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit catatan servis'), findsOneWidget);
+
+      final textFields = find.byType(TextField);
+      expect(textFields, findsAtLeastNWidgets(4));
+
+      await tester.enterText(textFields.at(1), '280000');
+      await tester.enterText(textFields.at(2), 'Planet Ban');
+      await tester.enterText(textFields.at(3), 'Ganti ban belakang baru');
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Simpan'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Edit catatan servis'), findsNothing);
+      expect(
+        find.text('Catatan servis Ban berhasil diperbarui.'),
+        findsOneWidget,
+      );
+
+      expect(repository.data!.serviceHistory, hasLength(1));
+      final updatedRecord = repository.data!.serviceHistory.single;
+      expect(updatedRecord.cost, 280000);
+      expect(updatedRecord.workshop, 'Planet Ban');
+      expect(updatedRecord.notes, 'Ganti ban belakang baru');
+
+      expect(find.text('Biaya: Rp280.000'), findsOneWidget);
+      expect(find.text('Bengkel: Planet Ban'), findsOneWidget);
+      expect(find.text('Ganti ban belakang baru'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'halaman Perawatan dapat dimuat ulang lewat tombol refresh dan pull-to-refresh',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(390, 844));

@@ -57,4 +57,23 @@ class ServiceRecord {
       receiptPath: receiptPath as String?,
     );
   }
+
+  ServiceRecord copyWith({
+    DateTime? date,
+    int? odometer,
+    String? item,
+    String? workshop,
+    int? cost,
+    String? notes,
+    String? receiptPath,
+    bool clearReceiptPath = false,
+  }) => ServiceRecord(
+    date: date ?? this.date,
+    odometer: odometer ?? this.odometer,
+    item: item ?? this.item,
+    workshop: workshop ?? this.workshop,
+    cost: cost ?? this.cost,
+    notes: notes ?? this.notes,
+    receiptPath: clearReceiptPath ? null : receiptPath ?? this.receiptPath,
+  );
 }

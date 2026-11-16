@@ -24,6 +24,7 @@ import '../../domain/use_cases/load_motor_data.dart';
 import '../../domain/use_cases/save_motor_data.dart';
 import '../../../profile/domain/entities/driver_motor_profile.dart';
 import '../../../profile/presentation/widgets/vehicle_avatar.dart';
+import '../../../profile/presentation/widgets/vehicle_photo_viewer.dart';
 import '../../../../core/services/vehicle_photo_service.dart';
 import '../../../trips/data/repositories/local_trip_repository.dart';
 import '../../../trips/presentation/pages/trip_record_page.dart';
@@ -1448,8 +1449,54 @@ class _OilReminderPageState extends State<OilReminderPage> {
                       itemBuilder: (context, index) {
                         final entry = history[index];
                         final record = entry.value;
+
+                        Future<void> onEdit() async {
+                          final newRecord = await _showEditServiceRecordSheet(
+                            context: sheetContext,
+                            component: component,
+                            record: record,
+                          );
+                          if (newRecord == null || !mounted) return;
+                          final updated = await _updateComponentServiceRecord(
+                            component: component,
+                            oldRecord: record,
+                            newRecord: newRecord,
+                          );
+                          if (!updated || !sheetContext.mounted) return;
+                          setSheetState(() {
+                            final latestData = _motorData;
+                            if (latestData != null) {
+                              final newHistory =
+                                  latestData.serviceHistory
+                                      .asMap()
+                                      .entries
+                                      .where(
+                                        (item) =>
+                                            item.value.item.toLowerCase() ==
+                                            component.name.toLowerCase(),
+                                      )
+                                      .toList()
+                                    ..sort(
+                                      (a, b) =>
+                                          b.value.date.compareTo(a.value.date),
+                                    );
+                              history
+                                ..clear()
+                                ..addAll(newHistory);
+                              lastService = history.isEmpty
+                                  ? null
+                                  : history.first.value;
+                              schedule = _componentSchedule(
+                                component,
+                                latestData,
+                              );
+                            }
+                          });
+                        }
+
                         return ListTile(
                           contentPadding: EdgeInsets.zero,
+                          onTap: onEdit,
                           leading: const Icon(
                             Icons.build_circle_outlined,
                             color: green,
@@ -1477,37 +1524,56 @@ class _OilReminderPageState extends State<OilReminderPage> {
                                 Text('Biaya: ${formatRupiah(record.cost)}'),
                               if (record.notes.trim().isNotEmpty)
                                 Text(record.notes),
+                              if (record.receiptPath != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: ServiceReceiptButton(
+                                    path: record.receiptPath!,
+                                  ),
+                                ),
                             ],
                           ),
-                          trailing: IconButton(
-                            tooltip: 'Hapus catatan servis',
-                            icon: const Icon(Icons.delete_outline_rounded),
-                            onPressed: () async {
-                              final confirmed =
-                                  await _confirmDeleteServiceRecord(record);
-                              if (!confirmed || !mounted) return;
-                              final removed =
-                                  await _deleteComponentServiceRecord(
-                                    component,
-                                    record,
-                                  );
-                              if (!removed || !sheetContext.mounted) return;
-                              setSheetState(() {
-                                history.removeWhere(
-                                  (item) => item.key == entry.key,
-                                );
-                                lastService = history.isEmpty
-                                    ? null
-                                    : history.first.value;
-                                final latestData = _motorData;
-                                if (latestData != null) {
-                                  schedule = _componentSchedule(
-                                    component,
-                                    latestData,
-                                  );
-                                }
-                              });
-                            },
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Edit catatan servis',
+                                icon: const Icon(Icons.edit_outlined),
+                                visualDensity: VisualDensity.compact,
+                                onPressed: onEdit,
+                              ),
+                              IconButton(
+                                tooltip: 'Hapus catatan servis',
+                                icon: const Icon(Icons.delete_outline_rounded),
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () async {
+                                  final confirmed =
+                                      await _confirmDeleteServiceRecord(record);
+                                  if (!confirmed || !mounted) return;
+                                  final removed =
+                                      await _deleteComponentServiceRecord(
+                                        component,
+                                        record,
+                                      );
+                                  if (!removed || !sheetContext.mounted) return;
+                                  setSheetState(() {
+                                    history.removeWhere(
+                                      (item) => item.key == entry.key,
+                                    );
+                                    lastService = history.isEmpty
+                                        ? null
+                                        : history.first.value;
+                                    final latestData = _motorData;
+                                    if (latestData != null) {
+                                      schedule = _componentSchedule(
+                                        component,
+                                        latestData,
+                                      );
+                                    }
+                                  });
+                                },
+                              ),
+                            ],
                           ),
                         );
                       },
@@ -1609,6 +1675,424 @@ class _OilReminderPageState extends State<OilReminderPage> {
     }
     if (saved && mounted) {
       _showMessage('Catatan servis ${record.item} berhasil dihapus.');
+    }
+    return saved;
+  }
+
+  Future<ServiceRecord?> _showEditServiceRecordSheet({
+    required BuildContext context,
+    required MaintenanceComponent component,
+    required ServiceRecord record,
+  }) async {
+    final kmController = TextEditingController(
+      text: record.odometer.toString(),
+    );
+    final costController = TextEditingController(
+      text: record.cost > 0 ? record.cost.toString() : '',
+    );
+    final workshopController = TextEditingController(text: record.workshop);
+    final notesController = TextEditingController(text: record.notes);
+    var serviceDate = record.date;
+    Uint8List? receiptBytes;
+    var receiptExtension = 'png';
+    var removeReceipt = false;
+    final existingReceiptPath = record.receiptPath;
+
+    return showModalBottomSheet<ServiceRecord>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: cream,
+      builder: (editSheetContext) => StatefulBuilder(
+        builder: (context, setEditState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              4,
+              20,
+              20 + MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.edit_note_rounded,
+                        color: green,
+                        size: 26,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Edit catatan servis',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: ink,
+                              ),
+                            ),
+                            Text(
+                              component.name,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: muted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: kmController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'KM motor saat servis',
+                      suffixText: 'km',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        final chosen = await showDatePicker(
+                          context: context,
+                          initialDate: serviceDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime.now(),
+                        );
+                        if (chosen != null) {
+                          setEditState(() => serviceDate = chosen);
+                        }
+                      },
+                      icon: const Icon(Icons.calendar_month),
+                      label: Text('Tanggal: ${formatShortDate(serviceDate)}'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: costController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Biaya (opsional)',
+                      prefixText: 'Rp ',
+                      helperText: 'Masukkan biaya jika ada, atau kosongkan',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: workshopController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nama bengkel (opsional)',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: notesController,
+                    decoration: const InputDecoration(
+                      labelText: 'Catatan (opsional)',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (existingReceiptPath != null &&
+                      !removeReceipt &&
+                      receiptBytes == null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: line),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.receipt_long_outlined,
+                            size: 20,
+                            color: green,
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Foto nota tersimpan',
+                              style: TextStyle(fontSize: 13, color: ink),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => VehiclePhotoViewer.show(
+                              context,
+                              existingReceiptPath,
+                            ),
+                            child: const Text('Lihat'),
+                          ),
+                          IconButton(
+                            tooltip: 'Hapus foto nota',
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () =>
+                                setEditState(() => removeReceipt = true),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (receiptBytes != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: line),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.check_circle_outline,
+                            size: 20,
+                            color: green,
+                          ),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Foto nota baru dipilih',
+                              style: TextStyle(fontSize: 13, color: ink),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Batalkan foto baru',
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () =>
+                                setEditState(() => receiptBytes = null),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () async {
+                        try {
+                          final selected = await VehiclePhotoService()
+                              .pickPhoto(source: ImageSource.gallery);
+                          if (selected != null) {
+                            setEditState(() {
+                              receiptBytes = selected.bytes;
+                              receiptExtension = selected.extension;
+                              removeReceipt = false;
+                            });
+                          }
+                        } catch (error) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  VehiclePhotoService.resolveErrorMessage(
+                                    error,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      icon: Icon(
+                        existingReceiptPath != null || receiptBytes != null
+                            ? Icons.change_circle_outlined
+                            : Icons.add_a_photo_outlined,
+                      ),
+                      label: Text(
+                        existingReceiptPath != null || receiptBytes != null
+                            ? 'Ganti foto nota'
+                            : 'Tambah foto nota',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(editSheetContext),
+                          child: const Text('Batal'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () async {
+                            final km = int.tryParse(kmController.text.trim());
+                            final costClean = costController.text
+                                .trim()
+                                .replaceAll('.', '');
+                            final cost = costClean.isEmpty
+                                ? 0
+                                : int.tryParse(costClean);
+                            if (km == null ||
+                                km < 0 ||
+                                cost == null ||
+                                cost < 0) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Pastikan KM dan biaya diisi angka valid.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            String? finalReceiptPath = removeReceipt
+                                ? null
+                                : existingReceiptPath;
+                            if (receiptBytes != null) {
+                              try {
+                                finalReceiptPath = await VehiclePhotoService()
+                                    .savePhotoBytes(
+                                      bytes: receiptBytes!,
+                                      profileId:
+                                          widget.profile?.id ?? 'vehicle-1',
+                                      extension: receiptExtension,
+                                    );
+                              } catch (_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Foto nota belum berhasil disimpan.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+                            }
+                            final updated = ServiceRecord(
+                              date: serviceDate,
+                              odometer: km,
+                              item: component.name,
+                              workshop: workshopController.text.trim(),
+                              cost: cost,
+                              notes: notesController.text.trim(),
+                              receiptPath: finalReceiptPath,
+                            );
+                            if (!editSheetContext.mounted) return;
+                            Navigator.pop(editSheetContext, updated);
+                          },
+                          child: const Text('Simpan'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _updateComponentServiceRecord({
+    required MaintenanceComponent component,
+    required ServiceRecord oldRecord,
+    required ServiceRecord newRecord,
+  }) async {
+    final data = _motorData;
+    if (data == null) return false;
+    var recordIndex = data.serviceHistory.indexWhere(
+      (candidate) => identical(candidate, oldRecord),
+    );
+    if (recordIndex < 0) {
+      recordIndex = data.serviceHistory.indexWhere(
+        (c) =>
+            c.item == oldRecord.item &&
+            c.date == oldRecord.date &&
+            c.odometer == oldRecord.odometer &&
+            c.cost == oldRecord.cost &&
+            c.workshop == oldRecord.workshop &&
+            c.notes == oldRecord.notes &&
+            c.receiptPath == oldRecord.receiptPath,
+      );
+    }
+    if (recordIndex < 0) return false;
+
+    final currentPhotoPaths = data.serviceHistory
+        .where((candidate) => !identical(candidate, oldRecord))
+        .map((candidate) => candidate.receiptPath)
+        .whereType<String>()
+        .toSet();
+    final photoToDelete =
+        oldRecord.receiptPath != null &&
+            oldRecord.receiptPath != newRecord.receiptPath &&
+            !currentPhotoPaths.contains(oldRecord.receiptPath)
+        ? oldRecord.receiptPath
+        : null;
+
+    final records = [...data.serviceHistory];
+    records[recordIndex] = newRecord;
+
+    final remaining =
+        records
+            .where(
+              (record) =>
+                  record.item.toLowerCase() == component.name.toLowerCase(),
+            )
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
+    final latest = remaining.isEmpty ? null : remaining.first;
+    final current = _findComponentState(data, component.name);
+    final updatedState = ComponentMaintenanceState(
+      componentName: component.name,
+      componentId: component.id,
+      lastServicedKm: latest?.odometer,
+      intervalKmOverride: current?.intervalKmOverride,
+      intervalMonthsOverride: current?.intervalMonthsOverride,
+      lastServicedAt: latest?.date,
+    );
+    var updated = data.copyWith(
+      serviceHistory: records,
+      componentStates: _replaceComponentState(
+        data.componentStates,
+        updatedState,
+      ),
+    );
+    if (component.name == 'Oli mesin' || component.id == 'oli-mesin') {
+      updated = updated.copyWith(
+        lastOilOdometer: latest?.odometer ?? 0,
+        lastOilChangeDate: latest?.date,
+        clearLastOilChangeDate: latest == null,
+      );
+    }
+    final saved = await _saveComponentData(updated);
+    if (!saved) return false;
+    if (photoToDelete != null) {
+      try {
+        await VehiclePhotoService().deletePhoto(photoToDelete);
+      } catch (_) {
+        if (mounted) {
+          _showMessage(
+            'Catatan diperbarui, tetapi file nota lama gagal dibersihkan.',
+          );
+        }
+      }
+    }
+    if (saved && mounted) {
+      _showMessage('Catatan servis ${newRecord.item} berhasil diperbarui.');
     }
     return saved;
   }
