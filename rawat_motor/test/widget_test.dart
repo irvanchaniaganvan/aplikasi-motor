@@ -1208,7 +1208,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Perawatan').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Riwayat').first);
+      await tester.tap(find.text('Detail · Riwayat').first);
       await tester.pumpAndSettle();
 
       expect(find.text('Interval: tiap 10.000 km'), findsOneWidget);
@@ -1284,7 +1284,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Perawatan').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Riwayat').first);
+      await tester.tap(find.text('Detail · Riwayat').first);
       await tester.pumpAndSettle();
 
       expect(find.text('Riwayat servis'), findsOneWidget);
@@ -1387,7 +1387,7 @@ void main() {
       expect(find.text('Ban'), findsOneWidget);
       expect(find.text('Busi'), findsNothing);
 
-      await tester.tap(find.text('Atur interval').first);
+      await tester.tap(find.byTooltip('Atur interval').first);
       await tester.pumpAndSettle();
       expect(find.text('Atur interval · Ban'), findsOneWidget);
     },

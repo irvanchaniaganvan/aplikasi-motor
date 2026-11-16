@@ -1085,24 +1085,28 @@ class _OilReminderPageState extends State<OilReminderPage> {
     );
   }
 
-  Widget _partsFilterChip(String label, int count) => FilterChip(
-    selected: _partsFilter == label,
-    label: Text('$label · $count'),
-    onSelected: (_) => setState(() => _partsFilter = label),
-    showCheckmark: false,
-    selectedColor: RawatinColors.of(context).primarySoft,
-    side: BorderSide(
-      color: _partsFilter == label
-          ? RawatinColors.of(context).primary
-          : RawatinColors.of(context).line,
-    ),
-    labelStyle: TextStyle(
-      color: _partsFilter == label
-          ? RawatinColors.of(context).primaryDark
-          : RawatinColors.of(context).inkSoft,
-      fontWeight: _partsFilter == label ? FontWeight.w700 : FontWeight.w500,
-    ),
-  );
+  Widget _partsFilterChip(String label, int count) {
+    final colors = RawatinColors.of(context);
+    final selected = _partsFilter == label;
+    return FilterChip(
+      selected: selected,
+      label: Text('$label · $count'),
+      onSelected: (_) => setState(() => _partsFilter = label),
+      showCheckmark: false,
+      selectedColor: colors.accentSoft,
+      backgroundColor: colors.surface,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: selected ? colors.accent : colors.line,
+          width: selected ? 1.4 : 1,
+        ),
+      ),
+      labelStyle: TextStyle(
+        color: selected ? colors.accent : colors.inkSoft,
+        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+      ),
+    );
+  }
 
   String _statusFilterLabel(ComponentScheduleStatus status) => switch (status) {
     ComponentScheduleStatus.due => 'Waktunya',
@@ -1272,7 +1276,9 @@ class _OilReminderPageState extends State<OilReminderPage> {
     final intervalText = intervalParts.isEmpty
         ? 'Interval belum diatur'
         : intervalParts.join(' / ');
-    final progress = needsCheck || interval <= 0 || lastServicedKm == null
+    final progress = needsCheck
+        ? 0.0
+        : interval <= 0 || lastServicedKm == null
         ? null
         : ((data.currentOdometer - lastServicedKm) / interval)
               .clamp(0.0, 1.0)

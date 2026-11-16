@@ -88,6 +88,7 @@ class RawatinIconTile extends StatelessWidget {
     required this.color,
     required this.soft,
     this.size = 40,
+    this.borderColor,
     super.key,
   });
 
@@ -95,6 +96,7 @@ class RawatinIconTile extends StatelessWidget {
   final Color color;
   final Color soft;
   final double size;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -103,6 +105,7 @@ class RawatinIconTile extends StatelessWidget {
     decoration: BoxDecoration(
       color: soft,
       borderRadius: BorderRadius.circular(size * .29),
+      border: borderColor == null ? null : Border.all(color: borderColor!),
     ),
     child: Icon(icon, color: color, size: size * .5),
   );

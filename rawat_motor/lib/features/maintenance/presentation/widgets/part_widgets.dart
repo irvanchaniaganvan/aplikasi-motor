@@ -45,173 +45,239 @@ class PartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = RawatinColors.of(context);
+    final cardTint = Color.lerp(colors.surface, statusSoft, 0.38)!;
     return Material(
-      color: colors.surface,
-      borderRadius: BorderRadius.circular(AppRadii.lg),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadii.lg),
-        onTap: onOpen,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppRadii.lg),
-            border: Border.all(
-              color: prominent
-                  ? statusColor.withValues(alpha: 0.5)
-                  : colors.line,
-              width: prominent ? 1.5 : 1,
-            ),
-            boxShadow: prominent
-                ? [
-                    BoxShadow(
-                      color: statusColor.withValues(alpha: 0.08),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ]
-                : null,
+      color: Colors.transparent,
+      child: ClipPath(
+        clipper: _PartCardClipper(cut: compact ? 11 : 14),
+        child: CustomPaint(
+          foregroundPainter: _PartCardBorderPainter(
+            color: statusColor.withValues(alpha: prominent ? 0.9 : 0.62),
+            cut: compact ? 11 : 14,
+            strokeWidth: prominent ? 1.6 : 1.2,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  RawatinIconTile(
-                    icon: icon,
-                    color: statusColor,
-                    soft: statusSoft,
-                    size: compact ? 42 : 46,
-                  ),
-                  SizedBox(width: compact ? AppSpacing.sm : AppSpacing.md),
-                  Expanded(
-                    child: Text(
-                      name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppType.cardTitle.copyWith(
-                        color: colors.ink,
-                        fontSize: compact ? 16 : 17,
-                      ),
-                    ),
-                  ),
-                  if (inspection) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    RawatinInfoChip(
-                      icon: AppIcons.search,
-                      label: 'Pemeriksaan',
-                    ),
-                  ],
-                ],
-              ),
-              SizedBox(height: compact ? 9 : AppSpacing.sm),
-              Row(
-                children: [
-                  Flexible(
-                    child: RawatinStatusBadge(
-                      label: statusLabel,
-                      icon: statusIcon,
-                      color: statusColor,
-                      background: statusSoft,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      meta,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: colors.muted, fontSize: 11.5),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: compact ? 7 : 9),
-              Text(
-                description,
-                maxLines: compact ? 2 : 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: prominent ? statusColor : colors.inkSoft,
-                  fontSize: compact ? 13 : 12.5,
-                  fontWeight: prominent ? FontWeight.w600 : FontWeight.w500,
-                ),
-              ),
-              if (progress != null) ...[
-                SizedBox(height: compact ? 9 : AppSpacing.sm),
-                SegmentedGauge(
-                  value: progress!,
-                  color: statusColor,
-                  height: compact ? 6 : 8,
-                ),
-                const SizedBox(height: 4),
-                Row(
+          child: Material(
+            color: cardTint,
+            child: InkWell(
+              onTap: onOpen,
+              child: Container(
+                padding: EdgeInsets.all(compact ? 12 : AppSpacing.md),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      'Interval terpakai',
-                      style: TextStyle(color: colors.muted, fontSize: 10),
+                    Row(
+                      children: [
+                        RawatinIconTile(
+                          icon: icon,
+                          color: statusColor,
+                          soft: statusSoft,
+                          size: compact ? 42 : 46,
+                          borderColor: statusColor.withValues(alpha: 0.28),
+                        ),
+                        SizedBox(
+                          width: compact ? AppSpacing.sm : AppSpacing.md,
+                        ),
+                        Expanded(
+                          child: Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppType.cardTitle.copyWith(
+                              color: colors.ink,
+                              fontSize: compact ? 16 : 17,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        IconButton(
+                          tooltip: 'Atur interval',
+                          onPressed: onEditInterval,
+                          visualDensity: VisualDensity.compact,
+                          constraints: const BoxConstraints(
+                            minWidth: 38,
+                            minHeight: 38,
+                          ),
+                          style: IconButton.styleFrom(
+                            foregroundColor: statusColor,
+                            backgroundColor: colors.surface.withValues(
+                              alpha: 0.75,
+                            ),
+                            side: BorderSide(
+                              color: statusColor.withValues(alpha: 0.35),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppRadii.sm),
+                            ),
+                          ),
+                          icon: Icon(
+                            inspection
+                                ? Icons.edit_outlined
+                                : Icons.tune_rounded,
+                            size: 18,
+                          ),
+                        ),
+                      ],
                     ),
-                    const Spacer(),
+                    SizedBox(height: compact ? 9 : AppSpacing.sm),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: RawatinStatusBadge(
+                            label: statusLabel,
+                            icon: statusIcon,
+                            color: statusColor,
+                            background: statusSoft,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            meta,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: colors.muted,
+                              fontSize: 11.5,
+                            ),
+                          ),
+                        ),
+                        if (inspection && !compact) ...[
+                          const SizedBox(width: AppSpacing.sm),
+                          RawatinInfoChip(
+                            icon: AppIcons.search,
+                            label: 'Pemeriksaan',
+                          ),
+                        ],
+                      ],
+                    ),
+                    SizedBox(height: compact ? 7 : 9),
                     Text(
-                      '${(progress! * 100).round()}%',
-                      style: AppType.eyebrow.copyWith(
+                      description,
+                      maxLines: compact ? 2 : 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: prominent ? statusColor : colors.inkSoft,
+                        fontSize: compact ? 13 : 12.5,
+                        fontWeight: prominent
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                      ),
+                    ),
+                    if (progress != null) ...[
+                      SizedBox(height: compact ? 9 : AppSpacing.sm),
+                      SegmentedGauge(
+                        value: progress!,
                         color: statusColor,
-                        fontSize: 10,
+                        height: compact ? 6 : 8,
                       ),
-                    ),
-                  ],
-                ),
-              ],
-              SizedBox(height: compact ? 5 : 8),
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.xs,
-                children: [
-                  Wrap(
-                    spacing: AppSpacing.xs,
-                    children: [
-                      TextButton.icon(
-                        onPressed: onOpen,
-                        icon: const Icon(Icons.history_rounded, size: 15),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xs,
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            'Interval terpakai',
+                            style: TextStyle(color: colors.muted, fontSize: 10),
                           ),
-                          minimumSize: const Size(0, 32),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          textStyle: AppType.button.copyWith(fontSize: 12),
-                        ),
-                        label: const Text('Riwayat'),
-                      ),
-                      TextButton.icon(
-                        onPressed: onEditInterval,
-                        icon: const Icon(Icons.tune_rounded, size: 15),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xs,
+                          const Spacer(),
+                          Text(
+                            '${(progress! * 100).round()}%',
+                            style: AppType.eyebrow.copyWith(
+                              color: statusColor,
+                              fontSize: 10,
+                            ),
                           ),
-                          minimumSize: const Size(0, 32),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          textStyle: AppType.button.copyWith(fontSize: 12),
-                        ),
-                        label: const Text('Atur interval'),
+                        ],
                       ),
                     ],
-                  ),
-                  PartRecordButton(
-                    prominent: prominent,
-                    inspection: inspection,
-                    onPressed: onRecord,
-                  ),
-                ],
+                    SizedBox(height: compact ? 5 : 8),
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.xs,
+                      children: [
+                        TextButton.icon(
+                          onPressed: onOpen,
+                          icon: const Icon(Icons.history_rounded, size: 15),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xs,
+                            ),
+                            minimumSize: const Size(0, 32),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            textStyle: AppType.button.copyWith(fontSize: 12),
+                          ),
+                          label: const Text('Detail · Riwayat'),
+                        ),
+                        PartRecordButton(
+                          prominent: prominent,
+                          inspection: inspection,
+                          onPressed: onRecord,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+class _PartCardClipper extends CustomClipper<Path> {
+  const _PartCardClipper({required this.cut});
+  final double cut;
+
+  @override
+  Path getClip(Size size) => _partCardPath(size, cut);
+
+  @override
+  bool shouldReclip(_PartCardClipper oldClipper) => oldClipper.cut != cut;
+}
+
+class _PartCardBorderPainter extends CustomPainter {
+  const _PartCardBorderPainter({
+    required this.color,
+    required this.cut,
+    required this.strokeWidth,
+  });
+
+  final Color color;
+  final double cut;
+  final double strokeWidth;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawPath(
+      _partCardPath(size, cut),
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PartCardBorderPainter oldDelegate) =>
+      oldDelegate.color != color ||
+      oldDelegate.cut != cut ||
+      oldDelegate.strokeWidth != strokeWidth;
+}
+
+Path _partCardPath(Size size, double cut) {
+  final small = cut * .38;
+  return Path()
+    ..moveTo(cut, 0)
+    ..lineTo(size.width - small, 0)
+    ..lineTo(size.width, small)
+    ..lineTo(size.width, size.height - cut)
+    ..lineTo(size.width - cut, size.height)
+    ..lineTo(small, size.height)
+    ..lineTo(0, size.height - small)
+    ..lineTo(0, cut)
+    ..close();
 }
 
 class PartRecordButton extends StatelessWidget {
