@@ -45,14 +45,19 @@ class PartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = RawatinColors.of(context);
-    final cardTint = Color.lerp(colors.surface, statusSoft, 0.38)!;
+    final cardTint = prominent
+        ? Color.lerp(colors.surface, statusSoft, 0.38)!
+        : colors.surface;
+    final borderColor = prominent
+        ? statusColor.withValues(alpha: 0.9)
+        : colors.line;
     return Material(
       color: Colors.transparent,
       child: ClipPath(
         clipper: _PartCardClipper(cut: compact ? 11 : 14),
         child: CustomPaint(
           foregroundPainter: _PartCardBorderPainter(
-            color: statusColor.withValues(alpha: prominent ? 0.9 : 0.62),
+            color: borderColor,
             cut: compact ? 11 : 14,
             strokeWidth: prominent ? 1.6 : 1.2,
           ),
@@ -92,10 +97,9 @@ class PartCard extends StatelessWidget {
                         IconButton(
                           tooltip: 'Atur interval',
                           onPressed: onEditInterval,
-                          visualDensity: VisualDensity.compact,
                           constraints: const BoxConstraints(
-                            minWidth: 38,
-                            minHeight: 38,
+                            minWidth: 48,
+                            minHeight: 48,
                           ),
                           style: IconButton.styleFrom(
                             foregroundColor: statusColor,
@@ -202,8 +206,7 @@ class PartCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                               horizontal: AppSpacing.xs,
                             ),
-                            minimumSize: const Size(0, 32),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            minimumSize: const Size(0, 40),
                             textStyle: AppType.button.copyWith(fontSize: 12),
                           ),
                           label: const Text('Detail · Riwayat'),
@@ -300,15 +303,14 @@ class PartRecordButton extends StatelessWidget {
       icon: const Icon(AppIcons.record, size: 15),
       label: Text(inspection ? 'Catat cek' : 'Catat servis'),
       style: FilledButton.styleFrom(
-        minimumSize: const Size(0, 40),
+        minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: 13),
-        backgroundColor: colors.accent,
-        foregroundColor: colors.onAccent,
+        backgroundColor: prominent ? colors.accent : colors.primarySoft,
+        foregroundColor: prominent ? colors.onAccent : colors.primaryDark,
         textStyle: AppType.button.copyWith(fontSize: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadii.sm),
         ),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     );
   }
@@ -458,8 +460,7 @@ class CompactPartRow extends StatelessWidget {
               IconButton(
                 tooltip: part.isInspection ? 'Catat cek' : 'Catat ganti',
                 onPressed: onRecord,
-                visualDensity: VisualDensity.compact,
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                 padding: EdgeInsets.zero,
                 icon: Icon(AppIcons.record, size: 19, color: colors.primary),
               ),

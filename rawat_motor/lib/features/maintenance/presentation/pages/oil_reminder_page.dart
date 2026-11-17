@@ -696,7 +696,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                         style: TextStyle(
                           color: colors.white.withValues(alpha: 0.9),
                           fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                          fontSize: 13.5,
                         ),
                       ),
                     ),

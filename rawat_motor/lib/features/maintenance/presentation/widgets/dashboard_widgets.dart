@@ -87,7 +87,7 @@ class HeroStat extends StatelessWidget {
             label,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.8),
-              fontSize: 10.5,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),

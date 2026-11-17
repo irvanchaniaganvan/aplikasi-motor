@@ -72,7 +72,7 @@ class RawatinStatusBadge extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: AppType.eyebrow.copyWith(
               color: color,
-              fontSize: 10,
+              fontSize: 10.5,
               letterSpacing: 0.5,
             ),
           ),
