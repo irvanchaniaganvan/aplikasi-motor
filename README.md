@@ -19,9 +19,9 @@ flutter pub get
 flutter run -d windows
 ```
 
-Untuk Android, sambungkan emulator/perangkat setelah Android SDK terpasang, lalu jalankan `flutter run`. Build iOS memerlukan macOS dengan Xcode.
+Untuk Android, sambungkan perangkat dengan USB debugging aktif, lalu jalankan `flutter run`. Android SDK dan JDK sudah disiapkan di mesin pengembangan ini; rincian jalurnya ada di `PROJECT_STATUS.md`. Build iOS memerlukan macOS dengan Xcode.
 
-Saat ini Android SDK belum tersedia menurut catatan proyek, jadi jalankan dan uji di Windows sampai Android SDK disiapkan. Data lokal belum tersinkron ke cloud.
+Data lokal belum tersinkron ke cloud. APK debug dapat dibangun dengan `flutter build apk --debug`; hasilnya ada di `build/app/outputs/flutter-apk/app-debug.apk`.
 
 Perintah `flutter` memerlukan Flutter SDK di `PATH`. Jika baru memasang SDK, buka ulang terminal atau VS Code.
 
