@@ -34,6 +34,8 @@ class CostSummaryCard extends StatelessWidget {
     }
     final sortedItems = byItem.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
+    final topItems = sortedItems.take(4).toList();
+    final maxCost = topItems.isEmpty ? 1 : topItems.first.value;
 
     return RawatinCard(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -42,89 +44,132 @@ class CostSummaryCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.payments_outlined, color: colors.primaryDark),
+              Icon(
+                Icons.payments_outlined,
+                color: colors.primaryDark,
+                size: 18,
+              ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   'Ringkasan biaya',
-                  style: AppType.cardTitle.copyWith(color: colors.ink),
+                  style: AppType.cardTitle.copyWith(
+                    color: colors.ink,
+                    fontSize: 15,
+                  ),
                 ),
               ),
-              Text(
-                shortMonthName(now.month),
-                style: TextStyle(color: colors.muted, fontSize: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: colors.surfaceSoft,
+                  borderRadius: BorderRadius.circular(AppRadii.pill),
+                ),
+                child: Text(
+                  '${shortMonthName(now.month).toUpperCase()} ${now.year}',
+                  style: AppType.eyebrow.copyWith(
+                    color: colors.muted,
+                    fontSize: 8.5,
+                    letterSpacing: 0.8,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: AppSpacing.lg),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(child: _amount('Bulan ini', thisMonth, colors)),
-              const SizedBox(width: AppSpacing.sm),
+              Container(
+                width: 1,
+                height: 46,
+                margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                color: colors.line,
+              ),
               Expanded(child: _amount('Tahun ini', thisYear, colors)),
             ],
           ),
-          if (sortedItems.isNotEmpty) ...[
+          if (topItems.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.lg),
+            Container(height: 1, color: colors.line),
             const SizedBox(height: AppSpacing.md),
-            const Divider(height: 1),
-            const SizedBox(height: AppSpacing.sm),
-            for (final item in sortedItems.take(4))
+            for (final item in topItems)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.key,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: colors.inkSoft, fontSize: 12),
-                      ),
-                    ),
-                    Text(
-                      formatRupiah(item.value),
-                      style: TextStyle(
-                        color: colors.ink,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: _costBar(item.key, item.value, maxCost, colors),
               ),
-          ] else
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.md),
-              child: Text(
-                'Biaya akan muncul setelah kamu mencatat servis.',
-                style: TextStyle(color: colors.muted, fontSize: 12),
-              ),
+          ] else ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              'Biaya akan muncul setelah kamu mencatat servis.',
+              style: TextStyle(color: colors.muted, fontSize: 12),
             ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _amount(String label, int amount, RawatinColors colors) => Container(
-    padding: const EdgeInsets.all(AppSpacing.md),
-    decoration: BoxDecoration(
-      color: colors.surfaceSoft,
-      borderRadius: BorderRadius.circular(AppRadii.md),
-      border: Border.all(color: colors.line),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(color: colors.muted, fontSize: 11)),
-        const SizedBox(height: 4),
-        Text(
+  Widget _amount(String label, int amount, RawatinColors colors) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: TextStyle(color: colors.muted, fontSize: 11)),
+      const SizedBox(height: 4),
+      FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(
           formatRupiah(amount),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppType.metric.copyWith(color: colors.ink, fontSize: 16),
+          style: AppType.metric.copyWith(color: colors.ink, fontSize: 26),
         ),
-      ],
-    ),
+      ),
+    ],
+  );
+
+  Widget _costBar(
+    String label,
+    int value,
+    int maxValue,
+    RawatinColors colors,
+  ) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: colors.inkSoft, fontSize: 11.5),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            formatRupiah(value),
+            style: TextStyle(
+              color: colors.ink,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 5),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(2),
+        child: Container(
+          height: 3,
+          color: colors.surfaceSoft,
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: (value / maxValue).clamp(0.04, 1.0).toDouble(),
+            child: Container(color: colors.accent.withValues(alpha: 0.85)),
+          ),
+        ),
+      ),
+    ],
   );
 }
 

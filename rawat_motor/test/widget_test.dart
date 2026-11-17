@@ -19,6 +19,10 @@ import 'package:rawatin/features/maintenance/presentation/widgets/cost_summary_c
 import 'package:rawatin/features/maintenance/domain/use_cases/load_motor_data.dart';
 import 'package:rawatin/features/maintenance/domain/use_cases/save_motor_data.dart';
 import 'package:rawatin/features/maintenance/presentation/pages/oil_reminder_page.dart';
+import 'package:rawatin/features/maintenance/presentation/pages/history_view.dart';
+import 'package:rawatin/features/maintenance/domain/entities/odometer_entry.dart';
+import 'package:rawatin/features/trips/domain/entities/trip.dart';
+import 'package:rawatin/features/trips/domain/repositories/trip_repository.dart';
 import 'package:rawatin/features/maintenance/presentation/widgets/app_shell.dart';
 import 'package:rawatin/features/profile/domain/entities/driver_motor_profile.dart';
 import 'package:rawatin/features/profile/domain/entities/motor_model_catalog.dart';
@@ -63,6 +67,21 @@ class _MemoryMotorDataRepository implements MotorDataRepository {
 
   @override
   Future<void> save(MotorData value) async => data = value;
+}
+
+class _MemoryTripRepository implements TripRepository {
+  final List<Trip> trips = [];
+
+  @override
+  Future<List<Trip>> load(String vehicleId) async =>
+      trips.where((trip) => trip.vehicleId == vehicleId).toList();
+
+  @override
+  Future<void> save(Trip trip) async => trips.add(trip);
+
+  @override
+  Future<void> delete(String vehicleId, String tripId) async =>
+      trips.removeWhere((trip) => trip.id == tripId);
 }
 
 void main() {
@@ -2023,5 +2042,73 @@ void main() {
       find.text('Angka ini tidak boleh melebihi kilometer saat ini.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('halaman Riwayat mengelompokkan catatan dan bisa difilter', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: HistoryView(
+            data: MotorData(
+              currentOdometer: 30000,
+              lastOilOdometer: 29000,
+              oilInterval: 3000,
+              serviceHistory: [
+                ServiceRecord(
+                  date: DateTime(2026, 9, 15),
+                  odometer: 29000,
+                  item: 'Ganti oli mesin',
+                  workshop: 'Bengkel Jaya',
+                  cost: 85000,
+                ),
+              ],
+              odometerLogs: [
+                OdometerEntry(
+                  kilometers: 30000,
+                  date: DateTime(2026, 8, 2),
+                  source: 'manual',
+                ),
+              ],
+            ),
+            tripRepository: _MemoryTripRepository(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Semua · 2'), findsOneWidget);
+    expect(find.text('Servis · 1'), findsOneWidget);
+    expect(find.text('KM · 1'), findsOneWidget);
+    expect(find.text('SEP 2026'), findsOneWidget);
+    expect(find.text('AGU 2026'), findsOneWidget);
+    // Satu di ringkasan biaya, satu di timeline.
+    expect(find.text('Ganti oli mesin'), findsNWidgets(2));
+    expect(find.text('Kilometer diperbarui'), findsOneWidget);
+
+    await tester.tap(find.text('Servis · 1'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ganti oli mesin'), findsNWidgets(2));
+    expect(find.text('Kilometer diperbarui'), findsNothing);
+    expect(find.text('AGU 2026'), findsNothing);
+
+    await tester.tap(find.text('KM · 1'));
+    await tester.pumpAndSettle();
+    // Entri servis hilang dari timeline; ringkasan biaya tetap menampilkannya.
+    expect(find.text('Ganti oli mesin'), findsOneWidget);
+    expect(find.text('Kilometer diperbarui'), findsOneWidget);
+    expect(find.text('SEP 2026'), findsNothing);
+
+    await tester.tap(find.text('Semua · 2'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ganti oli mesin'), findsNWidgets(2));
+    expect(find.text('Kilometer diperbarui'), findsOneWidget);
+    expect(find.text('SEP 2026'), findsOneWidget);
+    expect(find.text('AGU 2026'), findsOneWidget);
   });
 }

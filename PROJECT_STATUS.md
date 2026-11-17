@@ -1,6 +1,6 @@
 # Status proyek Rawatin
 
-Terakhir diperbarui: 15 November 2026
+Terakhir diperbarui: 17 November 2026
 
 ## Tujuan dan keputusan
 
@@ -145,12 +145,14 @@ Terakhir diperbarui: 15 November 2026
 - Desain ulang kartu Perawatan (16 November 2026): kartu komponen kini mengikuti bahasa visual mockup motorsport—bentuk sudut chamfer asimetris (potongan lebih besar di kiri atas dan kanan bawah), latar kartu diberi tint lembut sesuai status, garis tepi berwarna status, dan ikon komponen berbingkai. Tombol pensil/tune di kanan atas menjadi pintu cepat **Atur interval**; tautan **Detail · Riwayat** tetap membuka bottom sheet riwayat dan edit catatan. Komponen tanpa catatan kini menampilkan progress **0%** agar bar tetap konsisten. Filter status memakai pill dengan aksen oranye saat aktif. Tes lama yang mengetuk teks kartu disesuaikan ke label/tooltip baru; `flutter analyze --no-pub` bersih dan `flutter test` penuh lulus 128 tes.
 - Perapian katalog Revo dan pilihan sistem rem (13 November 2026): entri Revo memakai generasi singkat yang tampil terpisah dari alias pencarian sehingga pilihan ringkas tetapi alias seperti Absolute Revo/Revo X tetap ditemukan lewat pencarian. Field sistem rem kini hanya muncul untuk Honda (CBS/ABS) dan Yamaha (ABS/UBS); merek lain tidak menerima pilihan sistem yang tidak relevan. Saat merek berganti, data rem terpilih dibersihkan; pilihan model tetap dapat mengisi sistem rem katalog seperti CBS/UBS. Fungsi label model juga memisahkan label tampilan dan teks pencarian. Tes form dan pencarian diperbarui. `flutter test` lulus 117 tes, `flutter analyze --no-pub` bersih, dan `git diff --check` bersih.
 
+- Desain ulang halaman Riwayat (17 November 2026): riwayat servis dan log odometer kini tampil sebagai satu garis waktu dengan gutter tanggal, rail tipis, dan node beraksen—oranye untuk servis, abu untuk odometer—serta judul bulan bergaris rambut dan jumlah catatan. Filter **Semua/Servis/KM** memakai pill oranye dan membungkus otomatis sehingga tidak ada chip yang terpotong di layar sempit. Ringkasan biaya dirombak menjadi dua angka besar (bulan ini/tahun ini) dengan pemisah tipis dan bar proporsi untuk empat komponen termahal. Bagian Perjalanan memakai baris ringkas senapas dengan tanggal ringkas, bukan `ListTile` bawaan. `HistoryView` menerima `tripRepository` opsional agar dapat diuji tanpa `path_provider`. Tes baru memverifikasi pengelompokan bulan, hitungan filter, dan penyaringan; `flutter test` penuh lulus 129 tes, `flutter analyze --no-pub` bersih.
+
 ## Langkah berikutnya
 
 1. Lengkapi handler foreground Android agar location stream tetap aktif dan aman di isolate service; lalu uji perekaman saat aplikasi diminimalkan/layar mati, jeda/lanjut, selesai, izin, dan Android 14+ di perangkat fisik sesuai `docs/maps.md`.
 2. Uji notifikasi lokal, izin, jadwal setelah reboot, dan perilaku OEM Android/iOS di perangkat nyata. Jadwal kilometer belum dapat berjalan saat aplikasi benar-benar tertutup karena tidak ada sumber odometer latar belakang.
-3. Pasang Android Studio dan Android SDK, lalu ikuti petunjuk lisensi yang dilaporkan `flutter doctor`.
-4. Pasang/konfigurasi Android SDK agar aplikasi dapat diuji di emulator atau perangkat Android.
+3. Sambungkan HP Android lewat kabel USB-C, aktifkan Opsi Pengembang + USB debugging, izinkan dialog RSA, lalu jalankan `flutter run -d <device-id>`. Lingkungan build Android lokal sudah siap; lihat bagian **Lingkungan build Android**.
+4. Uji aplikasi di perangkat fisik Android: notifikasi lokal, izin lokasi, perekaman perjalanan saat aplikasi di latar belakang, serta tampilan Riwayat dan Perawatan.
 5. Tambahkan widget tests untuk halaman Perjalanan, Riwayat, dan alur odometer; uji repository file lokal termasuk skema rusak/tidak kompatibel.
 6. Validasi alur log odometer, jadwal komponen, penyaringan profil, riwayat servis, serta Panduan Oli di emulator/perangkat.
 7. Isi `spesifikasi_oli` hanya untuk model yang sudah dicek dari buku manual resmi, lalu set `verified: true`.
@@ -159,6 +161,17 @@ Terakhir diperbarui: 15 November 2026
 10. Tetapkan application/bundle ID resmi dan tile provider produksi sebelum rilis.
 11. Ganti penyimpanan key-value dengan basis data lokal bila model data/riwayat servis bertambah kompleks.
 12. Siapkan build iOS di komputer macOS dengan Xcode.
+
+## Lingkungan build Android (17 November 2026)
+
+- Flutter 3.47.8 di `C:\Users\Asus\AppData\Local\Programs\flutter`.
+- JDK 17 (Microsoft OpenJDK 17.0.21) portable di `C:\Android\jdk-17`; tidak memakai Android Studio.
+- Android SDK di `C:\Android\sdk`: `cmdline-tools/latest`, `platform-tools` (adb 37.0.1), `build-tools;37.0.0`, `platforms;android-37.0`, `ndk;28.2.13676358`. `platforms;android-35` ditambahkan otomatis oleh Gradle karena kebutuhan plugin.
+- Variabel pengguna sudah diset: `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `JAVA_HOME`, serta `platform-tools` dan `jdk-17\bin` pada `Path`. Flutter dikonfigurasi lewat `flutter config --android-sdk C:\Android\sdk` dan `flutter config --jdk-dir C:\Android\jdk-17`.
+- `rawat_motor/android/local.properties` memuat `sdk.dir=C:\Android\sdk`. Berkas ini tetap di-gitignore sehingga jalur lokal tidak masuk repo.
+- Flutter 3.47.8 memanggil `forceNdkDownload` tanpa syarat di `FlutterPlugin.kt` saat membangun aplikasi Android; NDK wajib ada meski proyek tidak punya kode native sendiri. Menghapus `ndkVersion` dari `build.gradle.kts` tidak menghindari unduhan ini.
+- Status terakhir: `flutter doctor` Android toolchain hijau, `adb devices` kosong karena belum ada HP terhubung. Langkah tersisa: aktifkan USB debugging, pilih mode **File transfer**, izinkan dialog RSA, lalu `flutter devices` dan `flutter run -d <device-id>`.
+- Build APK debug pertama sempat terhenti karena batas waktu shell ketika mengunduh NDK; perintah dijalankan ulang di latar belakang. Cache Gradle ada di `C:\Users\Asus\.gradle` (±1,5 GB).
 
 ## Catatan pemulihan sesi
 

@@ -4,7 +4,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
-import '../../../../core/theme/app_tokens.dart';
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/utils/date_labels.dart';
 import '../../data/services/android_trip_foreground_service.dart';
 import '../../data/services/fake_location_service.dart';
 import '../../data/services/geolocator_location_service.dart';
@@ -440,49 +441,126 @@ class _TripHistorySectionState extends State<TripHistorySection> {
   Widget build(BuildContext context) => FutureBuilder<List<Trip>>(
     future: _trips,
     builder: (context, snapshot) {
+      final colors = RawatinColors.of(context);
       final trips = snapshot.data ?? const <Trip>[];
       if (snapshot.connectionState != ConnectionState.done) {
-        return const Center(child: CircularProgressIndicator());
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+          child: Center(
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
       }
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-            child: Text(
-              'PERJALANAN',
-              style: AppType.eyebrow.copyWith(color: AppPalette.muted),
-            ),
-          ),
-          if (trips.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Belum ada perjalanan terekam.'),
-            )
-          else
-            for (final trip in trips)
-              ListTile(
-                leading: const Icon(Icons.route_rounded),
-                title: Text(
-                  '${(trip.distanceMeters / 1000).toStringAsFixed(2)} km',
+          Row(
+            children: [
+              Container(
+                width: 3.5,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: colors.accent,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                subtitle: Text(
-                  '${trip.startedAt.toLocal()} • ${trip.route.length} titik',
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => _delete(trip),
-                ),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => _TripDetailPage(trip: trip),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  'PERJALANAN',
+                  style: AppType.eyebrow.copyWith(
+                    color: colors.inkSoft,
+                    fontSize: 9.5,
+                    letterSpacing: 1.3,
                   ),
                 ),
               ),
+              if (trips.isNotEmpty)
+                Text(
+                  '${trips.length} perjalanan',
+                  style: TextStyle(color: colors.muted, fontSize: 11),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (trips.isEmpty)
+            Text(
+              'Belum ada perjalanan terekam.',
+              style: TextStyle(
+                color: colors.muted,
+                fontSize: 12.5,
+                height: 1.4,
+              ),
+            )
+          else
+            for (final trip in trips) _tripRow(context, trip, colors),
         ],
       );
     },
   );
+
+  Widget _tripRow(BuildContext context, Trip trip, RawatinColors colors) {
+    final distance = (trip.distanceMeters / 1000).toStringAsFixed(2);
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppRadii.md),
+      onTap: () => Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => _TripDetailPage(trip: trip))),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.sm,
+          horizontal: AppSpacing.xxs,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: colors.surfaceSoft,
+                borderRadius: BorderRadius.circular(AppRadii.sm),
+              ),
+              child: Icon(Icons.route_rounded, size: 18, color: colors.inkSoft),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$distance km',
+                    style: AppType.metric.copyWith(
+                      color: colors.ink,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    '${formatShortDate(trip.startedAt.toLocal())} · '
+                    '${trip.route.length} titik',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: colors.muted, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Hapus perjalanan',
+              visualDensity: VisualDensity.compact,
+              iconSize: 18,
+              color: colors.muted,
+              onPressed: () => _delete(trip),
+              icon: const Icon(Icons.delete_outline_rounded),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _TripDetailPage extends StatelessWidget {
