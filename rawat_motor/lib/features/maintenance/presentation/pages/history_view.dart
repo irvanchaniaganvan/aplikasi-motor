@@ -318,7 +318,7 @@ class _MonthHeading extends StatelessWidget {
             '${shortMonthName(date.month).toUpperCase()} ${date.year}',
             style: AppType.eyebrow.copyWith(
               color: colors.inkSoft,
-              fontSize: 9.5,
+              fontSize: 10.5,
               letterSpacing: 1.3,
             ),
           ),
@@ -327,7 +327,7 @@ class _MonthHeading extends StatelessWidget {
           const SizedBox(width: AppSpacing.md),
           Text(
             '$count',
-            style: AppType.metric.copyWith(color: colors.muted, fontSize: 12),
+            style: AppType.metric.copyWith(color: colors.muted, fontSize: 12.5),
           ),
         ],
       ),
@@ -355,7 +355,7 @@ class _TimelineRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            width: 42,
+            width: 34,
             child: Padding(
               padding: const EdgeInsets.only(top: 11),
               child: Align(
@@ -364,7 +364,7 @@ class _TimelineRow extends StatelessWidget {
                   entry.date.day.toString().padLeft(2, '0'),
                   style: AppType.metric.copyWith(
                     color: colors.ink,
-                    fontSize: 15,
+                    fontSize: 14.5,
                     height: 1,
                   ),
                 ),
@@ -372,7 +372,7 @@ class _TimelineRow extends StatelessWidget {
             ),
           ),
           SizedBox(
-            width: 28,
+            width: 24,
             child: CustomPaint(
               painter: _RailPainter(
                 lineColor: colors.line,
@@ -422,7 +422,7 @@ class _EntryBody extends StatelessWidget {
                   Expanded(
                     child: Text(
                       entry.title,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: colors.ink,
@@ -463,25 +463,33 @@ class _EntryBody extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.sm),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              formatKm(entry.kilometers),
-              style: AppType.metric.copyWith(color: colors.ink, fontSize: 13.5),
-            ),
-            if (entry.cost > 0) ...[
-              const SizedBox(height: 2),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 96),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
               Text(
-                formatRupiah(entry.cost),
-                style: TextStyle(
-                  color: colors.muted,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
+                formatKm(entry.kilometers),
+                textAlign: TextAlign.right,
+                style: AppType.metric.copyWith(
+                  color: colors.ink,
+                  fontSize: 13.5,
                 ),
               ),
+              if (entry.cost > 0) ...[
+                const SizedBox(height: 2),
+                Text(
+                  formatRupiah(entry.cost),
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: colors.muted,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ],
     );

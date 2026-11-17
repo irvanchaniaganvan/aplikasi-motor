@@ -984,7 +984,7 @@ void main() {
   testWidgets(
     'halaman komponen menyaring sesuai profil dan menampilkan aksi cek',
     (tester) async {
-      await tester.binding.setSurfaceSize(const Size(390, 844));
+      await tester.binding.setSurfaceSize(const Size(360, 844));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       final repository = _MemoryMotorDataRepository()
@@ -2123,5 +2123,51 @@ void main() {
     expect(find.text('Kilometer diperbarui'), findsOneWidget);
     expect(find.text('SEP 2026'), findsOneWidget);
     expect(find.text('AGU 2026'), findsOneWidget);
+  });
+
+  testWidgets('halaman Riwayat tetap rapi di layar 360 dp', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: HistoryView(
+            data: MotorData(
+              currentOdometer: 30000,
+              lastOilOdometer: 29000,
+              oilInterval: 3000,
+              serviceHistory: [
+                ServiceRecord(
+                  date: DateTime(2026, 9, 15),
+                  odometer: 29000,
+                  item: 'Ganti oli mesin dan filter udara',
+                  workshop: 'Bengkel Jaya Motor',
+                  cost: 1250000,
+                  notes: 'Pakai oli sintetik 10W-40.',
+                ),
+              ],
+              odometerLogs: [
+                OdometerEntry(
+                  kilometers: 30000,
+                  date: DateTime(2026, 9, 2),
+                  source: 'manual',
+                ),
+              ],
+            ),
+            tripRepository: _MemoryTripRepository(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    // Satu di ringkasan biaya, satu di timeline.
+    expect(find.text('Ganti oli mesin dan filter udara'), findsNWidgets(2));
+    expect(find.text('SEP 2026'), findsOneWidget);
+    expect(find.text('Semua · 2'), findsOneWidget);
+    expect(find.text('Servis · 1'), findsOneWidget);
+    expect(find.text('KM · 1'), findsOneWidget);
   });
 }

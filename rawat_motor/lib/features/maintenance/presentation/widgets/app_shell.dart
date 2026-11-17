@@ -257,9 +257,20 @@ class RawatinTopBar extends StatelessWidget {
   final VoidCallback? onOpenSettings;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final screenWidth = MediaQuery.sizeOf(context).width;
+      final width = constraints.hasBoundedWidth
+          ? constraints.maxWidth
+          : screenWidth;
+      // Ambang layar mengikuti desain lama. Pengecekan lebar efektif
+      // mencegah header meluber saat ruang menyusut (mis. ada sidebar).
+      return _buildBar(context, compact: screenWidth < 560 || width < 520);
+    },
+  );
+
+  Widget _buildBar(BuildContext context, {required bool compact}) {
     final colors = RawatinColors.of(context);
-    final compact = MediaQuery.sizeOf(context).width < 560;
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
@@ -268,12 +279,12 @@ class RawatinTopBar extends StatelessWidget {
       child: SizedBox(
         height: 64,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 16),
+          padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 16),
           child: Row(
             children: [
               if (compact) ...[
                 const RawatinLogo(size: 28, showShadow: false),
-                const SizedBox(width: 9),
+                const SizedBox(width: 4),
               ],
               Expanded(
                 child: Column(
@@ -344,7 +355,7 @@ class RawatinTopBar extends StatelessWidget {
                   ],
                   child: compact
                       ? Padding(
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(6),
                           child: Icon(
                             AppIcons.vehicle,
                             size: 22,
@@ -383,7 +394,6 @@ class RawatinTopBar extends StatelessWidget {
                     ),
                   ),
                 ],
-                const SizedBox(width: 2),
                 RawatinAccountMenu(
                   profile: profile!,
                   onEditProfile: onEditProfile,
