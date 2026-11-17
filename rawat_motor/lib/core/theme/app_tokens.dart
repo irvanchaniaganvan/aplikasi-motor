@@ -122,7 +122,7 @@ abstract final class AppIcons {
   static const verified = Icons.verified_rounded;
   static const due = Icons.priority_high_rounded;
   static const soon = Icons.schedule_rounded;
-  static const needsCheck = Icons.help_rounded;
+  static const noData = Icons.help_outline_rounded;
   static const record = Icons.add_task_rounded;
   static const wrench = Icons.build_rounded;
   static const tune = Icons.tune_rounded;

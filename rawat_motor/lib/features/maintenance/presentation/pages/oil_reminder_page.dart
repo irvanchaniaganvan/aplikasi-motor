@@ -531,14 +531,16 @@ class _OilReminderPageState extends State<OilReminderPage> {
     final due = count(ComponentScheduleStatus.due);
     final soon = count(ComponentScheduleStatus.soon);
     final safe = count(ComponentScheduleStatus.safe);
-    final needsCheck = count(ComponentScheduleStatus.needsCheck);
-    final attention = due + soon + needsCheck;
-    final allSafe = km != null && attention == 0;
+    final noData = count(ComponentScheduleStatus.noData);
+    final attention = due + soon;
+    final allClear = km != null && attention == 0 && noData == 0;
     final statusText = km == null
         ? 'Mulai dengan mencatat kilometer motor'
-        : allSafe
-        ? 'Semua jadwal terkendali'
-        : '$attention hal perlu perhatian';
+        : attention > 0
+        ? '$attention hal perlu perhatian'
+        : noData > 0
+        ? '$noData komponen belum ada catatan'
+        : 'Semua jadwal terkendali';
 
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -657,6 +659,17 @@ class _OilReminderPageState extends State<OilReminderPage> {
                         onTap: () =>
                             _openDashboardStatus(ComponentScheduleStatus.safe),
                       ),
+                      if (noData > 0)
+                        HeroStat(
+                          label: 'Belum ada data',
+                          value: noData,
+                          color: colors.white.withValues(alpha: 0.78),
+                          soft: colors.white,
+                          icon: AppIcons.noData,
+                          onTap: () => _openDashboardStatus(
+                            ComponentScheduleStatus.noData,
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -664,8 +677,16 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 Row(
                   children: [
                     Icon(
-                      allSafe ? AppIcons.checkCircle : AppIcons.info,
-                      color: allSafe ? colors.safeSoft : colors.accent,
+                      allClear
+                          ? AppIcons.checkCircle
+                          : attention > 0
+                          ? AppIcons.info
+                          : AppIcons.noData,
+                      color: allClear
+                          ? colors.safeSoft
+                          : attention > 0
+                          ? colors.accent
+                          : colors.white.withValues(alpha: 0.7),
                       size: 19,
                     ),
                     const SizedBox(width: 8),
@@ -690,7 +711,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     minimumSize: const Size.fromHeight(50),
                   ),
                 ),
-                if (allSafe) ...[
+                if (allClear) ...[
                   const SizedBox(height: 12),
                   const FinishBanner(
                     title: 'Semua aman',
@@ -708,7 +729,16 @@ class _OilReminderPageState extends State<OilReminderPage> {
 
   void _openDashboardStatus(ComponentScheduleStatus status) {
     setState(() {
+      _partsFilter = 'Semua';
       _dashboardStatusFilter = status;
+      _selectedSection = AppSection.care;
+    });
+  }
+
+  void _openCareAll() {
+    setState(() {
+      _partsFilter = 'Semua';
+      _dashboardStatusFilter = null;
       _selectedSection = AppSection.care;
     });
   }
@@ -875,19 +905,29 @@ class _OilReminderPageState extends State<OilReminderPage> {
     final isNarrow = MediaQuery.sizeOf(context).width < 600;
     final allVisibleComponents = _visibleParts();
     final attentionCount = allVisibleComponents.where((component) {
-      final status = data == null
-          ? ComponentScheduleStatus.needsCheck
-          : _componentSchedule(component, data)?.status;
-      return status != ComponentScheduleStatus.safe;
+      final status = _componentStatus(component, data);
+      return status == ComponentScheduleStatus.due ||
+          status == ComponentScheduleStatus.soon;
     }).length;
-    final safeCount = allVisibleComponents.length - attentionCount;
+    final noDataCount = allVisibleComponents
+        .where(
+          (component) =>
+              _componentStatus(component, data) ==
+              ComponentScheduleStatus.noData,
+        )
+        .length;
+    final safeCount =
+        allVisibleComponents.length - attentionCount - noDataCount;
     final visibleComponents =
         allVisibleComponents.where((component) {
-          final status = data == null
-              ? ComponentScheduleStatus.needsCheck
-              : _componentSchedule(component, data)?.status;
+          final status = _componentStatus(component, data);
           if (_partsFilter == 'Perlu perhatian' &&
-              status == ComponentScheduleStatus.safe) {
+              status != ComponentScheduleStatus.due &&
+              status != ComponentScheduleStatus.soon) {
+            return false;
+          }
+          if (_partsFilter == 'Belum ada data' &&
+              status != ComponentScheduleStatus.noData) {
             return false;
           }
           if (_partsFilter == 'Aman' &&
@@ -979,6 +1019,8 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     children: [
                       _partsFilterChip('Semua', allVisibleComponents.length),
                       _partsFilterChip('Perlu perhatian', attentionCount),
+                      if (noDataCount > 0)
+                        _partsFilterChip('Belum ada data', noDataCount),
                       _partsFilterChip('Aman', safeCount),
                     ],
                   ),
@@ -1112,7 +1154,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
     ComponentScheduleStatus.due => 'Waktunya',
     ComponentScheduleStatus.soon => 'Segera',
     ComponentScheduleStatus.safe => 'Aman',
-    ComponentScheduleStatus.needsCheck => 'Perlu dicek',
+    ComponentScheduleStatus.noData => 'Belum ada data',
   };
 
   MaintenanceMotor? get _selectedMaintenanceMotor {
@@ -1181,6 +1223,19 @@ class _OilReminderPageState extends State<OilReminderPage> {
     );
   }
 
+  /// Status ringkas untuk filter dan hitungan.
+  ///
+  /// Komponen tanpa catatan servis tidak dianggap "perlu perhatian"; ia
+  /// masuk kategori tersendiri supaya pengguna tahu datanya belum lengkap.
+  ComponentScheduleStatus _componentStatus(
+    MaintenanceComponent component,
+    MotorData? data,
+  ) {
+    if (data == null) return ComponentScheduleStatus.noData;
+    return _componentSchedule(component, data)?.status ??
+        ComponentScheduleStatus.noData;
+  }
+
   int _componentUrgency(MaintenanceComponent component, MotorData? data) {
     if (data == null) return 3;
     final schedule = _componentSchedule(component, data);
@@ -1188,7 +1243,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
     return switch (schedule.status) {
       ComponentScheduleStatus.due => 0,
       ComponentScheduleStatus.soon => 1,
-      ComponentScheduleStatus.needsCheck => 2,
+      ComponentScheduleStatus.noData => 2,
       ComponentScheduleStatus.safe => 3,
     };
   }
@@ -1231,42 +1286,35 @@ class _OilReminderPageState extends State<OilReminderPage> {
         const ComponentSchedule(
           targetKm: 0,
           remainingKm: 0,
-          status: ComponentScheduleStatus.needsCheck,
+          status: ComponentScheduleStatus.noData,
         );
-    final due = schedule.status == ComponentScheduleStatus.due;
-    final soon = schedule.status == ComponentScheduleStatus.soon;
-    final needsCheck = schedule.status == ComponentScheduleStatus.needsCheck;
-    final statusColor = due
-        ? colors.due
-        : soon
-        ? colors.soon
-        : needsCheck
-        ? colors.soon
-        : colors.safe;
-    final statusBackground = due
-        ? colors.dueSoft
-        : soon
-        ? colors.soonSoft
-        : needsCheck
-        ? colors.soonSoft
-        : colors.safeSoft;
-    final statusIcon = due
-        ? AppIcons.due
-        : soon
-        ? AppIcons.soon
-        : needsCheck
-        ? AppIcons.needsCheck
-        : AppIcons.check;
-    final statusText = needsCheck
-        ? 'Perlu dicek'
-        : switch (schedule.status) {
-            ComponentScheduleStatus.safe => 'Aman',
-            ComponentScheduleStatus.needsCheck => 'Perlu dicek',
-            ComponentScheduleStatus.soon =>
-              component.isInspection ? 'Segera cek' : 'Segera ganti',
-            ComponentScheduleStatus.due =>
-              component.isInspection ? 'Waktunya cek' : 'Waktunya ganti',
-          };
+    final status = schedule.status;
+    final statusColor = switch (status) {
+      ComponentScheduleStatus.due => colors.due,
+      ComponentScheduleStatus.soon => colors.soon,
+      ComponentScheduleStatus.noData => colors.muted,
+      ComponentScheduleStatus.safe => colors.safe,
+    };
+    final statusBackground = switch (status) {
+      ComponentScheduleStatus.due => colors.dueSoft,
+      ComponentScheduleStatus.soon => colors.soonSoft,
+      ComponentScheduleStatus.noData => colors.surfaceSoft,
+      ComponentScheduleStatus.safe => colors.safeSoft,
+    };
+    final statusIcon = switch (status) {
+      ComponentScheduleStatus.due => AppIcons.due,
+      ComponentScheduleStatus.soon => AppIcons.soon,
+      ComponentScheduleStatus.noData => AppIcons.noData,
+      ComponentScheduleStatus.safe => AppIcons.check,
+    };
+    final statusText = switch (status) {
+      ComponentScheduleStatus.safe => 'Aman',
+      ComponentScheduleStatus.noData => 'Belum ada catatan',
+      ComponentScheduleStatus.soon =>
+        component.isInspection ? 'Segera cek' : 'Segera ganti',
+      ComponentScheduleStatus.due =>
+        component.isInspection ? 'Waktunya cek' : 'Waktunya ganti',
+    };
     final intervalParts = [
       if (interval > 0)
         '${component.isInspection ? 'Cek' : 'Ganti'} tiap ${formatKm(interval)}',
@@ -1276,16 +1324,17 @@ class _OilReminderPageState extends State<OilReminderPage> {
     final intervalText = intervalParts.isEmpty
         ? 'Interval belum diatur'
         : intervalParts.join(' / ');
-    final progress = needsCheck
-        ? 0.0
-        : interval <= 0 || lastServicedKm == null
+    final progress =
+        status == ComponentScheduleStatus.noData ||
+            interval <= 0 ||
+            lastServicedKm == null
         ? null
         : ((data.currentOdometer - lastServicedKm) / interval)
               .clamp(0.0, 1.0)
               .toDouble();
     final remainingKm = schedule.remainingKm;
-    final description = needsCheck
-        ? 'Belum ada catatan servis untuk komponen ini.'
+    final description = status == ComponentScheduleStatus.noData
+        ? 'Catat servis pertama untuk mulai menghitung interval.'
         : remainingKm <= 0
         ? component.isInspection
               ? 'Sudah waktunya periksa sekarang.'
@@ -1305,7 +1354,9 @@ class _OilReminderPageState extends State<OilReminderPage> {
       meta: intervalText,
       progress: progress,
       compact: MediaQuery.sizeOf(context).width < 600,
-      prominent: due || soon || needsCheck,
+      prominent:
+          status == ComponentScheduleStatus.due ||
+          status == ComponentScheduleStatus.soon,
       inspection: component.isInspection,
       onOpen: () => _showComponentActions(component, state),
       onEditInterval: () => _editComponentInterval(component, state),
@@ -1449,7 +1500,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                             ComponentScheduleStatus.safe => 'Aman',
                             ComponentScheduleStatus.soon => 'Segera',
                             ComponentScheduleStatus.due => 'Waktunya servis',
-                            ComponentScheduleStatus.needsCheck => 'Belum ada catatan',
+                            ComponentScheduleStatus.noData => 'Belum ada catatan',
                           }}',
                           style: const TextStyle(color: muted, fontSize: 12),
                         ),
@@ -3110,7 +3161,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
           int rank(ComponentSchedule? schedule) => switch (schedule?.status) {
             ComponentScheduleStatus.due => 0,
             ComponentScheduleStatus.soon => 1,
-            ComponentScheduleStatus.needsCheck => 2,
+            ComponentScheduleStatus.noData => 2,
             ComponentScheduleStatus.safe => 3,
             null => 4,
           };
@@ -3129,11 +3180,11 @@ class _OilReminderPageState extends State<OilReminderPage> {
               item.schedule?.status == ComponentScheduleStatus.soon,
         )
         .toList();
-    final needsCheck = ranked
+    final noDataParts = ranked
         .where(
           (item) =>
               item.schedule == null ||
-              item.schedule?.status == ComponentScheduleStatus.needsCheck,
+              item.schedule?.status == ComponentScheduleStatus.noData,
         )
         .map((item) => item.component)
         .toList();
@@ -3141,6 +3192,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
         .where((item) => item.schedule?.status == ComponentScheduleStatus.safe)
         .toList();
     final safe = safeEntries.map((item) => item.component).toList();
+    final visibleAttention = attention.take(2).toList();
     final firstSafe = safeEntries.isEmpty ? null : safeEntries.first;
     final safeSubtitle = firstSafe == null
         ? 'Tidak perlu tindakan sekarang.'
@@ -3150,23 +3202,34 @@ class _OilReminderPageState extends State<OilReminderPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final item in attention) ...[
+        for (final item in visibleAttention) ...[
           _buildComponentCard(item.component, data!),
           const SizedBox(height: AppSpacing.md),
         ],
-        if (needsCheck.isNotEmpty) ...[
+        if (attention.length > visibleAttention.length) ...[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _openCareAll,
+              icon: const Icon(AppIcons.arrowForward, size: 16),
+              label: Text('Lihat semua (${attention.length})'),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+        if (noDataParts.isNotEmpty) ...[
           CollapsiblePartGroup(
-            storageKey: 'needs-check',
-            title: 'Belum ada data (${needsCheck.length})',
+            storageKey: 'no-data',
+            title: 'Belum ada catatan (${noDataParts.length})',
             subtitle: 'Lengkapi catatan servis agar jadwal lebih akurat.',
-            icon: AppIcons.needsCheck,
-            color: colors.check,
-            soft: colors.checkSoft,
-            statusLabel: 'Perlu dicek',
-            statusColor: colors.check,
-            statusSoft: colors.checkSoft,
-            statusIcon: AppIcons.needsCheck,
-            parts: needsCheck,
+            icon: AppIcons.noData,
+            color: colors.muted,
+            soft: colors.surfaceSoft,
+            statusLabel: 'Belum ada catatan',
+            statusColor: colors.muted,
+            statusSoft: colors.surfaceSoft,
+            statusIcon: AppIcons.noData,
+            parts: noDataParts,
             iconFor: _componentIcon,
             onOpen: (component) => _showComponentActions(
               component,

@@ -1,4 +1,4 @@
-enum ComponentScheduleStatus { safe, soon, due, needsCheck }
+enum ComponentScheduleStatus { safe, soon, due, noData }
 
 class ComponentSchedule {
   const ComponentSchedule({
@@ -35,7 +35,7 @@ class ComponentScheduleCalculator {
       return const ComponentSchedule(
         targetKm: 0,
         remainingKm: 0,
-        status: ComponentScheduleStatus.needsCheck,
+        status: ComponentScheduleStatus.noData,
       );
     }
     if (intervalKm <= 0 && (intervalMonths == null || intervalMonths <= 0)) {

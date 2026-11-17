@@ -167,7 +167,7 @@ void main() {
       currentOdometer: 5000,
       intervalKm: 3000,
     );
-    expect(schedule?.status, ComponentScheduleStatus.needsCheck);
+    expect(schedule?.status, ComponentScheduleStatus.noData);
   });
 
   test(
@@ -1082,7 +1082,14 @@ void main() {
       expect(find.text('Minyak rem'), findsOneWidget);
       expect(find.text('Rantai & gear set'), findsNothing);
       expect(find.text('Pemeriksaan'), findsOneWidget);
-      expect(find.textContaining('Perlu dicek'), findsWidgets);
+      expect(find.textContaining('Belum ada catatan'), findsWidgets);
+      expect(find.textContaining('Perlu dicek'), findsNothing);
+      // Hanya komponen yang punya riwayat yang menampilkan gauge interval.
+      expect(find.text('Interval terpakai'), findsNWidgets(2));
+      expect(find.text('Semua · 6'), findsOneWidget);
+      expect(find.text('Perlu perhatian · 1'), findsOneWidget);
+      expect(find.text('Belum ada data · 4'), findsOneWidget);
+      expect(find.text('Aman · 1'), findsOneWidget);
     },
   );
 
@@ -1396,9 +1403,15 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Semua · 2'), findsOneWidget);
-      expect(find.text('Perlu perhatian · 1'), findsOneWidget);
+      expect(find.text('Perlu perhatian · 0'), findsOneWidget);
+      expect(find.text('Belum ada data · 1'), findsOneWidget);
       expect(find.text('Aman · 1'), findsOneWidget);
       expect(find.text('Ban'), findsOneWidget);
+      expect(find.text('Busi'), findsOneWidget);
+
+      await tester.tap(find.text('Belum ada data · 1'));
+      await tester.pumpAndSettle();
+      expect(find.text('Ban'), findsNothing);
       expect(find.text('Busi'), findsOneWidget);
 
       await tester.tap(find.text('Aman · 1'));
