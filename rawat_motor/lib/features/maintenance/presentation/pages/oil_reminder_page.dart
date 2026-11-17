@@ -570,7 +570,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(22),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -592,7 +592,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 if (km == null)
                   Text(
                     'Belum dicatat',
@@ -626,7 +626,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                       ),
                     ],
                   ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
                 if (km != null) ...[
                   Wrap(
                     spacing: AppSpacing.sm,
@@ -659,20 +659,9 @@ class _OilReminderPageState extends State<OilReminderPage> {
                         onTap: () =>
                             _openDashboardStatus(ComponentScheduleStatus.safe),
                       ),
-                      if (noData > 0)
-                        HeroStat(
-                          label: 'Belum ada data',
-                          value: noData,
-                          color: colors.white.withValues(alpha: 0.78),
-                          soft: colors.white,
-                          icon: AppIcons.noData,
-                          onTap: () => _openDashboardStatus(
-                            ComponentScheduleStatus.noData,
-                          ),
-                        ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
                 ],
                 Row(
                   children: [
@@ -702,7 +691,7 @@ class _OilReminderPageState extends State<OilReminderPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 FilledButton.icon(
                   onPressed: _updateOdometer,
                   icon: const Icon(AppIcons.speed),
@@ -980,33 +969,30 @@ class _OilReminderPageState extends State<OilReminderPage> {
                 ),
                 if (widget.profile != null) ...[
                   SizedBox(height: isNarrow ? AppSpacing.md : AppSpacing.lg),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
+                  Row(
                     children: [
                       RawatinInfoChip(
                         icon: AppIcons.vehicle,
                         label:
                             '${widget.profile!.brand} ${widget.profile!.model}',
                       ),
-                      if (_motorTypeLabel != null)
-                        RawatinInfoChip(
-                          icon: AppIcons.category,
-                          label: _motorTypeLabel!,
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          [
+                            ?_motorTypeLabel,
+                            ?_coolingLabel,
+                            ?_frontBrakeLabel,
+                            '${allVisibleComponents.length} komponen',
+                          ].join(' · '),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: RawatinColors.of(context).muted,
+                            fontSize: 11.5,
+                            height: 1.3,
+                          ),
                         ),
-                      if (_coolingLabel != null)
-                        RawatinInfoChip(
-                          icon: AppIcons.cooling,
-                          label: _coolingLabel!,
-                        ),
-                      if (_frontBrakeLabel != null)
-                        RawatinInfoChip(
-                          icon: AppIcons.brake,
-                          label: _frontBrakeLabel!,
-                        ),
-                      RawatinInfoChip(
-                        icon: AppIcons.grid,
-                        label: '${allVisibleComponents.length} komponen',
                       ),
                     ],
                   ),

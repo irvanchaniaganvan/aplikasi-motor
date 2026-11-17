@@ -122,7 +122,7 @@ class PartCard extends StatelessWidget {
                         ),
                       ],
                     ),
-                    SizedBox(height: compact ? 9 : AppSpacing.sm),
+                    SizedBox(height: compact ? 8 : 10),
                     Row(
                       children: [
                         Flexible(
@@ -154,7 +154,7 @@ class PartCard extends StatelessWidget {
                         ],
                       ],
                     ),
-                    SizedBox(height: compact ? 7 : 9),
+                    SizedBox(height: compact ? 6 : 8),
                     Text(
                       description,
                       maxLines: compact ? 2 : 1,
@@ -192,7 +192,7 @@ class PartCard extends StatelessWidget {
                         ],
                       ),
                     ],
-                    SizedBox(height: compact ? 5 : 8),
+                    SizedBox(height: compact ? 4 : 6),
                     Wrap(
                       alignment: WrapAlignment.spaceBetween,
                       crossAxisAlignment: WrapCrossAlignment.center,

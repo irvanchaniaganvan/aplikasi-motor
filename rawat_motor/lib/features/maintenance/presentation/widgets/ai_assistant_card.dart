@@ -23,10 +23,13 @@ class AiAssistantCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadii.lg),
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
           child: Row(
             children: [
-              const AiOrb(size: 54),
+              const AiOrb(size: 48),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -52,10 +55,7 @@ class AiAssistantCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    const Text(
-                      'Tanya Rawatin',
-                      style: AppType.cardTitle,
-                    ),
+                    const Text('Tanya Rawatin', style: AppType.cardTitle),
                     const SizedBox(height: 2),
                     Text(
                       'Tanya seputar oli, rem, ban, CVT, aki, dan perawatan motor umum.',
@@ -68,11 +68,7 @@ class AiAssistantCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
-                AppIcons.arrowForward,
-                size: 20,
-                color: colors.muted,
-              ),
+              Icon(AppIcons.arrowForward, size: 20, color: colors.muted),
             ],
           ),
         ),

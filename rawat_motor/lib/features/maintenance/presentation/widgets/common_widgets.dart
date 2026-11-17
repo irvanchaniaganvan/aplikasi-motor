@@ -383,7 +383,7 @@ class RawatinScreenIntro extends StatelessWidget {
           title,
           style: AppType.km.copyWith(
             color: colors.ink,
-            fontSize: compact ? 30 : 34,
+            fontSize: compact ? 28 : 34,
             height: 1.02,
             letterSpacing: 0.2,
           ),
